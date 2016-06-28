@@ -93,18 +93,19 @@ class ParallelLayout(DDVTileLayout):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
         Then instead of thinking 'I'm looking at the third column' you can think 'I'm looking at the pink column'."""
-        column_colors = "#FFF #fbb4ae #b3cde3 #ccebc5 #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
+        column_colors = "#FFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
         column_colors = column_colors[:self.n_genomes]
         # Step through the upper left corner of each column in the file
         column_size = self.levels[2].chunk_size
+        margin = 6 // 2
         self.genome_processed = 0
         for genome_index in range(self.n_genomes):
             color = column_colors[genome_index]
             for column_progress in range(0, self.image_length, column_size):
                 left, top = self.position_on_screen(column_progress)
-                left, top = max(0, left - 3), max(0, top - 3)
-                right, bottom = self.position_on_screen(column_progress + column_size)
-                right, bottom = min(self.image.width, right + 3 + 1), min(self.image.height, bottom + 3 + 1)
+                left, top = max(0, left - margin), max(0, top - margin)
+                right, bottom = self.position_on_screen(column_progress + column_size - 1)
+                right, bottom = min(self.image.width, right + margin), min(self.image.height, bottom + margin)
                 self.draw.rectangle([left, top, right, bottom], fill=color)
             self.genome_processed += 1
         self.genome_processed = 0

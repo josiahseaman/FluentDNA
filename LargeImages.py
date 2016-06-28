@@ -111,17 +111,13 @@ class DDVTileLayout:
 
     def draw_nucleotides(self):
         total_progress = 0
-        # if self.image_length > 300000000:
-        #     positioner = self.position_on_screen_big  # big images
-        # else:
-        #     positioner = self.position_on_screen  # small images
         # Layout contigs one at a time
         for contig in self.contigs:
             total_progress += contig.reset_padding + contig.title_padding
-            # worker.ReportProgress((int) (nucleotidesProcessed += contig.len(seq))) # doesn't include padding
-            for cx in range(0, len(contig.seq), 100):
+            seq_length = len(contig.seq)
+            for cx in range(0, seq_length, 100):
                 x, y = self.position_on_screen(total_progress)
-                remaining = min(100, len(contig.seq) - cx)
+                remaining = min(100, seq_length - cx)
                 total_progress += remaining
                 for i in range(remaining):
                     self.draw_pixel(contig.seq[cx + i], x + i, y)
@@ -202,9 +198,9 @@ class DDVTileLayout:
     def position_on_screen(self, index):
         """ Readable unoptimized version:
         Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
-        xy = [0, 0]
+        xy = [6, 6]  # column padding for various markup = self.levels[2].padding
         if self.use_fat_headers:
-            xy[1] = self.levels[5].padding  # padding comes before, not after
+            xy[1] += self.levels[5].padding  # padding comes before, not after
         for i, level in enumerate(self.levels):
             if index < level.chunk_size:
                 return xy
@@ -311,6 +307,8 @@ class DDVTileLayout:
                 width_height[part] = max(width_height[part], level.thickness * coordinate_in_chunk)
         if self.use_fat_headers:  # extra margin at the top of the image for a title
             width_height[1] += self.levels[5].padding
+        width_height[0] += self.levels[2].padding * 2  # add column padding to both sides
+        width_height[1] += self.levels[2].padding * 2  # column padding used as a proxy for vertical padding
         return width_height
 
     def generate_html(self, input_file_name, output_folder, output_file_name):
@@ -418,6 +416,36 @@ class DDVTileLayout:
             json.append({"modulo": level.modulo, "chunk_size": level.chunk_size,
                          "padding": level.padding, "thickness": level.thickness})
         return str(json)
+
+    def get_packed_coordinates(self):
+        """An attempted speed up for draw_nucleotides() that was the same speed.  In draw_nucleotides() the
+        extra code was:
+            coordinates = self.get_packed_coordinates()  # precomputed sets of 100,000
+            seq_consumed = 0
+            columns_batched = 0
+            for column in range(0, seq_length, 100000):
+                if seq_length - column > 100000:
+                    columns_batched += 1
+                    x, y = self.position_on_screen(total_progress)  # only one call per column
+                    for cx, cy, offset in coordinates:
+                        self.draw_pixel(contig.seq[column + offset], x + cx, y + cy)
+                    total_progress += 100000
+                    seq_consumed += 100000
+                else:
+                    pass  # loop will exit and remaining seq will be handled individually
+
+        This method is an optimization that computes all offsets for a column once so they can be reused.
+        The output looks like this:  (x, y, sequence offset)
+        [(0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), ... (0, 1, 10), (1, 1, 11), (2, 1, 12), (3, 1, 13),"""
+        line = range(self.levels[0].modulo)
+        column_height = self.levels[1].modulo
+        coords = []
+        for y in range(column_height):
+            coords.extend([(x, y, y * self.levels[0].modulo + x) for x in line])
+        return coords
+
+
+
 
 
 def multi_line_height(font, multi_line_title, txt):
