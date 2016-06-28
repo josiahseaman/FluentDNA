@@ -16,6 +16,7 @@ import textwrap
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from collections import defaultdict
+from deepzoom import deepzoom
 
 # Original DDV Colors
 palette = defaultdict(lambda: (0, 0, 0))
@@ -439,6 +440,22 @@ def pretty_contig_name(contig, title_width, title_lines):
     return pretty_name
 
 
+def create_deepzoom_stack(input_image, output_dzi):
+    dz_params = {'tile_size': 256,
+                               'tile_overlap': 1,
+                               'tile_format': "jpg",
+                               'image_quality': 0.85,
+                               'resize_filter': "antialias"}
+
+    creator = deepzoom.ImageCreator(tile_size=dz_params['tile_size'],
+                                    tile_overlap=dz_params['tile_overlap'],
+                                    tile_format=dz_params['tile_format'],
+                                    image_quality=dz_params['image_quality'],
+                                    resize_filter=dz_params['resize_filter'])
+
+    creator.create(input_image, output_dzi)
+
+
 if __name__ == "__main__":
     from ParallelGenomeLayout import ParallelLayout
 
@@ -465,4 +482,4 @@ if __name__ == "__main__":
         layout = DDVTileLayout()
         layout.process_file(sys.argv[1], folder, image)
 
-
+    create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, str(image).replace('.png', '.dzi')))
