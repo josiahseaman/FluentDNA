@@ -10,6 +10,7 @@ class ParallelLayout(DDVTileLayout):
     def __init__(self, n_genomes):
         super(ParallelLayout, self).__init__()
         self.use_fat_headers = False  # This layout is best used on one chromosome at a time.
+        self.n_genomes = n_genomes
         self.genome_processed = 0
         # modify layout with an additional bundled column layer
         columns = self.levels[2]
@@ -26,22 +27,26 @@ class ParallelLayout(DDVTileLayout):
 
 
     def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
+        assert len(additional_files) + 1 == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
         self.image_length = self.read_contigs(file1)
         self.image_length = max(self.image_length, *[path.getsize(file) for file in additional_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
+        self.fill_in_colored_borders()
         print("Initialized Image:", datetime.now() - start_time)
         self.draw_nucleotides()
         print("Drew First File:", file1, datetime.now() - start_time)
 
-        # Do inner work for two other files
-        for filename in additional_files:
-            self.genome_processed += 1
-            self.read_contigs(filename)
-            self.draw_nucleotides()
-            print("Drew Additional File:", filename, datetime.now() - start_time)
-
+        try:
+            # Do inner work for two other files
+            for filename in additional_files:
+                self.genome_processed += 1
+                self.read_contigs(filename)
+                self.draw_nucleotides()
+                print("Drew Additional File:", filename, datetime.now() - start_time)
+        except Exception as e:
+            print('Encountered exception while drawing nucleotides:', '\n', str(e))
         self.generate_html(file1, output_folder, output_file_name)
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
@@ -82,4 +87,24 @@ class ParallelLayout(DDVTileLayout):
         #
         #         return reset_padding, title_padding, tail
 
-        return 0, 0, 0
+        # return 0, 0, 0
+
+    def fill_in_colored_borders(self):
+        """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
+        To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
+        Then instead of thinking 'I'm looking at the third column' you can think 'I'm looking at the pink column'."""
+        column_colors = "#FFF #fbb4ae #b3cde3 #ccebc5 #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
+        column_colors = column_colors[:self.n_genomes]
+        # Step through the upper left corner of each column in the file
+        column_size = self.levels[2].chunk_size
+        self.genome_processed = 0
+        for genome_index in range(self.n_genomes):
+            color = column_colors[genome_index]
+            for column_progress in range(0, self.image_length, column_size):
+                left, top = self.position_on_screen(column_progress)
+                left, top = max(0, left - 3), max(0, top - 3)
+                right, bottom = self.position_on_screen(column_progress + column_size)
+                right, bottom = min(self.image.width, right + 3 + 1), min(self.image.height, bottom + 3 + 1)
+                self.draw.rectangle([left, top, right, bottom], fill=color)
+            self.genome_processed += 1
+        self.genome_processed = 0
