@@ -1,6 +1,8 @@
 from datetime import datetime
 from math import floor
 
+from os import path
+
 from LargeImages import DDVTileLayout, LayoutLevel
 
 
@@ -26,6 +28,7 @@ class ParallelLayout(DDVTileLayout):
     def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
         start_time = datetime.now()
         self.image_length = self.read_contigs(file1)
+        self.image_length = max(self.image_length, *[path.getsize(file) for file in additional_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time)
