@@ -1,0 +1,127 @@
+body {
+	margin: 0px;
+	margin-bottom: 200px;
+}
+#refseq {font-size:9pt;color:#606060;}
+#soapsequenceid {margin:0px; padding:0px; padding-left:10px;margin-bottom:10px;}
+.legend-details {margin-left:50px;margin-top:30px;font-size:9pt;font-family:Arial, Helvetica, sans-serif}
+
+.mainTitle {font-size: large; font-family: Verdana; background-color: #F0F0F0;margin: 0px;}
+.legendHeading {font-family: Verdana; font-size: small;}
+ul.selectChromosome {margin:0px; }
+ul.selectChromosome li {display: inline;
+list-style-type: none;
+margin-right: 20px; 
+padding:2px;
+ }
+
+ul.selectChromosome li.selected {
+	border:1px solid #000000;
+	background-color: #a0a0a0;
+}
+.chromosome-container .openseadragon-container .navigator {
+		background-color: #f0f0f0 !important;
+		opacity: 1 !important;
+ }
+.chromosome-container {
+	width: 800px;
+	height: 500px;
+	background-color: #f0f0f0;
+	border:1px solid #303030;
+	vertical-align:text-top;
+	margin-top:10px;
+	margin-right:10px;
+	margin-left:10px;
+	float:left;
+}
+a {
+	font-family: Verdana;
+	font-size: small;
+	text-decoration: underline;
+	background-color: #F0F0F0;
+	line-height: 24px;
+	color: #253649;
+}
+.style1 {
+	background-color: #FAF8B6;
+}
+.style2 {
+	font-size: small;
+	font-family: Verdana;
+}
+.style3 {
+	border: 1px solid #F5F270;
+}
+.style4 {
+	color: #444304;
+	background-color: #F5F270;
+}
+
+#result {
+	margin-top:5px;border:1px solid #202020;font-family:Courier New, Courier, Monospace; font-size:9pt;
+}
+
+#status {
+	margin-top:20px;
+	height:50px;
+	border: 1px dotted #a0a0a0;
+	margin-bottom:20px;
+	}
+
+#output
+{
+	border: none;
+	margin: 1em 0em;
+}
+#output td
+{
+
+}
+#output .outputLabel
+{
+	font-weight: bold;
+}
+
+#outfile .sequenceFragment{
+	font-size:9pt;
+	width:95%;
+	overflow-x:scroll;
+	margin-bottom:10px;
+	border-top:1px solid #303030;
+	border-bottom:1px solid #303030;
+	margin-left:10px;
+}
+
+#outfile .densityTable{
+	font-size:10pt;
+	width:95%;
+	margin-bottom:10px;
+	border-top:1px solid #303030;
+	border-bottom:1px solid #303030;
+	margin-left:10px;
+}
+
+.resultdivider {border-top:1px solid #a0a0a0;}
+
+/*GC Skew CSS*/
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1px;
+}
+
+g.tick {
+	font-size:8pt;
+}
+
+path{
+stroke: rgb(0, 0, 255);
+stroke-width: 1px;
+}
