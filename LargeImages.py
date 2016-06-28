@@ -475,7 +475,13 @@ if __name__ == "__main__":
     if n_arguments == 3:
         image = sys.argv[2]
 
-    if n_arguments > 4:  # Parallel genome column layout
+    if n_arguments == 2:
+        output_file = os.path.basename(sys.argv[1].replace('.png', '.dzi'))
+        output_dir = os.path.dirname(sys.argv[1])
+
+        create_deepzoom_stack(sys.argv[1], os.path.join(output_dir, output_file))
+        sys.exit(0)
+    elif n_arguments > 4:  # Parallel genome column layout
         layout = ParallelLayout(n_arguments - 3)
         layout.process_file(sys.argv[1], folder, image, sys.argv[4:])
     else:
@@ -483,3 +489,4 @@ if __name__ == "__main__":
         layout.process_file(sys.argv[1], folder, image)
 
     create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, str(image).replace('.png', '.dzi')))
+    sys.exit(0)
