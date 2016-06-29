@@ -47,12 +47,14 @@ class LayoutLevel:
 
 
 class Contig:
-    def __init__(self, name, seq, reset_padding, title_padding, tail_padding):
+    def __init__(self, name, seq, reset_padding, title_padding, tail_padding, title_index, title_length):
         self.name = name
         self.seq = seq
         self.reset_padding = reset_padding
         self.title_padding = title_padding
         self.tail_padding = tail_padding
+        self.nuc_title_start = title_index
+        self.nuc_seq_start = title_index + title_length
 
 
 def multi_line_height(font, multi_line_title, txt):
@@ -105,14 +107,15 @@ if __name__ == "__main__":
     from ParallelGenomeLayout import ParallelLayout
 
     folder = "."
-    chromosome_name = sys.argv[1][:sys.argv[1].rfind(".")]
+    input_file_path = sys.argv[1]
+    chromosome_name = os.path.basename(input_file_path[:input_file_path.rfind(".")])  # name between /<path>/ and .png
     image = chromosome_name + ".png"
     n_arguments = len(sys.argv)
 
     if n_arguments == 2:  # Shortcut for old visualizations
-        output_file = os.path.basename(sys.argv[1].replace('.png', '.dzi'))
-        output_dir = os.path.dirname(sys.argv[1])
-        create_deepzoom_stack(sys.argv[1], os.path.join(output_dir, output_file))
+        output_file = chromosome_name + '.dzi'
+        output_dir = os.path.dirname(input_file_path)
+        create_deepzoom_stack(input_file_path, os.path.join(output_dir, output_file))
         sys.exit(0)
 
     if n_arguments == 3:
@@ -126,10 +129,13 @@ if __name__ == "__main__":
     if n_arguments > 4:  # Multiple inputs => Parallel genome column layout
         layout = ParallelLayout(n_arguments - 3)
         additional_files = sys.argv[4:]
-        layout.process_file(sys.argv[1], folder, image, additional_files)
+        layout.process_file(input_file_path, folder, image, additional_files)
     else:  # Typical use case
         layout = DDVTileLayout()
-        layout.process_file(sys.argv[1], folder, image)
+        layout.process_file(input_file_path, folder, image)
 
     create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
+    print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
+    shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
+
     sys.exit(0)

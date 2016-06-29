@@ -1,6 +1,7 @@
 var PRECISION = 10;      // number of decimal places
 var viewer = null;
 var pointerStatus = "-";
+var cursor_in_a_title = false;
 var ColumnNumber = 0;
 var ColumnRemainder = "-";
 var PositionInColumn = "-";
@@ -97,6 +98,30 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
     return Nucleotide;
 }
 
+function nucleotide_coordinates_to_sequence_index(index_from_xy){
+    cursor_in_a_title = false;
+    if(!multipart_file){
+        return index_from_xy; // all the padding numbers are just zero
+    }
+    for(var i = 0; i < ContigSpacingJSON.length; i++){
+        var contig = ContigSpacingJSON[i];
+        if(contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
+            if(contig.xy_title_start > index_from_xy){ //we overshot and haven't reached title
+                return '-';
+            }
+            if (contig.xy_seq_start <= index_from_xy ) {// cursor is in nucleotide body
+                return contig.nuc_seq_start + (index_from_xy - contig.xy_seq_start);
+            } else {
+                // cursor is in label
+                cursor_in_a_title = true;
+                return contig.nuc_title_start;
+            }
+        }
+    }
+    return index_from_xy
+}
+
+
 function tiled_layout_mouse_position(nucNumX, nucNumY) {
     //global variable layout_levels set by Form1.cs
     var index_from_xy = 0;
@@ -114,7 +139,9 @@ function tiled_layout_mouse_position(nucNumX, nucNumY) {
             return "-";//check for invalid coordinate (margins)
         }
     }
-    return index_from_xy + 1; // nucleotide position is [1] indexed, instead of [0] indexed
+    index_from_xy = nucleotide_coordinates_to_sequence_index(index_from_xy);
+    index_from_xy = typeof index_from_xy === 'string' ? index_from_xy : index_from_xy + 1;
+    return index_from_xy; // nucleotide position is [1] indexed, instead of [0] indexed
 }
 
 function showNucleotideNumber(event, viewer) {
@@ -163,6 +190,10 @@ function showNucleotideNumber(event, viewer) {
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
             var start = Math.max(0, (lineNumber - 1) * columnWidthInNucleotides); // not before begin of seq
             var stop = Math.min(ipTotal, (lineNumber + 2) * columnWidthInNucleotides); //+2 = +1 start then + width of column
+            if(cursor_in_a_title){
+                start = Nucleotide - 1;
+                stop = Nucleotide + columnWidthInNucleotides * 3;
+            }
             theSequence = wholeSequence.substring(start, stop);
             //user visible indices start at 1, not 0
             fragmentid = "Sequence fragment at [" + numberWithCommas(Nucleotide) +

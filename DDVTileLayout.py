@@ -1,7 +1,6 @@
 import os
 import math
 
-import shutil
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from LargeImages import LayoutLevel, Contig, palette, pretty_contig_name, multi_line_height, copytree
@@ -61,7 +60,6 @@ class DDVTileLayout:
             print('While generating HTML:', '\n', str(e))
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-        shutil.copy(input_file_path, os.path.join(output_folder, os.path.basename(input_file_path)))  # copy source file
 
 
     def draw_nucleotides(self):
@@ -82,25 +80,30 @@ class DDVTileLayout:
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
         print()
 
-    def read_contigs(self, input_file_name):
+    def read_contigs(self, input_file_path):
         self.contigs = []
         total_progress = 0
         current_name = ""
+        title_length = 0
         seq_collection = []
+        seq_start = 0
 
         # Pre-read generates an array of contigs with labels and sequences
-        with open(input_file_name, 'r') as streamFASTAFile:
+        with open(input_file_path, 'r') as streamFASTAFile:
             for read in streamFASTAFile.read().splitlines():
                 if read == "":
                     continue
                 if read[0] == ">":
                     # If we have sequence gathered and we run into a second (or more) block
+                    title_length = len(current_name) + 1
                     if len(seq_collection) > 0:
                         sequence = "".join(seq_collection)
                         seq_collection = []  # clear
                         reset, title, tail = self.calc_padding(total_progress, len(sequence), True)
-                        self.contigs.append(Contig(current_name, sequence, reset, title, tail))
+                        self.contigs.append(Contig(current_name, sequence, reset, title, tail,
+                                                   seq_start, title_length))
                         total_progress += reset + title + tail + len(sequence)
+                        seq_start += title_length + len(sequence)
                     current_name = read[1:]  # remove >
                 else:
                     # collects the sequence to be stored in the contig, constant time performance don't concat strings!
@@ -109,7 +112,8 @@ class DDVTileLayout:
         # add the last contig to the list
         sequence = "".join(seq_collection)
         reset, title, tail = self.calc_padding(total_progress, len(sequence), len(self.contigs) > 0)
-        self.contigs.append(Contig(current_name, sequence, reset, title, tail))
+        self.contigs.append(Contig(current_name, sequence, reset, title, tail,
+                                   seq_start, title_length))
         return total_progress + reset + title + tail + len(sequence)
 
     def prepare_image(self, image_length):
@@ -239,7 +243,8 @@ class DDVTileLayout:
         width_height[1] += self.levels[2].padding * 2  # column padding used as a proxy for vertical padding
         return width_height
 
-    def generate_html(self, input_file_name, output_folder):
+    def generate_html(self, input_file_path, output_folder):
+        input_file_name = os.path.basename(input_file_path)
         copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
         html_path = os.path.join(output_folder, 'index.html')
         html_content = {"title": input_file_name[:input_file_name.rfind('.')],
@@ -271,12 +276,15 @@ class DDVTileLayout:
 
     def contig_json(self):
         json = []
-        starting_index = 0  # camel case is left over from C# for javascript compatibility
+        xy_seq_start = 0  # camel case is left over from C# for javascript compatibility
         for contig in self.contigs:
-            starting_index += contig.title_padding
-            end_index = starting_index + len(contig.seq)
-            json.append({"name": contig.name.replace("'", ""), "startingIndex": starting_index, "endIndex": end_index,
-                         "title_padding": contig.title_padding, "tail_padding": contig.tail_padding})
+            xy_seq_start += contig.reset_padding + contig.title_padding
+            xy_seq_end = xy_seq_start + len(contig.seq)
+            json.append({"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
+                         "title_padding": contig.title_padding, "tail_padding": contig.tail_padding,
+                         "xy_title_start": xy_seq_start - contig.title_padding,
+                         "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start})
+            xy_seq_start += len(contig.seq) + contig.tail_padding
         return str(json)
 
     def levels_json(self):
