@@ -515,6 +515,6 @@ if __name__ == "__main__":
     else:
         layout = DDVTileLayout()
         layout.process_file(sys.argv[1], folder, image)
-
+    #bin\Release\output\dnadata\<filename>\dzc_output.xml
     create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, str(image).replace('.png', '.dzi')))
     sys.exit(0)
