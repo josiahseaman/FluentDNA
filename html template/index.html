@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
+    <title>DNA Data Visualization : {{title}}</title>
+    <script src='./openseadragon.js' type='text/javascript'></script>
+    <script type='text/javascript' src='./jquery-1.7.min.js'></script>
+    <script src='./openseadragon-scalebar.js' type='text/javascript'></script>
+
+    <script type='text/javascript'>
+        var originalImageWidth = {{originalImageWidth}};
+        var originalImageHeight = {{originalImageHeight}};
+        var ColumnPadding = {{ColumnPadding}};
+        var columnWidthInNucleotides = {{columnWidthInNucleotides}};
+        var layoutSelector = {{layoutSelector}};
+        var layout_levels = {{layout_levels}};
+        var ContigSpacingJSON = {{ContigSpacingJSON}};
+        var multipart_file = {{multipart_file}};
+        var use_fat_headers = {{use_fat_headers}};
+        var includeDensity = {{includeDensity}};
+
+        var usa = '{{usa}}';
+        var ipTotal = {{ipTotal}};
+        var direct_data_file = '{{direct_data_file}}';
+        var direct_data_file_length = {{direct_data_file_length}};
+        var sbegin = '{{sbegin}}';
+        var send = {{send}};
+        var output_dir = '{{output_dir}}';
+    </script>
+    <script src='./nucleotideNumber.js' type='text/javascript'></script>
+    <script src='./nucleicDensity.js' type='text/javascript'></script>
+    <link rel='stylesheet' type='text/css' href='./seadragon.css'/>
+    <!-- BIOJS css -->
+    <script language='JavaScript' type='text/javascript' src='./Biojs.js'></script>
+    <!-- component code -->
+    <script language='JavaScript' type='text/javascript' src='./Biojs.Sequence.js'></script>
+</head>
+
+<body>
+<h2 class='mainTitle'>Data Visualization - DNA</h2>
+<span style='float:left;'>Menu:&nbsp;</span>
+<ul class='selectChromosome'>
+    <li><a href='../'>Select Visualization</a></li>
+</ul>
+<h2 class='mainTitle'>
+    <strong>{{title}}</strong>
+</h2>
+
+<div id='container' class='chromosome-container' data-chr-source=''>
+</div>
+
+<p class='legendHeading'><strong>Legend:</strong><br/></p>
+<div style='margin-left:50px;'>
+    <img src='./img/LEGEND-A.png'/>
+    <img src='./img/LEGEND-T.png'/>
+    <img src='./img/LEGEND-G.png'/>
+    <img src='./img/LEGEND-C.png'/>
+    <img src='./img/LEGEND-N.png'/>
+    <img src='./img/LEGEND-bg.png'/>
+</div>
+
+<script type='text/javascript'>
+    outputTable();
+    if (includeDensity) {
+        outputDensityUI();
+    }
+</script>
+
+<div class='legend-details'>
+    <h3>Data Source:</h3>
+    <a href='sequence.fasta'>Download FASTA file</a>
+    <br/>
+    Custom/local sequence (DDV seq ID): {{title}}<br/>
+
+    <h3>Notes</h3>
+    This DNA data visualization interface was generated with <a href='https://github.com/josiahseaman/DDV'>DDV</a>
+    <br/>Date Visualization Created:{{date}}
+    <script type='text/javascript'>
+        otherCredits();
+    </script>
+</div>
+</body>
+
+</html>

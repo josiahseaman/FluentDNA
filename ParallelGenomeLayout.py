@@ -3,7 +3,8 @@ from math import floor
 
 from os import path
 
-from LargeImages import DDVTileLayout, LayoutLevel
+from LargeImages import LayoutLevel
+from DDVTileLayout import DDVTileLayout
 
 
 class ParallelLayout(DDVTileLayout):
@@ -47,7 +48,7 @@ class ParallelLayout(DDVTileLayout):
                 print("Drew Additional File:", filename, datetime.now() - start_time)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
-        self.generate_html(file1, output_folder, output_file_name)
+        self.generate_html(file1, output_folder)
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
