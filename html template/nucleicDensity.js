@@ -69,7 +69,7 @@ function otherCredits(){
 			    $("#btnCallWebServiceDensity").click(function (event) {
 			    		
             	 	
-            		sbegin=$("#sbegin").val();
+				sbegin=$("#sbegin").val();
                 send=$("#send").val();
                 if (parseInt(sbegin)>=parseInt(send)) {
             	  	alert('invalid input: start of sequence should be smaller than end');
@@ -82,19 +82,19 @@ function otherCredits(){
                 var wsUrl = "../../density.php";
 				
 								uiLoading ("Computing...");
-				
-                $.ajax({
-                    type: "GET",
-                    data: {
-         									  start: sbegin,
-            								end: send,
-            								filepath: urlstr
-        								},
-                    url: wsUrl,
-                    contentType: "text/html",
-                    success: processSuccessDensity,
-                    error: processError
-                });
+
+				$.ajax({
+					type: "GET",
+					data: {
+						start: sbegin,
+						end: send,
+						filepath: urlstr
+					},
+					url: wsUrl,
+					contentType: "text/html",
+					success: processSuccessDensity,
+					error: processError
+				});
 								
             
           

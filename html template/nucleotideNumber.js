@@ -133,7 +133,7 @@ function showNucleotideNumber(event, viewer) {
         pointerStatus = "Outside of Image (X)";
     }
     else {
-        nucNumX = Math.round(point.x * originalImageWidth - 0.5);
+        nucNumX = Math.round(point.x * originalImageWidth - 0.5) - image_origin[0];
     }
 
     if ((point.y < 0) || (point.y > originalAspectRatio)) {
@@ -142,7 +142,7 @@ function showNucleotideNumber(event, viewer) {
         pointerStatus = "Outside of Image (Y)";
     }
     else {
-        nucNumY = Math.round(point.y * originalImageWidth - 0.5);
+        nucNumY = Math.round(point.y * originalImageWidth - 0.5) - image_origin[1];
     }
 
     if ((nucNumX != "-") && (nucNumY != "-")) {
@@ -205,12 +205,13 @@ function getSequence() {
         xhr: function () {
             var xhr = new window.XMLHttpRequest();
             //Download progress
+            $("#status").html("<img src='loading.gif' /> Loading sequence data: ");
             xhr.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
                     var percentComplete = (evt.loaded / evt.total) * 100;
                     //Do something with download progress
                     if (percentComplete < 100) {
-                        $("#status").html("<img src='" + output_dir + "loading.gif' /> Loading sequence data: " + parseFloat(percentComplete).toFixed(2) + "% complete");
+                        $("#status").html("<img src='loading.gif' /> Loading sequence data: " + parseFloat(percentComplete).toFixed(2) + "% complete");
                     }
                     else {
                         $("#status").html("Sequence data loaded.  Display of sequence fragments activated.");
@@ -222,7 +223,7 @@ function getSequence() {
                     }
                 }
                 else {
-                    $("#status").html("<img src='" + output_dir + "loading.gif' />Loading sequence data  ... [ " + parseFloat(evt.loaded / 1048576).toFixed(2) + " MB loaded ]");
+                    $("#status").html("<img src='loading.gif' />Loading sequence data  ... [ " + parseFloat(evt.loaded / 1048576).toFixed(2) + " MB loaded ]");
                 }
             }, false);
             return xhr;
@@ -236,8 +237,12 @@ function getSequence() {
 }
 
 function initSequence(theSequence) {
-    theSequenceSplit = theSequence.split("\n");//for removing the newlines
-    if (theSequenceSplit[0][0] == ">") { //not all files have a header line
+    if(theSequence.slice(0,10000).indexOf('\r') == -1){
+        theSequenceSplit = theSequence.split("\n");//for removing the newlines
+    } else {
+        theSequenceSplit = theSequence.split("\r\n");//windows line feeds
+    }
+    if (!multipart_file && theSequenceSplit[0][0] == ">") { //not all files have a header line
         theSequenceSplit.splice(0, 1); //deletes the header line from the fasta file
     }
     wholeSequence = theSequenceSplit.join('');
@@ -278,9 +283,9 @@ function outputTable() {
 
 function GenerateGCSkewChart() {
 
-    $("#status").html("<img src='" + output_dir + "loading.gif' />Generating GC Skew Plot...");
+    $("#status").html("<img src='loading.gif' />Generating GC Skew Plot...");
 
-    $.getScript(output_dir + "d3.v3.js", function () {
+    $.getScript("d3.v3.js", function () {
 
 
         var sbegin = $("#sbegin").val();

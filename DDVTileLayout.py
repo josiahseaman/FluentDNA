@@ -1,15 +1,17 @@
 import os
 import math
+
+import shutil
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from LargeImages import LayoutLevel, Contig, palette, pretty_contig_name, multi_line_height, copytree
 
 
 class DDVTileLayout:
-    def __init__(self):
+    def __init__(self, use_fat_headers=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
-        self.use_fat_headers = False  # Can only be changed in code.
+        self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.image = None
         self.draw = None
         self.pixels = None
@@ -31,12 +33,14 @@ class DDVTileLayout:
         self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [7]
 
         self.tile_label_size = self.levels[3].chunk_size * 2
+        self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
+            self.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
-    def process_file(self, input_file_name, output_folder, output_file_name):
+    def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
-        self.image_length = self.read_contigs(input_file_name)
+        self.image_length = self.read_contigs(input_file_path)
         print("Read contigs :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time, "\n")
@@ -52,11 +56,13 @@ class DDVTileLayout:
         except Exception as e:
             print('Encountered exception while drawing titles:', '\n', str(e))
         try:
-            self.generate_html(input_file_name, output_folder)
+            self.generate_html(input_file_path, output_folder)
         except Exception as e:
             print('While generating HTML:', '\n', str(e))
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        shutil.copy(input_file_path, os.path.join(output_folder, os.path.basename(input_file_path)))  # copy source file
+
 
     def draw_nucleotides(self):
         total_progress = 0
@@ -144,9 +150,7 @@ class DDVTileLayout:
     def position_on_screen(self, index):
         """ Readable unoptimized version:
         Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
-        xy = [6, 6]  # column padding for various markup = self.levels[2].padding
-        if self.use_fat_headers:
-            xy[1] += self.levels[5].padding  # padding comes before, not after
+        xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
         for i, level in enumerate(self.levels):
             if index < level.chunk_size:
                 return xy
@@ -154,27 +158,6 @@ class DDVTileLayout:
             coordinate_in_chunk = int(index / level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
         return xy
-
-    @staticmethod
-    def position_on_screen_small(index):
-        # Less readable
-        # x = self.levels[0].thickness * (int(index / self.levels[0].chunk_size) % self.levels[0].modulo)
-        # x+= self.levels[2].thickness * (int(index / self.levels[2].chunk_size) % self.levels[2].modulo)
-        # y = self.levels[1].thickness * (int(index / self.levels[1].chunk_size) % self.levels[1].modulo)
-        # y+= self.levels[3].thickness * (int(index / self.levels[3].chunk_size) % self.levels[3].modulo)
-
-        x = index % 100 + 106 * ((index // 100000) % 100) + 10654 * (index // 100000000)  # % 3)
-        y = (index // 100) % 1000 + 1018 * ((index // 10000000) % 10)  # + 10342 * ((index // 300000000) % 4)
-        return x, y
-
-    @staticmethod
-    def position_on_screen_big(index):
-        # 10654 * 3 + 486 padding = 32448
-        x = index % 100 + 106 * ((index // 100000) % 100) + 10654 * ((index // 100000000) % 3) + \
-            32448 * (index // 1200000000)  # % 9 #this will continue tile columns indefinitely (8 needed 4 human genome)
-        y = (index // 100) % 1000 + 1018 * ((index // 10000000) % 10) + 10342 * ((index // 300000000) % 4)
-        # + 42826 * (index // 10800000000)  # 10342 * 4 + 1458 padding = 42826
-        return [x, y]
 
     def draw_pixel(self, character, x, y):
         self.pixels[x, y] = palette[character]
@@ -262,21 +245,21 @@ class DDVTileLayout:
         html_content = {"title": input_file_name[:input_file_name.rfind('.')],
                         "originalImageWidth": str(self.image.width),
                         "originalImageHeight": str(self.image.height),
+                        "image_origin": str(self.origin),
                         "ColumnPadding": str(self.levels[2].padding),
                         "columnWidthInNucleotides": str(self.levels[1].chunk_size),
                         "layoutSelector": '1',
                         "layout_levels": self.levels_json(),
                         "ContigSpacingJSON": self.contig_json(),
                         "multipart_file": str(len(self.contigs) > 1).lower(),
-                        "use_fat_headers": str(self.use_fat_headers).lower(),
+                        # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
                         "includeDensity": 'false',
                         "usa": 'refseq_fetch:' + input_file_name,
                         "ipTotal": str(self.image_length),
-                        "direct_data_file": 'sequence.fasta',
+                        "direct_data_file": input_file_name,
                         "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
                         "sbegin": '1',
                         "send": str(self.image_length),
-                        "output_dir": './',
                         "date": datetime.now().strftime("%Y-%m-%d")}
         with open(os.path.join('html template', 'index.html'), 'r') as template:
             template_content = template.read()

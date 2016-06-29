@@ -92,7 +92,7 @@ def create_deepzoom_stack(input_image, output_dzi):
     dz_params = {'tile_size': 256,
                  'tile_overlap': 1,
                  'tile_format': "png",
-                 'resize_filter': "antialias"}
+                 'resize_filter': "antialias"}  # cubic bilinear bicubic nearest antialias
     creator = deepzoom.ImageCreator(tile_size=dz_params['tile_size'],
                                     tile_overlap=dz_params['tile_overlap'],
                                     tile_format=dz_params['tile_format'],

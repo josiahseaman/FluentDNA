@@ -10,13 +10,13 @@
     <script type='text/javascript'>
         var originalImageWidth = {{originalImageWidth}};
         var originalImageHeight = {{originalImageHeight}};
+        var image_origin = {{image_origin}};
         var ColumnPadding = {{ColumnPadding}};
         var columnWidthInNucleotides = {{columnWidthInNucleotides}};
         var layoutSelector = {{layoutSelector}};
         var layout_levels = {{layout_levels}};
         var ContigSpacingJSON = {{ContigSpacingJSON}};
         var multipart_file = {{multipart_file}};
-        var use_fat_headers = {{use_fat_headers}};
         var includeDensity = {{includeDensity}};
 
         var usa = '{{usa}}';
@@ -25,7 +25,6 @@
         var direct_data_file_length = {{direct_data_file_length}};
         var sbegin = '{{sbegin}}';
         var send = {{send}};
-        var output_dir = '{{output_dir}}';
     </script>
     <script src='./nucleotideNumber.js' type='text/javascript'></script>
     <script src='./nucleicDensity.js' type='text/javascript'></script>
@@ -49,26 +48,25 @@
 <div id='container' class='chromosome-container' data-chr-source=''>
 </div>
 
-<p class='legendHeading'><strong>Legend:</strong><br/></p>
-<div style='margin-left:50px;'>
-    <img src='./img/LEGEND-A.png'/>
-    <img src='./img/LEGEND-T.png'/>
-    <img src='./img/LEGEND-G.png'/>
-    <img src='./img/LEGEND-C.png'/>
-    <img src='./img/LEGEND-N.png'/>
-    <img src='./img/LEGEND-bg.png'/>
-</div>
-
+<p class='legendHeading'>
+    <strong>Legend:</strong>
+    <img class='legend-icon' src='./img/LEGEND-A.png'/>
+    <img class='legend-icon' src='./img/LEGEND-T.png'/>
+    <img class='legend-icon' src='./img/LEGEND-G.png'/>
+    <img class='legend-icon' src='./img/LEGEND-C.png'/>
+    <img class='legend-icon' src='./img/LEGEND-N.png'/>
+    <img class='legend-icon' src='./img/LEGEND-bg.png'/>
+</p>
 <script type='text/javascript'>
     outputTable();
     if (includeDensity) {
         outputDensityUI();
     }
 </script>
-
+<div id="status"></div>
 <div class='legend-details'>
     <h3>Data Source:</h3>
-    <a href='sequence.fasta'>Download FASTA file</a>
+    <a href='{{fasta_source_file}}'>Download FASTA file</a>
     <br/>
     Custom/local sequence (DDV seq ID): {{title}}<br/>
 

@@ -9,8 +9,7 @@ from DDVTileLayout import DDVTileLayout
 
 class ParallelLayout(DDVTileLayout):
     def __init__(self, n_genomes):
-        super(ParallelLayout, self).__init__()
-        self.use_fat_headers = False  # This layout is best used on one chromosome at a time.
+        super(ParallelLayout, self).__init__(use_fat_headers=False)  # This layout is best used on one chromosome at a time.
         self.n_genomes = n_genomes
         self.genome_processed = 0
         # modify layout with an additional bundled column layer
