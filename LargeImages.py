@@ -15,7 +15,7 @@ import textwrap
 import shutil
 from PIL import ImageDraw
 from collections import defaultdict
-from deepzoom import deepzoom
+import deepzoom
 
 # Original DDV Colors
 palette = defaultdict(lambda: (0, 0, 0))
@@ -90,17 +90,13 @@ def copytree(src, dst, symlinks=False, ignore=None):
 
 def create_deepzoom_stack(input_image, output_dzi):
     dz_params = {'tile_size': 256,
-                               'tile_overlap': 1,
-                               'tile_format': "png",
-                               # 'image_quality': 0.85,
-                               'resize_filter': "antialias"}
-
+                 'tile_overlap': 1,
+                 'tile_format': "png",
+                 'resize_filter': "antialias"}
     creator = deepzoom.ImageCreator(tile_size=dz_params['tile_size'],
                                     tile_overlap=dz_params['tile_overlap'],
                                     tile_format=dz_params['tile_format'],
-                                    # image_quality=dz_params['image_quality'],
                                     resize_filter=dz_params['resize_filter'])
-
     creator.create(input_image, output_dzi)
 
 
