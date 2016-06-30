@@ -55,7 +55,7 @@ class DDVTileLayout:
         except Exception as e:
             print('Encountered exception while drawing titles:', '\n', str(e))
         try:
-            self.generate_html(input_file_path, output_folder)
+            self.generate_html(input_file_path, output_folder, output_file_name)
         except Exception as e:
             print('While generating HTML:', '\n', str(e))
         self.output_image(output_folder, output_file_name)
@@ -243,11 +243,11 @@ class DDVTileLayout:
         width_height[1] += self.levels[2].padding * 2  # column padding used as a proxy for vertical padding
         return width_height
 
-    def generate_html(self, input_file_path, output_folder):
+    def generate_html(self, input_file_path, output_folder, output_file_name):
         input_file_name = os.path.basename(input_file_path)
         copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
         html_path = os.path.join(output_folder, 'index.html')
-        html_content = {"title": input_file_name[:input_file_name.rfind('.')],
+        html_content = {"title": output_file_name[:output_file_name.rfind('.')],
                         "originalImageWidth": str(self.image.width),
                         "originalImageHeight": str(self.image.height),
                         "image_origin": str(self.origin),
