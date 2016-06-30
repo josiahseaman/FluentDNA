@@ -1,7 +1,10 @@
+import os
 from datetime import datetime
 from math import floor
 
 from os import path
+
+from PIL import ImageFont
 
 from DDV import LayoutLevel
 from DDVTileLayout import DDVTileLayout
@@ -24,6 +27,10 @@ class ParallelLayout(DDVTileLayout):
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
         self.levels.append(LayoutLevel("XInTile", 3, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("YInTile", 99, levels=self.levels))  # [5]
+        self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
+
+        self.column_colors = "#FFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
+        self.column_colors = self.column_colors[:self.n_genomes]
 
 
     def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
@@ -47,7 +54,8 @@ class ParallelLayout(DDVTileLayout):
                 print("Drew Additional File:", filename, datetime.now() - start_time)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
-        self.generate_html(file1, output_folder)
+        self.write_title([file1] + additional_files)
+        self.generate_html(file1, output_folder, output_file_name)
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
@@ -93,19 +101,31 @@ class ParallelLayout(DDVTileLayout):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
         Then instead of thinking 'I'm looking at the third column' you can think 'I'm looking at the pink column'."""
-        column_colors = "#FFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
-        column_colors = column_colors[:self.n_genomes]
         # Step through the upper left corner of each column in the file
         column_size = self.levels[2].chunk_size
         margin = 6 // 2
-        self.genome_processed = 0
-        for genome_index in range(self.n_genomes):
-            color = column_colors[genome_index]
+        for genome_index in range(1, self.n_genomes):  # skip the white column
+            self.genome_processed = genome_index
+            color = self.column_colors[genome_index]
             for column_progress in range(0, self.image_length, column_size):
                 left, top = self.position_on_screen(column_progress)
                 left, top = max(0, left - margin), max(0, top - margin)
                 right, bottom = self.position_on_screen(column_progress + column_size - 1)
                 right, bottom = min(self.image.width, right + margin), min(self.image.height, bottom + margin)
                 self.draw.rectangle([left, top, right, bottom], fill=color)
-            self.genome_processed += 1
         self.genome_processed = 0
+
+    def write_title(self, filenames):
+        """Write the names of each of the source files in order so their columns can be identified with their
+        column colors"""
+        for genome_index in range(self.n_genomes):
+            color = self.column_colors[genome_index]
+            step_size = (self.image.width - 12) / self.n_genomes
+            left = self.origin[0] + step_size * genome_index
+            font = ImageFont.truetype("tahoma.ttf", 380)
+            title = os.path.splitext(filenames[genome_index])[0]  # remove extension
+            text_size = font.getsize(title)
+            right = left + text_size[0]
+            bottom = 6 + text_size[1] * 1.1
+            self.draw.rectangle([left, 6, right, bottom], fill=color)
+            self.draw.text((left, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))

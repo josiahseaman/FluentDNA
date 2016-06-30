@@ -237,10 +237,9 @@ class DDVTileLayout:
             if coordinate_in_chunk > 1:
                 # not cumulative, just take the max size for either x or y
                 width_height[part] = max(width_height[part], level.thickness * coordinate_in_chunk)
-        if self.use_fat_headers:  # extra margin at the top of the image for a title
-            width_height[1] += self.levels[5].padding
-        width_height[0] += self.levels[2].padding * 2  # add column padding to both sides
-        width_height[1] += self.levels[2].padding * 2  # column padding used as a proxy for vertical padding
+        width_height = [sum(x) for x in zip(width_height, self.origin)]  # , [self.levels[2].padding] * 2
+        width_height[0] += self.levels[2].padding   # add column padding to both sides
+        width_height[1] += self.levels[2].padding   # column padding used as a proxy for vertical padding
         return width_height
 
     def generate_html(self, input_file_path, output_folder, output_file_name):
