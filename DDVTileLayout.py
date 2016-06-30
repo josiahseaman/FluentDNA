@@ -3,7 +3,7 @@ import math
 
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from LargeImages import LayoutLevel, Contig, palette, pretty_contig_name, multi_line_height, copytree
+from DDV import LayoutLevel, Contig, palette, pretty_contig_name, multi_line_height, copytree
 
 
 class DDVTileLayout:
