@@ -29,7 +29,7 @@ class ParallelLayout(DDVTileLayout):
         self.n_genomes = n_genomes
         self.genome_processed = 0
         self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
-        self.column_colors = "#FFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
+        self.column_colors = "#FFFFFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
         self.column_colors = self.column_colors[:self.n_genomes]
 
 
@@ -54,6 +54,7 @@ class ParallelLayout(DDVTileLayout):
             for filename in additional_files:
                 self.genome_processed += 1
                 self.read_contigs(filename)
+                self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
                 print("Drew Additional File:", filename, datetime.now() - start_time)
         except Exception as e:
@@ -136,3 +137,11 @@ class ParallelLayout(DDVTileLayout):
             self.draw.rectangle([left_start, 6, right, bottom], fill=color)
             self.draw.text((left_start, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
             left_start += font.getsize(title + '      ')[0]
+
+    def change_background_color(self, genome_processed):
+        def hex_to_rgb(h):
+            h = h.lstrip('#')
+            return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+        background = hex_to_rgb(self.column_colors[genome_processed])
+        self.palette['X'] = background

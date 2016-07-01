@@ -14,21 +14,9 @@ import textwrap
 
 import shutil
 from PIL import ImageDraw
-from collections import defaultdict
 import deepzoom
 
-# Original DDV Colors
-palette = defaultdict(lambda: (0, 0, 0))
-palette['A'] = (255, 0, 0)
-palette['a'] = (255, 0, 0)  # A
-palette['G'] = (0, 255, 0)
-palette['g'] = (0, 255, 0)  # G
-palette['T'] = (250, 240, 114)
-palette['t'] = (250, 240, 114)  # T
-palette['C'] = (0, 0, 255)
-palette['c'] = (0, 0, 255)  # C
-palette['N'] = (30, 30, 30)
-palette['n'] = (30, 30, 30)  # N
+
 
 
 class LayoutLevel:
@@ -134,8 +122,8 @@ if __name__ == "__main__":
         layout = DDVTileLayout()
         layout.process_file(input_file_path, folder, image)
 
-    create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
-    print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
-    shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
+    # create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
+    # print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
+    # shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
 
     sys.exit(0)

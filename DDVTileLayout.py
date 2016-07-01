@@ -1,9 +1,10 @@
 import os
 import math
+from collections import defaultdict
 
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from DDV import LayoutLevel, Contig, palette, pretty_contig_name, multi_line_height, copytree
+from DDV import LayoutLevel, Contig, pretty_contig_name, multi_line_height, copytree
 
 
 class DDVTileLayout:
@@ -16,6 +17,14 @@ class DDVTileLayout:
         self.pixels = None
         self.contigs = []
         self.image_length = 0
+        # Original DDV Colors
+        self.palette = defaultdict(lambda: (255, 255, 255))
+        self.palette['A'] = (255, 0, 0)
+        self.palette['G'] = (0, 255, 0)
+        self.palette['T'] = (250, 240, 114)
+        self.palette['C'] = (0, 0, 255)
+        self.palette['N'] = (30, 30, 30)
+
         # noinspection PyListCreation
         self.levels = [
             LayoutLevel("XInColumn", 100, 1),  # [0]
@@ -116,7 +125,7 @@ class DDVTileLayout:
                     current_name = read[1:]  # remove >
                 else:
                     # collects the sequence to be stored in the contig, constant time performance don't concat strings!
-                    seq_collection.append(read)
+                    seq_collection.append(read.upper())
 
         # add the last contig to the list
         sequence = "".join(seq_collection)
@@ -173,7 +182,7 @@ class DDVTileLayout:
         return xy
 
     def draw_pixel(self, character, x, y):
-        self.pixels[x, y] = palette[character]
+        self.pixels[x, y] = self.palette[character]
 
     def draw_titles(self):
         total_progress = 0
