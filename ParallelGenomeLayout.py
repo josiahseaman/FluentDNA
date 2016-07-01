@@ -13,8 +13,6 @@ from DDVTileLayout import DDVTileLayout
 class ParallelLayout(DDVTileLayout):
     def __init__(self, n_genomes):
         super(ParallelLayout, self).__init__(use_fat_headers=False)  # This layout is best used on one chromosome at a time.
-        self.n_genomes = n_genomes
-        self.genome_processed = 0
         # modify layout with an additional bundled column layer
         columns = self.levels[2]
         new_width = columns.thickness * n_genomes + columns.padding * 2
@@ -25,12 +23,18 @@ class ParallelLayout(DDVTileLayout):
         self.column_offset = columns.thickness  # steps inside a column bundle, not exactly the same as bundles steps
         # because of inter bundle padding of 18 pixels
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("XInTile", 3, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("YInTile", 99, levels=self.levels))  # [5]
-        self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
+        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
+        self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
 
+        self.n_genomes = n_genomes
+        self.genome_processed = 0
+        self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
         self.column_colors = "#FFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
         self.column_colors = self.column_colors[:self.n_genomes]
+
+
+    def enable_fat_headers(self):
+        pass  # just don't
 
 
     def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
@@ -118,14 +122,17 @@ class ParallelLayout(DDVTileLayout):
     def write_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
+        font = ImageFont.truetype("tahoma.ttf", 380)
+        titles = [os.path.splitext(x)[0] for x in filenames]  # remove extension
+        span = '      '.join(titles)
+        title_spanning_width = font.getsize(span)[0]  # For centered text
+        left_start = self.image.width / 2.0 - title_spanning_width / 2.0
         for genome_index in range(self.n_genomes):
             color = self.column_colors[genome_index]
-            step_size = (self.image.width - 12) / self.n_genomes
-            left = self.origin[0] + step_size * genome_index
-            font = ImageFont.truetype("tahoma.ttf", 380)
-            title = os.path.splitext(filenames[genome_index])[0]  # remove extension
+            title = titles[genome_index]
             text_size = font.getsize(title)
-            right = left + text_size[0]
+            right = left_start + text_size[0]
             bottom = 6 + text_size[1] * 1.1
-            self.draw.rectangle([left, 6, right, bottom], fill=color)
-            self.draw.text((left, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
+            self.draw.rectangle([left_start, 6, right, bottom], fill=color)
+            self.draw.text((left_start, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
+            left_start += font.getsize(title + '      ')[0]

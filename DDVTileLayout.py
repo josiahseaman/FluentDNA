@@ -23,19 +23,26 @@ class DDVTileLayout:
         ]
         self.levels.append(LayoutLevel("ColumnInRow", 100, levels=self.levels))  # [2]
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("XInTile", 3, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("YInTile", 4, levels=self.levels))  # [5]
-        if self.use_fat_headers:
-            self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-            self.levels[5].thickness += self.levels[3].thickness
-        self.levels.append(LayoutLevel("TileColumn", 9, levels=self.levels))  # [6]
-        self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [7]
+        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
+        self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
+        self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
 
         self.tile_label_size = self.levels[3].chunk_size * 2
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
-            self.origin[1] += self.levels[5].padding  # padding comes before, not after
-            self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
+            self.enable_fat_headers()
+
+
+    def enable_fat_headers(self):
+        print("Using Fat Headers!")
+        self.use_fat_headers = True
+        self.levels = self.levels[:6]
+        self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
+        self.levels[5].thickness += self.levels[3].thickness
+        self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+        self.origin[1] += self.levels[5].padding  # padding comes before, not after
+        self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
+
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
@@ -99,6 +106,8 @@ class DDVTileLayout:
                     if len(seq_collection) > 0:
                         sequence = "".join(seq_collection)
                         seq_collection = []  # clear
+                        if len(sequence) > self.levels[4].chunk_size and len(self.contigs) == 0:
+                            self.enable_fat_headers()  # first contig is huge and there's more coming
                         reset, title, tail = self.calc_padding(total_progress, len(sequence), True)
                         self.contigs.append(Contig(current_name, sequence, reset, title, tail,
                                                    seq_start, title_length))
