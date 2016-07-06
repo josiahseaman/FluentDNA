@@ -264,7 +264,7 @@ class DDVTileLayout:
         input_file_name = os.path.basename(input_file_path)
         copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
         html_path = os.path.join(output_folder, 'index.html')
-        html_content = {"title": output_file_name[:output_file_name.rfind('.')],
+        html_content = {"title": output_file_name[:output_file_name.rfind('.')].replace('_', ' '),
                         "originalImageWidth": str(self.image.width),
                         "originalImageHeight": str(self.image.height),
                         "image_origin": str(self.origin),

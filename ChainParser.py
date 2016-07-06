@@ -37,14 +37,14 @@ def write_fasta_lines(filestream, seq, width_remaining):
 def mash_fasta_and_chain_together(v38_seq, hg19_seq):
     filename = 'hg38ToHg19.over.chain' + '__sample.chain'
     query_pointer = 0
-    ref_pointer = 0
-    ref_line_remainder = 70
+    # ref_pointer = 0
+    # ref_line_remainder = 70
     query_line_remainder = 70
 
     print(v38_seq[:100])
     print(hg19_seq[:100])
     with open('chr9_gapped_v38.fa', 'w') as v38_file:
-        with open('chr9_gapped_hg19.fa', 'w') as hg19_file:
+        # with open('chr9_gapped_hg19.fa', 'w') as hg19_file:
             print('Opening', filename)
             with open(filename, 'r') as chainfile:
                 lines = chainfile.readlines()
@@ -52,25 +52,23 @@ def mash_fasta_and_chain_together(v38_seq, hg19_seq):
                     if line.startswith('chain'):
                         chain, score, tName, tSize, tStrand, tStart, \
                         tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
-                        ref_pointer = int(tStart)
                         query_pointer = int(qStart)
+                        query_line_remainder = write_fasta_lines(v38_file, 'X' * int(tStart), query_line_remainder)
                     else:
                         pieces = line.split()
                         if len(pieces) == 3:
                             size, gap_reference, gap_query = [int(x) for x in pieces]
-                            ref_seq = hg19_seq[ref_pointer : ref_pointer + size] #+ 'X' * gap_reference
-                            ref_pointer += size #+ gap_query
-                            ref_line_remainder = write_fasta_lines(hg19_file, ref_seq, ref_line_remainder)
-
+                            # ref_seq = hg19_seq[ref_pointer : ref_pointer + size] #+ 'X' * gap_reference
+                            # ref_pointer += size #+ gap_query
+                            # ref_line_remainder = write_fasta_lines(hg19_file, ref_seq, ref_line_remainder)
                             query_seq = v38_seq[query_pointer : query_pointer + size] + 'X' * gap_query
                             query_pointer += size + gap_reference
                             query_line_remainder = write_fasta_lines(v38_file, query_seq, query_line_remainder)
 
                         elif len(pieces) == 1:
-                            write_fasta_lines(v38_file, v38_seq[query_pointer: query_pointer + int(pieces[0])],
-                                              ref_line_remainder)
-                            write_fasta_lines(hg19_file, hg19_seq[ref_pointer: ref_pointer + int(pieces[0])],
-                                              query_line_remainder)
+                            # ref_line_remainder = write_fasta_lines(hg19_file, hg19_seq[ref_pointer: ], ref_line_remainder)
+                            query_line_remainder = write_fasta_lines(v38_file, v38_seq[query_pointer: ], query_line_remainder)
+
 
 if __name__ == '__main__':
     v38_seq, hg19_seq = read_seq_to_memory()
