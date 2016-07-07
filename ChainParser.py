@@ -36,8 +36,7 @@ def write_fasta_lines(filestream, seq, width_remaining):
         return 70
 
 
-def mash_fasta_and_chain_together(query_seq, ref_seq, filename_a, filename_b):
-    chain_name = 'hg19ToHg38.over.chain' + '__sample.chain'
+def mash_fasta_and_chain_together(chain_name, query_seq, ref_seq, filename_a, filename_b):
     reference_is_backwards = False
     query_pointer = 0
     ref_pointer = 0
@@ -55,8 +54,10 @@ def mash_fasta_and_chain_together(query_seq, ref_seq, filename_a, filename_b):
                     if line.startswith('chain'):
                         chain, score, tName, tSize, tStrand, tStart, \
                             tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
-                        query_pointer = int(qStart)
-                        query_line_remainder = write_fasta_lines(query_file, 'X' * int(tStart), query_line_remainder)
+                        # TODO: Show starting sequence, but have it aligned
+                        query_pointer = int(tStart)  # this is correct, don't switch these around
+                        ref_pointer = int(qStart)
+                        # query_line_remainder = write_fasta_lines(query_file, 'X' * int(tStart), query_line_remainder)
                     else:
                         pieces = line.split()
                         if len(pieces) == 3:
@@ -77,9 +78,12 @@ def mash_fasta_and_chain_together(query_seq, ref_seq, filename_a, filename_b):
 
 
 if __name__ == '__main__':
-    query_name, ref_name = 'chr9_hg19.fa', 'chr9_hg38.fa'
+    # query_name, ref_name = 'chr9_hg19.fa', 'chr9_hg38.fa'
+    # chain = 'hg19ToHg38.over.chain' + '__sample.chain'
+    query_name, ref_name = 'chr20_panTro4.fa', 'chr20_hg38.fa'
+    chain = 'panTro4ToHg38.over.chain__chr20_sample.chain'
     query_sequence, ref_sequence = read_seq_to_memory(query_name, ref_name)
-    mash_fasta_and_chain_together(query_sequence, ref_sequence, query_name, ref_name)
+    mash_fasta_and_chain_together(chain, query_sequence, ref_sequence, query_name, ref_name)
 
 
 
