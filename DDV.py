@@ -123,8 +123,8 @@ if __name__ == "__main__":
         layout = DDVTileLayout()
         layout.process_file(input_file_path, folder, image)
 
-    create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
-    print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
-    shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
+    # create_deepzoom_stack(os.path.join(folder, image), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
+    # print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
+    # shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
 
     sys.exit(0)

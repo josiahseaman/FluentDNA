@@ -42,6 +42,8 @@ def mash_fasta_and_chain_together(chain_name, query_seq, ref_seq, filename_a, fi
     ref_pointer = 0
     ref_line_remainder = 70
     query_line_remainder = 70
+    ref_dangling_whitespace = 0
+    query_dangling_whitespace = 0
 
     print(query_seq[:100])
     print(ref_seq[:100])
@@ -64,12 +66,21 @@ def mash_fasta_and_chain_together(chain_name, query_seq, ref_seq, filename_a, fi
                             size, gap_reference, gap_query = [int(x) for x in pieces]
                             if reference_is_backwards:
                                 gap_reference, gap_query = gap_query, gap_reference
-                            ref_snippet = ref_seq[ref_pointer: ref_pointer + size + gap_query] + 'X' * gap_reference
+                            space_saved = max(0, min(gap_reference, query_dangling_whitespace - size))
+                            gap_reference -= space_saved
+                            query_dangling_whitespace -= space_saved
+                            space_saved = max(0, min(gap_query, ref_dangling_whitespace - size))
+                            gap_query -= space_saved
+                            ref_dangling_whitespace -= space_saved
+
+                            ref_snippet = 'X' * ref_dangling_whitespace + ref_seq[ref_pointer: ref_pointer + size + gap_query]
                             ref_pointer += size + gap_query
+                            ref_dangling_whitespace = gap_reference  # will be output on the next step
                             ref_line_remainder = write_fasta_lines(ref_file, ref_snippet, ref_line_remainder)
 
-                            query_snippet = query_seq[query_pointer: query_pointer + size + gap_reference] + 'X' * gap_query
+                            query_snippet = 'X' * query_dangling_whitespace + query_seq[query_pointer: query_pointer + size + gap_reference]
                             query_pointer += size + gap_reference
+                            query_dangling_whitespace = gap_query  # will be output on the next step
                             query_line_remainder = write_fasta_lines(query_file, query_snippet, query_line_remainder)
 
                         elif len(pieces) == 1:
