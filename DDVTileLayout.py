@@ -47,7 +47,6 @@ class DDVTileLayout:
         self.use_fat_headers = True
         self.levels = self.levels[:6]
         self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-        self.levels[5].thickness += self.levels[3].thickness
         self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
         self.origin[1] += self.levels[5].padding  # padding comes before, not after
         self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
@@ -89,10 +88,12 @@ class DDVTileLayout:
                 remaining = min(100, seq_length - cx)
                 total_progress += remaining
                 for i in range(remaining):
-                    self.draw_pixel(contig.seq[cx + i], x + i, y)
-            if self.image_length > 10000000:
-                print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
-                      end="")  # pseudo progress bar
+                    nuc = contig.seq[cx + i]
+                    if nuc != 'N':
+                        self.draw_pixel(nuc, x + i, y)
+                if cx % 100000 == 0:
+                    print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
+                          end="")  # pseudo progress bar
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
         print()
 
@@ -238,7 +239,8 @@ class DDVTileLayout:
     def output_image(self, output_folder, output_file_name):
         del self.pixels
         del self.draw
-        self.image.save(os.path.join(output_folder, output_file_name), 'PNG')
+        print("-- Writing:", output_file_name, "--")
+        self.image.save(os.path.join(output_folder, output_file_name + '.png'), 'PNG')
         del self.image
 
     def max_dimensions(self, image_length):
@@ -264,7 +266,7 @@ class DDVTileLayout:
         input_file_name = os.path.basename(input_file_path)
         copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
         html_path = os.path.join(output_folder, 'index.html')
-        html_content = {"title": output_file_name[:output_file_name.rfind('.')].replace('_', ' '),
+        html_content = {"title": output_file_name.replace('_', ' '),
                         "originalImageWidth": str(self.image.width),
                         "originalImageHeight": str(self.image.height),
                         "image_origin": str(self.origin),

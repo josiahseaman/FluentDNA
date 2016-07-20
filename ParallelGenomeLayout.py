@@ -18,18 +18,19 @@ class ParallelLayout(DDVTileLayout):
         new_width = columns.thickness * n_genomes + columns.padding * 2
         self.levels = self.levels[:2]  # trim off the others
         self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
-        self.levels[2].thickness = new_width  # 100+6+100+6+100+18 = 330  #total row width of 10,560 vs original 10,600
         self.levels[2].padding = new_width - (columns.thickness - columns.padding)
+        self.levels[2].thickness = new_width  # 100+6+100+6+100+18 = 330  #total row width of 10,560 vs original 10,600
         self.column_offset = columns.thickness  # steps inside a column bundle, not exactly the same as bundles steps
         # because of inter bundle padding of 18 pixels
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
         self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
+        self.levels[-1].padding *= 5
         self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
         self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
-        self.column_colors = "#FFFFFF #b3cde3 #B9E8AE #fbb4ae #decbe4 #fed9a6 #ffffcc #e5d8bd".split()
+        self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
 
 
@@ -44,7 +45,7 @@ class ParallelLayout(DDVTileLayout):
         self.image_length = max(self.image_length, *[path.getsize(file) for file in additional_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
-        self.fill_in_colored_borders()
+        # self.fill_in_colored_borders()
         print("Initialized Image:", datetime.now() - start_time)
         self.draw_nucleotides()
         print("Drew First File:", file1, datetime.now() - start_time)
@@ -54,7 +55,7 @@ class ParallelLayout(DDVTileLayout):
             for filename in additional_files:
                 self.genome_processed += 1
                 self.read_contigs(filename)
-                self.change_background_color(self.genome_processed)
+                # self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
                 print("Drew Additional File:", filename, datetime.now() - start_time)
         except Exception as e:

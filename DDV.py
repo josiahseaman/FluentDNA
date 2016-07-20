@@ -24,14 +24,24 @@ class LayoutLevel:
         self.modulo = modulo
         if chunk_size is not None:
             self.chunk_size = chunk_size
-            self.padding = padding
+            self._padding = padding
             self.thickness = thickness
         else:
             child = levels[-1]
             self.chunk_size = child.modulo * child.chunk_size
-            self.padding = 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
+            self._padding = 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
             last_parallel = levels[-2]
             self.thickness = last_parallel.modulo * last_parallel.thickness + self.padding
+
+    @property
+    def padding(self):
+        return self._padding
+
+    @padding.setter
+    def padding(self, value):
+        original_thickness = self.thickness - self._padding
+        self._padding = value
+        self.thickness = original_thickness + value
 
 
 class Contig:
@@ -90,15 +100,15 @@ def create_deepzoom_stack(input_image, output_dzi):
     creator.create(input_image, output_dzi)
 
 
-if __name__ == "__main__":
+def DDV_main(argv):
     from DDVTileLayout import DDVTileLayout
     from ParallelGenomeLayout import ParallelLayout
 
     folder = "."
-    input_file_path = sys.argv[1]
+    input_file_path = argv[1]
     chromosome_name = os.path.basename(input_file_path[:input_file_path.rfind(".")])  # name between /<path>/ and .png
-    image = chromosome_name + ".png"
-    n_arguments = len(sys.argv)
+    image = chromosome_name
+    n_arguments = len(argv)
 
     if n_arguments == 2:  # Shortcut for old visualizations
         output_file = chromosome_name + '.dzi'
@@ -110,14 +120,14 @@ if __name__ == "__main__":
         raise ValueError("You need to specify an output folder and an image name")
 
     if n_arguments >= 4:  # Typical use case
-        image = sys.argv[3]
-        chromosome_name = sys.argv[3][:sys.argv[3].rfind(".")]  # based on image name, not fasta
-        folder = os.path.join(sys.argv[2], chromosome_name)  # place inside a folder with chromosome_name
+        image = argv[3]
+        chromosome_name = image  # based on image name, not fasta
+        folder = os.path.join(argv[2], chromosome_name)  # place inside a folder with chromosome_name
 
     if n_arguments > 4:  # Multiple inputs => Parallel genome column layout
         pass
         layout = ParallelLayout(n_arguments - 3)
-        additional_files = sys.argv[4:]
+        additional_files = argv[4:]
         layout.process_file(input_file_path, folder, image, additional_files)
     else:  # Typical use case
         layout = DDVTileLayout()
@@ -128,3 +138,7 @@ if __name__ == "__main__":
     # shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
 
     sys.exit(0)
+
+
+if __name__ == "__main__":
+    DDV_main(sys.argv)
