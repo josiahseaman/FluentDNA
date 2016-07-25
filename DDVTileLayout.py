@@ -89,7 +89,7 @@ class DDVTileLayout:
                 total_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
-                    if nuc != 'N':
+                    if nuc != 'X':
                         self.draw_pixel(nuc, x + i, y)
                 if cx % 100000 == 0:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,

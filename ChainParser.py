@@ -19,7 +19,7 @@ def find_contig(chromosome_name, genome_source):
         for line in genome.readlines():
             line = line.rstrip()
             if printing:
-                seq_collection.append(line.upper())
+                seq_collection.append(line.upper())  # always upper case so equality checks work
             if line.startswith('>'):
                 if line == chromosome_name:
                     printing = True
