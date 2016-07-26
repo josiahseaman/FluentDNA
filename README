@@ -5,7 +5,7 @@ DDV can download FASTA sequences from NIH, or use local FASTA formatted files.
 DDV generates a DeepZoomImage visualizations of DNA data.
 
 The Python version of DDV was developed by Newline Technical Innovations and can be found at:
-https://github.com/josiahseaman/DDV/
+https://github.com/josiahseaman/DDV/tree/python-master
 
 This project is a fork of the C# DDV developed at Concordia University:
 http://www.photomedia.ca/DDV/
