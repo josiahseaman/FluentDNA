@@ -135,7 +135,9 @@ def DDV_main(argv):
 
     create_deepzoom_stack(os.path.join(folder, image + '.png'), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
     print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
-    shutil.copy(input_file_path, os.path.join(folder, os.path.basename(input_file_path)))  # copy source file
+    destination = os.path.join(folder, os.path.basename(input_file_path))
+    if not os.path.exists(destination):  # could have been created by ChainParser.py
+        shutil.copy(input_file_path, destination)  # copy source file
 
     sys.exit(0)
 
