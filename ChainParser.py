@@ -205,7 +205,7 @@ class ChainParser:
     def move_fasta_source_to_destination(fasta, folder_name, source_path):
         destination_folder = os.path.join(source_path, folder_name)
         if os.path.exists(destination_folder):
-            shutil.rmtree(destination_folder)  # Make sure we can overwrite the contents
+            shutil.rmtree(destination_folder, ignore_errors=True)  # Make sure we can overwrite the contents
         os.makedirs(destination_folder, exist_ok=False)
         for key in fasta:
             shutil.move(fasta[key], destination_folder)
