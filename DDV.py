@@ -139,7 +139,7 @@ def DDV_main(argv):
     if not os.path.exists(destination):  # could have been created by ChainParser.py
         shutil.copy(input_file_path, destination)  # copy source file
 
-    sys.exit(0)
+    # sys.exit(0)
 
 
 if __name__ == "__main__":

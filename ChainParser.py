@@ -45,7 +45,7 @@ def sample_chain_file(chromosome_name, filename='panTro4ToHg38.over.chain'):
                 tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
                 if printing:
                     break  # only output the first chain
-                printing = chromosome_name in tName and chromosome_name in qName
+                printing = chromosome_name in tName and chromosome_name in qName and '+' in tStrand and '+' in qStrand
                 if printing:
                     print(line)
                     chain.append(line)  # write header
@@ -54,8 +54,6 @@ def sample_chain_file(chromosome_name, filename='panTro4ToHg38.over.chain'):
                 if printing:
                     if len(pieces) == 3 or len(pieces) == 1:
                         chain.append(line)
-                    elif line:
-                        print("bad line", line)
     return chain
 
 
@@ -236,5 +234,17 @@ class ChainParser:
                       fasta['ref_gapped_name']])
 
 
+def do_chromosome(chr):
+    ChainParser().main(chr)
+
+
 if __name__ == '__main__':
-    ChainParser().main('chr19')
+    chromosomes = ['chr21']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
+    # TODO: handle Chr2A and Chr2B separately
+    # for chr in chromosomes:
+    #     ChainParser().main(chr)
+
+    import multiprocessing
+    workers = multiprocessing.Pool(2)  # number of simultaneous processes.  Watch your RAM usage
+    workers.map(do_chromosome, chromosomes)
+

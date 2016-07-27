@@ -29,6 +29,7 @@ class ParallelLayout(DDVTileLayout):
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
+        self.using_background_colors = False
         self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
         self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
@@ -45,7 +46,8 @@ class ParallelLayout(DDVTileLayout):
         self.image_length = max(self.image_length, *[path.getsize(file) for file in additional_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
-        # self.fill_in_colored_borders()
+        if self.using_background_colors:
+            self.fill_in_colored_borders()
         print("Initialized Image:", datetime.now() - start_time)
         self.draw_nucleotides()
         print("Drew First File:", file1, datetime.now() - start_time)
@@ -55,7 +57,8 @@ class ParallelLayout(DDVTileLayout):
             for filename in additional_files:
                 self.genome_processed += 1
                 self.read_contigs(filename)
-                # self.change_background_color(self.genome_processed)
+                if self.using_background_colors:
+                    self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
                 print("Drew Additional File:", filename, datetime.now() - start_time)
         except Exception as e:
@@ -103,6 +106,7 @@ class ParallelLayout(DDVTileLayout):
 
         # return 0, 0, 0
 
+
     def fill_in_colored_borders(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
@@ -121,6 +125,7 @@ class ParallelLayout(DDVTileLayout):
                 self.draw.rectangle([left, top, right, bottom], fill=color)
         self.genome_processed = 0
 
+
     def write_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
@@ -135,7 +140,8 @@ class ParallelLayout(DDVTileLayout):
             text_size = font.getsize(title)
             right = left_start + text_size[0]
             bottom = 6 + text_size[1] * 1.1
-            self.draw.rectangle([left_start, 6, right, bottom], fill=color)
+            if self.using_background_colors:
+                self.draw.rectangle([left_start, 6, right, bottom], fill=color)
             self.draw.text((left_start, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
             left_start += font.getsize(title + '      ')[0]
 
