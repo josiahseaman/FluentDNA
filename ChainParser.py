@@ -1,7 +1,9 @@
 import os
 import shutil
+import multiprocessing
 
 from collections import defaultdict
+from array import array
 
 
 def chunks(seq, size):
@@ -167,8 +169,6 @@ class ChainParser:
         return gapped_fasta_query, gapped_fasta_ref
 
     def print_only_unique(self, ref_gapped_name, query_gapped_name, is_master_alignment=True):
-        from array import array
-
         ref_unique = ref_gapped_name[:-10] + '_unique.fa'
         query_unique = query_gapped_name[:-10] + '_unique.fa'
         ref_array = array('u', self.ref_seq_gapped)
@@ -204,7 +204,7 @@ class ChainParser:
             shutil.move(fasta[key], destination_folder)
             fasta[key] = os.path.join(destination_folder, fasta[key])
 
-    def main(self, chromosome_name):
+    def _parse_chromosome_in_chain(self, chromosome_name):
         import DDV
 
         query_source = 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
@@ -220,25 +220,24 @@ class ChainParser:
         folder_name = 'Parallel_' + chromosome_name + '_PanTro4_and_Hg38'
         source_path = '.\\bin\\Release\\output\\dnadata\\'
         self.move_fasta_source_to_destination(fasta, folder_name, source_path)
-        DDV.DDV_main(['DDV',
+        DDV.ddv(['DDV',
                       fasta['query_gapped_name'],
                       source_path,
                       folder_name,
                       fasta['query_unique_name'], fasta['ref_unique_name'],
                       fasta['ref_gapped_name']])
 
+    def parse_chain(self, chromosomes=None):  # TODO: Remove ability to not pass in chromosomes
+        if not chromosomes:
+            chromosomes = ['chr21']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
+        assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
-def do_chromosome(chr):
-    ChainParser().main(chr)
+        # TODO: handle Chr2A and Chr2B separately
+        # for chr in chromosomes:
+        #     ChainParser()._parse_chromosome_in_chain(chr)
 
+        def work_on_chromosome(chr):
+            self._parse_chromosome_in_chain(chr)
 
-if __name__ == '__main__':
-    chromosomes = ['chr21']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
-    # TODO: handle Chr2A and Chr2B separately
-    # for chr in chromosomes:
-    #     ChainParser().main(chr)
-
-    import multiprocessing
-    workers = multiprocessing.Pool(2)  # number of simultaneous processes.  Watch your RAM usage
-    workers.map(do_chromosome, chromosomes)
-
+        workers = multiprocessing.Pool(2)  # TODO: Watch your RAM and make variable?
+        workers.map(work_on_chromosome, chromosomes)
