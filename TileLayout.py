@@ -1,13 +1,14 @@
 import os
 import math
-from collections import defaultdict
 
-from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from DDV import LayoutLevel, Contig, pretty_contig_name, multi_line_height, copytree
+from collections import defaultdict
+from PIL import Image, ImageDraw, ImageFont
+
+from DDVUtils import LayoutLevel, Contig, pretty_contig_name, multi_line_height, copytree
 
 
-class DDVTileLayout:
+class TileLayout:
     def __init__(self, use_fat_headers=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
@@ -41,7 +42,6 @@ class DDVTileLayout:
         if self.use_fat_headers:
             self.enable_fat_headers()
 
-
     def enable_fat_headers(self):
         print("Using Fat Headers!")
         self.use_fat_headers = True
@@ -50,7 +50,6 @@ class DDVTileLayout:
         self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
         self.origin[1] += self.levels[5].padding  # padding comes before, not after
         self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
-
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
@@ -75,7 +74,6 @@ class DDVTileLayout:
             print('While generating HTML:', '\n', str(e))
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-
 
     def draw_nucleotides(self):
         total_progress = 0
@@ -291,7 +289,6 @@ class DDVTileLayout:
                 template_content = template_content.replace('{{' + key + '}}', value)
             with open(html_path, 'w') as out:
                 out.write(template_content)
-
 
     def contig_json(self):
         json = []

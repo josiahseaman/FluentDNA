@@ -1,7 +1,7 @@
 import os
-from collections import defaultdict
-
 import shutil
+
+from collections import defaultdict
 
 
 def chunks(seq, size):
@@ -65,14 +65,12 @@ class ChainParser:
         self.ref_seq_gapped = ''
         self.query_seq_gapped = ''
 
-
     def read_seq_to_memory(self, chromosome_name, query_source, ref_source, query_file_name, ref_file_name):
         self.query_sequence, contig_header = find_contig(chromosome_name, query_source)
         self.write_fasta_lines(query_file_name, self.query_sequence)
 
         self.ref_sequence, contig_header = find_contig(chromosome_name, ref_source)
         self.write_fasta_lines(ref_file_name, self.ref_sequence)
-
 
     def write_fasta_lines(self, filestream, seq):
         if isinstance(filestream, str):  # I'm actually given a file name and have to open it myself
@@ -157,7 +155,6 @@ class ChainParser:
 
         return gapped_fasta_ref, gapped_fasta_query
 
-
     def write_gapped_fasta(self, filename_a, filename_b, query_collection, ref_collection):
         gapped_fasta_query = os.path.splitext(filename_a)[0] + '_gapped.fa'
         gapped_fasta_ref = os.path.splitext(filename_b)[0] + '_gapped.fa'
@@ -168,7 +165,6 @@ class ChainParser:
                 self.write_fasta_lines(ref_file, self.ref_seq_gapped)
                 self.write_fasta_lines(query_file, self.query_seq_gapped)
         return gapped_fasta_query, gapped_fasta_ref
-
 
     def print_only_unique(self, ref_gapped_name, query_gapped_name, is_master_alignment=True):
         from array import array
@@ -198,7 +194,6 @@ class ChainParser:
 
         return ref_unique, query_unique
 
-
     @staticmethod
     def move_fasta_source_to_destination(fasta, folder_name, source_path):
         destination_folder = os.path.join(source_path, folder_name)
@@ -208,7 +203,6 @@ class ChainParser:
         for key in fasta:
             shutil.move(fasta[key], destination_folder)
             fasta[key] = os.path.join(destination_folder, fasta[key])
-
 
     def main(self, chromosome_name):
         import DDV
