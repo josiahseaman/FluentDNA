@@ -205,8 +205,6 @@ class ChainParser:
             fasta[key] = os.path.join(destination_folder, fasta[key])
 
     def _parse_chromosome_in_chain(self, chromosome_name):
-        import DDV
-
         query_source = 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
         ref_source = 'hg38.fa'
         fasta = {'query_name': chromosome_name + '_panTro4.fa', 'ref_name': chromosome_name + '_hg38.fa'}  # for collecting all the files names in a modifiable way
@@ -220,12 +218,6 @@ class ChainParser:
         folder_name = 'Parallel_' + chromosome_name + '_PanTro4_and_Hg38'
         source_path = '.\\bin\\Release\\output\\dnadata\\'
         self.move_fasta_source_to_destination(fasta, folder_name, source_path)
-        DDV.ddv(['DDV',
-                      fasta['query_gapped_name'],
-                      source_path,
-                      folder_name,
-                      fasta['query_unique_name'], fasta['ref_unique_name'],
-                      fasta['ref_gapped_name']])
 
     def parse_chain(self, chromosomes=None):  # TODO: Remove ability to not pass in chromosomes
         if not chromosomes:
