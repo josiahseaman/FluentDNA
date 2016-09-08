@@ -35,8 +35,9 @@ def find_contig(chromosome_name, genome_source):
     return ''.join(seq_collection), contig_header
 
 
-def sample_chain_file(ref_chr, query_chr, filename='panTro4ToHg38.over.chain'):
+def sample_chain_file(ref_chr, query_chr, filename):
     chain = []
+    example_line = ''
     with open(filename, 'r') as infile:
         printing = False
         for line in infile.readlines():
@@ -45,6 +46,7 @@ def sample_chain_file(ref_chr, query_chr, filename='panTro4ToHg38.over.chain'):
                 tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
                 if printing:
                     break  # only output the first chain
+                example_line = line
                 printing = ref_chr in tName and query_chr in qName and '+' in tStrand and '+' in qStrand
                 if printing:
                     print(line)
@@ -54,12 +56,26 @@ def sample_chain_file(ref_chr, query_chr, filename='panTro4ToHg38.over.chain'):
                 if printing:
                     if len(pieces) == 3 or len(pieces) == 1:
                         chain.append(line)
+    if len(chain) == 0:
+        raise ValueError("A chain entry for %s and %s could not be found." % (ref_chr, query_chr) +
+                         "     Example: %s" % example_line)
     return chain
 
 
+def first_word(string):
+    import re
+    if '\\' in string:
+        string = string[string.rindex('\\') + 1:]
+    return re.split('[\W_]+', string)[0]
+
+
 class ChainParser:
-    def __init__(self):
+    def __init__(self, chain_name, ref_source, query_source, output_folder_prefix):
         self.width_remaining = defaultdict(lambda: 70)
+        self.chain_name = chain_name
+        self.ref_source = ref_source
+        self.query_source = query_source
+        self.output_folder_prefix = output_folder_prefix
         self.ref_sequence = ''
         self.query_sequence = ''
         self.ref_seq_gapped = ''
@@ -218,17 +234,17 @@ class ChainParser:
             chromosome_name = (chromosome_name, chromosome_name)
         ref_chr, query_chr = chromosome_name
 
-        query_source = 'HongKong\\susie3_agp.fasta'  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
-        ref_source = 'HongKong\\hg38.fa'
-        fasta = {'ref_name': ref_chr + '_hg38.fa', 'query_name': query_chr + '_susie3.fa'}  # for collecting all the files names in a modifiable way
 
-        chain = sample_chain_file(ref_chr, query_chr, filename='HongKong\\human_gorilla.all.chain')
-        self.read_seq_to_memory(ref_chr, query_chr, query_source, ref_source, fasta['query_name'], fasta['ref_name'])
+        fasta = {'query_name': query_chr + '_%s.fa' % first_word(self.query_source),
+                 'ref_name': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
+
+        chain = sample_chain_file(ref_chr, query_chr, filename='HongKong\\human_gorilla.bland.chain')
+        self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, fasta['query_name'], fasta['ref_name'])
         fasta['ref_gapped_name'], fasta['query_gapped_name'] = self.mash_fasta_and_chain_together(chain, fasta['query_name'], fasta['ref_name'], True)
         fasta['ref_unique_name'], fasta['query_unique_name'] = self.print_only_unique(fasta['ref_gapped_name'], fasta['query_gapped_name'])
         print("Finished creating gapped fasta files", fasta['query_name'], fasta['ref_name'])
 
-        folder_name = 'Susie3_and_Hg38' + query_chr
+        folder_name = self.output_folder_prefix + query_chr
         source_path = '.\\bin\\Release\\output\\dnadata\\'
         self.move_fasta_source_to_destination(fasta, folder_name, source_path)
         DDV.DDV_main(['DDV',
@@ -240,16 +256,20 @@ class ChainParser:
 
 
 def do_chromosome(chr):
-    ChainParser().main(chr)
+    parser = ChainParser(chain_name='panTro4ToHg38.over.chain',
+                         ref_source='HongKong\\susie3_agp.fasta',  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
+                         query_source='HongKong\\hg38.fa',
+                         output_folder_prefix='Susie3_and_Hg38_')
+    parser.main(chr)
 
 
 if __name__ == '__main__':
-    chromosomes = [('hgc20', 'chr20')]  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
+    chromosomes = [('chr20', 'chr20')]  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
     # TODO: handle Chr2A and Chr2B separately
-    # for chr in chromosomes:
-    #     ChainParser().main(chr)
+    for chr in chromosomes:
+        do_chromosome(chr)
 
-    import multiprocessing
-    workers = multiprocessing.Pool(2)  # number of simultaneous processes.  Watch your RAM usage
-    workers.map(do_chromosome, chromosomes)
+    # import multiprocessing
+    # workers = multiprocessing.Pool(6)  # number of simultaneous processes.  Watch your RAM usage
+    # workers.map(do_chromosome, chromosomes)
 
