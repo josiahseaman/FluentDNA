@@ -70,12 +70,13 @@ def first_word(string):
 
 
 class ChainParser:
-    def __init__(self, chain_name, ref_source, query_source, output_folder_prefix):
+    def __init__(self, chain_name, ref_source, query_source, output_folder_prefix, trial_run=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.chain_name = chain_name
         self.ref_source = ref_source
         self.query_source = query_source
         self.output_folder_prefix = output_folder_prefix
+        self.trial_run = trial_run
         self.ref_sequence = ''
         self.query_sequence = ''
         self.ref_seq_gapped = ''
@@ -145,12 +146,15 @@ class ChainParser:
                     if reference_is_backwards:
                         gap_reference, gap_query = gap_query, gap_reference
 
+                    # Debugging code
                     if not printed and output_length > 4319440:
                         printed = True
                         print("Start at", size, gap_reference, gap_query)
                         print(filename_a, query_pointer)
                         print(filename_b, ref_pointer)
                         print(output_length)
+                    if self.trial_run and output_length > 1000000:
+                        break
 
                     space_saved = max(0, min(gap_query, gap_reference))
 
@@ -259,7 +263,8 @@ def do_chromosome(chr):
     parser = ChainParser(chain_name='panTro4ToHg38.over.chain',
                          ref_source='HongKong\\susie3_agp.fasta',  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
                          query_source='HongKong\\hg38.fa',
-                         output_folder_prefix='Susie3_and_Hg38_')
+                         output_folder_prefix='Susie3_and_Hg38_short_',
+                         trial_run=True)
     parser.main(chr)
 
 
