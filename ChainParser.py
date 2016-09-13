@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-
+from array import array
 import shutil
 
 
@@ -80,8 +80,8 @@ class ChainParser:
         self.swap_columns = swap_columns
         self.ref_sequence = ''
         self.query_sequence = ''
-        self.ref_seq_gapped = ''
-        self.query_seq_gapped = ''
+        self.ref_seq_gapped = array('u', '')
+        self.query_seq_gapped = array('u', '')
 
 
     def read_seq_to_memory(self, ref_chr, query_chr, query_source, ref_source, query_file_name, ref_file_name):
@@ -120,8 +120,6 @@ class ChainParser:
 
     def mash_fasta_and_chain_together(self, chain, filename_a, filename_b,
                                       is_master_alignment=False):
-        ref_collection = []
-        query_collection = []
         query_pointer = 0
         ref_pointer = 0
         output_length = 0
@@ -140,8 +138,8 @@ class ChainParser:
                     query_pointer, ref_pointer = ref_pointer, query_pointer
                 if is_master_alignment:  # include the unaligned beginning of the sequence
                     longer_gap = max(ref_pointer, query_pointer)
-                    ref_collection.append(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
-                    query_collection.append(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))
+                    self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
+                    self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))
             else:
                 pieces = chain_line.split()
                 if len(pieces) == 3:
@@ -159,11 +157,11 @@ class ChainParser:
                     if self.trial_run and output_length > 1000000:
                         break
 
-                    space_saved = max(0, min(gap_query, gap_reference))
+                    space_saved = 0  # max(0, min(gap_query, gap_reference))
 
                     ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size + gap_query] + 'X' * (gap_reference - space_saved)
                     ref_pointer += size + gap_query  # alignable and unalignable block concatenated together
-                    ref_collection.append(ref_snippet)
+                    self.ref_seq_gapped.extend(ref_snippet)
                     output_length += len(ref_snippet)
 
                     query_snippet = self.query_sequence[query_pointer: query_pointer + size] + 'X' * (gap_query - space_saved)
@@ -171,56 +169,52 @@ class ChainParser:
                     if len(query_snippet) != len(ref_snippet):
                         print(len(ref_snippet), len(query_snippet), "You should be outputting equal length strings til the end")
                     query_pointer += size + gap_reference  # two blocks of sequence separated by gap
-                    query_collection.append(query_snippet)
+                    self.query_seq_gapped.extend(query_snippet)
 
-                elif len(pieces) == 1:  # last one: print out all remaining sequence
-                    ref_collection.append(self.ref_sequence[ref_pointer:])
-                    query_collection.append(self.query_sequence[query_pointer:])
+                elif len(pieces) == 1 and is_master_alignment:  # last one: print out all remaining sequence
+                    self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
+                    self.query_seq_gapped.extend(self.query_sequence[query_pointer:])
 
-        gapped_fasta_query, gapped_fasta_ref = self.write_gapped_fasta(filename_a, filename_b, query_collection, ref_collection)
+        gapped_fasta_query, gapped_fasta_ref = self.write_gapped_fasta(filename_a, filename_b)
 
         return gapped_fasta_ref, gapped_fasta_query
 
 
-    def write_gapped_fasta(self, filename_a, filename_b, query_collection, ref_collection):
-        gapped_fasta_query = os.path.splitext(filename_a)[0] + '_gapped.fa'
-        gapped_fasta_ref = os.path.splitext(filename_b)[0] + '_gapped.fa'
-        with open(gapped_fasta_query, 'w') as query_file:
-            with open(gapped_fasta_ref, 'w') as ref_file:
-                self.ref_seq_gapped = ''.join(ref_collection)
-                self.query_seq_gapped = ''.join(query_collection)
-                self.write_fasta_lines(ref_file, self.ref_seq_gapped)
-                self.write_fasta_lines(query_file, self.query_seq_gapped)
-        return gapped_fasta_query, gapped_fasta_ref
+    def write_gapped_fasta(self, filename_a, filename_b):
+        query_gap_name = os.path.splitext(filename_a)[0] + '_gapped.fa'
+        ref_gap_name = os.path.splitext(filename_b)[0] + '_gapped.fa'
+        with open(query_gap_name, 'w') as query_file:
+            self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
+        with open(ref_gap_name, 'w') as ref_file:
+            self.write_fasta_lines(ref_file, ''.join(self.ref_seq_gapped))
+        return query_gap_name, ref_gap_name
 
 
-    def print_only_unique(self, ref_gapped_name, query_gapped_name, is_master_alignment=True):
-        from array import array
-
-        ref_unique = ref_gapped_name[:-10] + '_unique.fa'
-        query_unique = query_gapped_name[:-10] + '_unique.fa'
-        ref_array = array('u', self.ref_seq_gapped)
-        que_array = array('u', self.query_seq_gapped)
+    def print_only_unique(self, ref_gapped_name, query_gapped_name):
+        ref_uniq_array = array('u', self.ref_seq_gapped)
+        que_uniq_array = array('u', self.query_seq_gapped)
         print("Done allocating unique array")
         shortest_sequence = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
         for i in range(shortest_sequence):
             # only overlapping section
             if self.ref_seq_gapped[i] == self.query_seq_gapped[i]:
-                ref_array[i] = 'X'
-                que_array[i] = 'X'
+                ref_uniq_array[i] = 'X'
+                que_uniq_array[i] = 'X'
             else:  # Not equal
                 if self.ref_seq_gapped[i] == 'N':
-                    ref_array[i] = 'X'
+                    ref_uniq_array[i] = 'X'
                 if self.query_seq_gapped[i] == 'N':
-                    que_array[i] = 'X'
+                    que_uniq_array[i] = 'X'
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        with open(ref_unique, 'w') as ref_filestream:
-            self.write_fasta_lines(ref_filestream, ''.join(ref_array))
-        with open(query_unique, 'w') as query_filestream:
-            self.write_fasta_lines(query_filestream, ''.join(que_array))
+        ref_unique_name = ref_gapped_name[:-10] + '_unique.fa'
+        query_unique_name = query_gapped_name[:-10] + '_unique.fa'
+        with open(ref_unique_name, 'w') as ref_filestream:
+            self.write_fasta_lines(ref_filestream, ''.join(ref_uniq_array))
+        with open(query_unique_name, 'w') as query_filestream:
+            self.write_fasta_lines(query_filestream, ''.join(que_uniq_array))
 
-        return ref_unique, query_unique
+        return ref_unique_name, query_unique_name
 
 
     @staticmethod
@@ -242,33 +236,45 @@ class ChainParser:
         ref_chr, query_chr = chromosome_name
 
 
-        fasta = {'query_name': query_chr + '_%s.fa' % first_word(self.query_source),
+        fasta_names = {'query_name': query_chr + '_%s.fa' % first_word(self.query_source),
                  'ref_name': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
 
+        self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, fasta_names['query_name'], fasta_names['ref_name'])
         chain = sample_chain_file(ref_chr, query_chr, filename=self.chain_name)
-        self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, fasta['query_name'], fasta['ref_name'])
-        fasta['ref_gapped_name'], fasta['query_gapped_name'] = self.mash_fasta_and_chain_together(chain, fasta['query_name'], fasta['ref_name'], True)
-        fasta['ref_unique_name'], fasta['query_unique_name'] = self.print_only_unique(fasta['ref_gapped_name'], fasta['query_gapped_name'])
-        print("Finished creating gapped fasta files", fasta['query_name'], fasta['ref_name'])
+        # is_master_alignment = True
+        # while chain:
+        is_master_alignment = False
+        fasta_names['ref_gapped_name'], fasta_names['query_gapped_name'] = \
+            self.mash_fasta_and_chain_together(chain, fasta_names['query_name'], fasta_names['ref_name'], is_master_alignment)
+            # chain = sample_chain_file(ref_chr, query_chr, filename=self.chain_name)
+        fasta_names['ref_unique_name'], fasta_names['query_unique_name'] = \
+            self.print_only_unique(fasta_names['ref_gapped_name'], fasta_names['query_gapped_name'])
+        print("Finished creating gapped fasta files", fasta_names['query_name'], fasta_names['ref_name'])
 
         folder_name = self.output_folder_prefix + query_chr
         source_path = '.\\bin\\Release\\output\\dnadata\\'
-        self.move_fasta_source_to_destination(fasta, folder_name, source_path)
+        self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
         DDV.DDV_main(['DDV',
-                      fasta['query_gapped_name'],
+                      fasta_names['query_gapped_name'],
                       source_path,
                       folder_name,
-                      fasta['query_unique_name'], fasta['ref_unique_name'],
-                      fasta['ref_gapped_name']])
+                      fasta_names['query_unique_name'], fasta_names['ref_unique_name'],
+                      fasta_names['ref_gapped_name']])
 
 
 def do_chromosome(chr):
-    parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',  # 'panTro4ToHg38.over.chain',
-                         query_source='HongKong\\susie3_agp.fasta',  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
+    parser = ChainParser(chain_name='panTro4ToHg38.over.chain',  #'chr20_sample_no_synteny_panTro4ToHg38.chain',  #
+                         query_source='panTro4.fa',
                          ref_source='HongKong\\hg38.fa',
-                         output_folder_prefix='Susie3_and_Hg38_short3_',
+                         output_folder_prefix='panTro4_and_Hg38_test_',
                          trial_run=True,
-                         swap_columns=True)
+                         swap_columns=False)
+    # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
+    #                      query_source='HongKong\\susie3_agp.fasta',
+    #                      ref_source='HongKong\\hg38.fa',
+    #                      output_folder_prefix='Susie3_and_Hg38_short3_',
+    #                      trial_run=True,
+    #                      swap_columns=True)
     parser.main(chr)
 
 
