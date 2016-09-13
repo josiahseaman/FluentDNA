@@ -70,13 +70,14 @@ def first_word(string):
 
 
 class ChainParser:
-    def __init__(self, chain_name, ref_source, query_source, output_folder_prefix, trial_run=False):
+    def __init__(self, chain_name, ref_source, query_source, output_folder_prefix, trial_run=False, swap_columns=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.chain_name = chain_name
         self.ref_source = ref_source
         self.query_source = query_source
         self.output_folder_prefix = output_folder_prefix
         self.trial_run = trial_run
+        self.swap_columns = swap_columns
         self.ref_sequence = ''
         self.query_sequence = ''
         self.ref_seq_gapped = ''
@@ -117,8 +118,8 @@ class ChainParser:
         except Exception as e:
             print(e)
 
-    def mash_fasta_and_chain_together(self, chain, filename_a, filename_b, is_master_alignment=False):
-        reference_is_backwards = False
+    def mash_fasta_and_chain_together(self, chain, filename_a, filename_b,
+                                      is_master_alignment=False):
         ref_collection = []
         query_collection = []
         query_pointer = 0
@@ -130,11 +131,13 @@ class ChainParser:
         print(self.ref_sequence[:100])
         for chain_line in chain:
             if chain_line.startswith('chain'):
+                # TODO: support different contig names
                 label, score, tName, tSize, tStrand, tStart, \
                 tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = chain_line.split()
-                # TODO: Show starting sequence, but have it aligned
                 query_pointer = int(tStart)  # this is correct, don't switch these around
                 ref_pointer = int(qStart)
+                if self.swap_columns:
+                    query_pointer, ref_pointer = ref_pointer, query_pointer
                 if is_master_alignment:  # include the unaligned beginning of the sequence
                     longer_gap = max(ref_pointer, query_pointer)
                     ref_collection.append(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
@@ -143,7 +146,7 @@ class ChainParser:
                 pieces = chain_line.split()
                 if len(pieces) == 3:
                     size, gap_reference, gap_query = [int(x) for x in pieces]
-                    if reference_is_backwards:
+                    if self.swap_columns:
                         gap_reference, gap_query = gap_query, gap_reference
 
                     # Debugging code
@@ -242,7 +245,7 @@ class ChainParser:
         fasta = {'query_name': query_chr + '_%s.fa' % first_word(self.query_source),
                  'ref_name': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
 
-        chain = sample_chain_file(ref_chr, query_chr, filename='HongKong\\human_gorilla.bland.chain')
+        chain = sample_chain_file(ref_chr, query_chr, filename=self.chain_name)
         self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, fasta['query_name'], fasta['ref_name'])
         fasta['ref_gapped_name'], fasta['query_gapped_name'] = self.mash_fasta_and_chain_together(chain, fasta['query_name'], fasta['ref_name'], True)
         fasta['ref_unique_name'], fasta['query_unique_name'] = self.print_only_unique(fasta['ref_gapped_name'], fasta['query_gapped_name'])
@@ -260,11 +263,12 @@ class ChainParser:
 
 
 def do_chromosome(chr):
-    parser = ChainParser(chain_name='panTro4ToHg38.over.chain',
-                         ref_source='HongKong\\susie3_agp.fasta',  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
-                         query_source='HongKong\\hg38.fa',
-                         output_folder_prefix='Susie3_and_Hg38_short_',
-                         trial_run=True)
+    parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',  # 'panTro4ToHg38.over.chain',
+                         query_source='HongKong\\susie3_agp.fasta',  # 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
+                         ref_source='HongKong\\hg38.fa',
+                         output_folder_prefix='Susie3_and_Hg38_short3_',
+                         trial_run=True,
+                         swap_columns=True)
     parser.main(chr)
 
 
