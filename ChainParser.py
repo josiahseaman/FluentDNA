@@ -35,7 +35,7 @@ def find_contig(chromosome_name, genome_source):
     return ''.join(seq_collection), contig_header
 
 
-def sample_chain_file(ref_chr, query_chr, filename):
+def sample_chain_file(ref_chr, ref_strand, query_chr, query_strand, filename):
     chain = []
     example_line = ''
     with open(filename, 'r') as infile:
@@ -118,76 +118,74 @@ class ChainParser:
         except Exception as e:
             print(e)
 
-    def mash_fasta_and_chain_together(self, chain, filename_a, filename_b,
-                                      is_master_alignment=False):
-        query_pointer = 0
-        ref_pointer = 0
-        output_length = 0
-        printed = False
+    def mash_fasta_and_chain_together(self, chain_lines, is_master_alignment=False):
 
-        print(self.query_sequence[:100])
-        print(self.ref_sequence[:100])
-        for chain_line in chain:
-            if chain_line.startswith('chain'):
-                # TODO: support different contig names
-                label, score, tName, tSize, tStrand, tStart, \
-                tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = chain_line.split()
-                query_pointer = int(tStart)  # this is correct, don't switch these around
-                ref_pointer = int(qStart)
+        header, chain_lines = chain_lines[0], chain_lines[1:]
+        query_pointer, ref_pointer = self.setup_chain_start(header, is_master_alignment)
+
+
+        for chain_line in chain_lines:
+            pieces = chain_line.split()
+            if len(pieces) == 3:
+                size, gap_reference, gap_query = [int(x) for x in pieces]
                 if self.swap_columns:
-                    query_pointer, ref_pointer = ref_pointer, query_pointer
-                if is_master_alignment:  # include the unaligned beginning of the sequence
-                    longer_gap = max(ref_pointer, query_pointer)
-                    self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
-                    self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))
-            else:
-                pieces = chain_line.split()
-                if len(pieces) == 3:
-                    size, gap_reference, gap_query = [int(x) for x in pieces]
-                    if self.swap_columns:
-                        gap_reference, gap_query = gap_query, gap_reference
+                    gap_reference, gap_query = gap_query, gap_reference
 
-                    # Debugging code
-                    if not printed and output_length > 4319440:
-                        printed = True
-                        print("Start at", size, gap_reference, gap_query)
-                        print(filename_a, query_pointer)
-                        print(filename_b, ref_pointer)
-                        print(output_length)
-                    if self.trial_run and output_length > 1000000:
-                        break
+                # Debugging code
+                # if not printed and output_length > 4319440:
+                #     printed = True
+                #     print("Start at", size, gap_reference, gap_query)
+                #     print(filename_a, query_pointer)
+                #     print(filename_b, ref_pointer)
+                #     print(output_length)
+                if self.trial_run and len(self.ref_seq_gapped) > 1000000:
+                    break
 
-                    space_saved = 0  # max(0, min(gap_query, gap_reference))
+                ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size + gap_query] + 'X' * gap_reference
+                ref_pointer += size + gap_query  # alignable and unalignable block concatenated together
+                self.ref_seq_gapped.extend(ref_snippet)
 
-                    ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size + gap_query] + 'X' * (gap_reference - space_saved)
-                    ref_pointer += size + gap_query  # alignable and unalignable block concatenated together
-                    self.ref_seq_gapped.extend(ref_snippet)
-                    output_length += len(ref_snippet)
+                query_snippet = self.query_sequence[query_pointer: query_pointer + size] + 'X' * gap_query
+                query_snippet += self.query_sequence[query_pointer + size: query_pointer + size + gap_reference]
+                if len(query_snippet) != len(ref_snippet):
+                    print(len(ref_snippet), len(query_snippet), "You should be outputting equal length strings til the end")
+                query_pointer += size + gap_reference  # two blocks of sequence separated by gap
+                self.query_seq_gapped.extend(query_snippet)
 
-                    query_snippet = self.query_sequence[query_pointer: query_pointer + size] + 'X' * (gap_query - space_saved)
-                    query_snippet += self.query_sequence[query_pointer + size: query_pointer + size + gap_reference]
-                    if len(query_snippet) != len(ref_snippet):
-                        print(len(ref_snippet), len(query_snippet), "You should be outputting equal length strings til the end")
-                    query_pointer += size + gap_reference  # two blocks of sequence separated by gap
-                    self.query_seq_gapped.extend(query_snippet)
-
-                elif len(pieces) == 1 and is_master_alignment:  # last one: print out all remaining sequence
+            elif len(pieces) == 1:
+                if is_master_alignment:  # last one: print out all remaining sequence
                     self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
                     self.query_seq_gapped.extend(self.query_sequence[query_pointer:])
+                else:
+                    self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer: ref_pointer + size])
+                    self.query_seq_gapped.extend(self.query_sequence[query_pointer: query_pointer + size])
+        return True
 
-        gapped_fasta_query, gapped_fasta_ref = self.write_gapped_fasta(filename_a, filename_b)
 
-        return gapped_fasta_ref, gapped_fasta_query
+    def setup_chain_start(self, header, is_master_alignment):
+        assert header.startswith('chain')
+        # TODO: support different contig names
+        label, score, tName, tSize, tStrand, tStart, \
+        tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
+        query_pointer = int(tStart)  # this is correct, don't switch these around
+        ref_pointer = int(qStart)
+        if self.swap_columns:
+            query_pointer, ref_pointer = ref_pointer, query_pointer
+        if is_master_alignment:  # include the unaligned beginning of the sequence
+            longer_gap = max(ref_pointer, query_pointer)
+            self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
+            self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))
+        return query_pointer, ref_pointer
 
 
-    def write_gapped_fasta(self, filename_a, filename_b):
-        query_gap_name = os.path.splitext(filename_a)[0] + '_gapped.fa'
-        ref_gap_name = os.path.splitext(filename_b)[0] + '_gapped.fa'
-        with open(query_gap_name, 'w') as query_file:
-            self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
+    def write_gapped_fasta(self, ref, query):
+        ref_gap_name = os.path.splitext(ref)[0] + '_gapped.fa'
+        query_gap_name = os.path.splitext(query)[0] + '_gapped.fa'
         with open(ref_gap_name, 'w') as ref_file:
             self.write_fasta_lines(ref_file, ''.join(self.ref_seq_gapped))
-        return query_gap_name, ref_gap_name
+        with open(query_gap_name, 'w') as query_file:
+            self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
+        return ref_gap_name, query_gap_name
 
 
     def print_only_unique(self, ref_gapped_name, query_gapped_name):
@@ -236,30 +234,31 @@ class ChainParser:
         ref_chr, query_chr = chromosome_name
 
 
-        fasta_names = {'query_name': query_chr + '_%s.fa' % first_word(self.query_source),
-                 'ref_name': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
+        names = {'query': query_chr + '_%s.fa' % first_word(self.query_source),
+                 'ref': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
 
-        self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, fasta_names['query_name'], fasta_names['ref_name'])
-        chain = sample_chain_file(ref_chr, query_chr, filename=self.chain_name)
+        self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, names['query'], names['ref'])
+        # all_chains = fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)
+        chain = sample_chain_file(ref_chr, '+', query_chr, '+', filename=self.chain_name)
         # is_master_alignment = True
         # while chain:
         is_master_alignment = False
-        fasta_names['ref_gapped_name'], fasta_names['query_gapped_name'] = \
-            self.mash_fasta_and_chain_together(chain, fasta_names['query_name'], fasta_names['ref_name'], is_master_alignment)
+        self.mash_fasta_and_chain_together(chain, is_master_alignment)
             # chain = sample_chain_file(ref_chr, query_chr, filename=self.chain_name)
-        fasta_names['ref_unique_name'], fasta_names['query_unique_name'] = \
-            self.print_only_unique(fasta_names['ref_gapped_name'], fasta_names['query_gapped_name'])
-        print("Finished creating gapped fasta files", fasta_names['query_name'], fasta_names['ref_name'])
+
+        names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
+        names['ref_unique'], names['query_unique'] = self.print_only_unique(names['ref_gapped'], names['query_gapped'])
+        print("Finished creating gapped fasta files", names['query'], names['ref'])
 
         folder_name = self.output_folder_prefix + query_chr
         source_path = '.\\bin\\Release\\output\\dnadata\\'
-        self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
+        self.move_fasta_source_to_destination(names, folder_name, source_path)
         DDV.DDV_main(['DDV',
-                      fasta_names['query_gapped_name'],
+                      names['query_gapped'],
                       source_path,
                       folder_name,
-                      fasta_names['query_unique_name'], fasta_names['ref_unique_name'],
-                      fasta_names['ref_gapped_name']])
+                      names['query_unique'], names['ref_unique'],
+                      names['ref_gapped']])
 
 
 def do_chromosome(chr):
