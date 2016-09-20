@@ -35,7 +35,16 @@ def find_contig(chromosome_name, genome_source):
     return ''.join(seq_collection), contig_header
 
 
+def match(target, current):
+    """Returns true if current satisfies the target requirements"""
+    if target is None:
+        return True
+    return target == current
+
+
 def fetch_all_chains(ref_chr, ref_strand, query_chr, query_strand, filename):
+    """Fetches all chains that match the requirements.
+    any of {ref_chr, ref_strand, query_chr, query_strand} can be None which means the match to anything."""
     all_chains = []
     chain = []  # never actually used before assignment
     example_line = ''
@@ -46,7 +55,7 @@ def fetch_all_chains(ref_chr, ref_strand, query_chr, query_strand, filename):
                 label, score, tName, tSize, tStrand, tStart, \
                 tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
                 example_line = line
-                printing = ref_chr == tName and query_chr == qName and ref_strand in tStrand and query_strand in qStrand
+                printing = match(ref_chr, tName) and match(query_chr, qName) and match(ref_strand, tStrand) and match(query_strand, qStrand)
                 if printing:
                     print(line, end='')
                     chain = [line]  # write header
@@ -67,6 +76,14 @@ def first_word(string):
     if '\\' in string:
         string = string[string.rindex('\\') + 1:]
     return re.split('[\W_]+', string)[0]
+
+
+def rev_comp(plus_strand):
+    comp = {'A': 'T', 'G': 'C', 'T': 'A', 'C': 'G', 'N': 'N', 'X': 'X'}
+    # rev = array('u')
+    # for a in reversed(plus_strand):
+    #     rev.extend(comp[a])
+    return array('u', ''.join([comp[a] for a in reversed(plus_strand)]))
 
 
 class ChainParser:
@@ -122,14 +139,19 @@ class ChainParser:
 
     def mash_fasta_and_chain_together(self, chain_lines, is_master_alignment=False):
         header, chain_lines = chain_lines[0], chain_lines[1:]
-        query_pointer, ref_pointer = self.setup_chain_start(header, is_master_alignment)
+        label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
+        # convert to int except for chr names and strands
+        score, tSize, tStart, tEnd, qSize, qStart, qEnd, chain_id = [int(x) for x in (score, tSize, tStart, tEnd, qSize, qStart, qEnd, chain_id)]
+        query_pointer, ref_pointer = self.setup_chain_start(header, tStart, tEnd, qStart, qEnd, is_master_alignment)
+
         if not is_master_alignment:
             self.do_translocation_housework(header, chain_lines, ref_pointer, query_pointer)
-        self.process_chain_body(chain_lines, ref_pointer, query_pointer, is_master_alignment)
+        self.process_chain_body(chain_lines, ref_pointer, query_pointer, is_master_alignment, minus_strand=qStrand == '-')
 
         return True
 
-    def process_chain_body(self, chain_lines, ref_pointer, query_pointer, is_master_alignment):
+    def process_chain_body(self, chain_lines, ref_pointer, query_pointer, is_master_alignment, minus_strand):
+        ref_gapped_strand = array('u', '')
         for chain_line in chain_lines:
             pieces = chain_line.split()
             if len(pieces) == 3:
@@ -138,37 +160,45 @@ class ChainParser:
                     gap_reference, gap_query = gap_query, gap_reference
 
                 # Debugging code
-                if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000
+                if is_master_alignment and self.trial_run and len(self.query_seq_gapped) > 1000000:  # 9500000
                     break
 
-                ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size + gap_query] + 'X' * gap_reference
+                ref_seq_absolute = self.ref_sequence[ref_pointer: ref_pointer + size + gap_query]
+                if minus_strand:
+                    ref_seq_absolute = self.ref_sequence[-(ref_pointer + size + gap_query) - 1: -ref_pointer - 1]
+                ref_snippet = ref_seq_absolute + 'X' * gap_reference
                 ref_pointer += size + gap_query  # alignable and unalignable block concatenated together
-                self.ref_seq_gapped.extend(ref_snippet)
+                ref_gapped_strand.extend(ref_snippet)
 
                 query_snippet = self.query_sequence[query_pointer: query_pointer + size] + 'X' * gap_query
                 query_snippet += self.query_sequence[query_pointer + size: query_pointer + size + gap_reference]
-                if len(query_snippet) != len(ref_snippet):
-                    print(len(ref_snippet), len(query_snippet), "You should be outputting equal length strings til the end")
                 query_pointer += size + gap_reference  # two blocks of sequence separated by gap
                 self.query_seq_gapped.extend(query_snippet)
 
+                if len(query_snippet) != len(ref_snippet):
+                    print(len(ref_snippet), len(query_snippet), "You should be outputting equal length strings til the end")
+
             elif len(pieces) == 1:
                 # if is_master_alignment:  # last one: print out all remaining sequence
-                #     # self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
+                #     # ref_gapped_strand.extend(self.ref_sequence[ref_pointer:])
                 #     # self.query_seq_gapped.extend(self.query_sequence[query_pointer:])
                 # else:
-                    self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer: ref_pointer + int(pieces[0])])
                     self.query_seq_gapped.extend(self.query_sequence[query_pointer: query_pointer + int(pieces[0])])
+                    if minus_strand:
+                        ref_gapped_strand.extend(self.ref_sequence[-(ref_pointer + int(pieces[0])) - 1: -ref_pointer - 1])
+                    else:
+                        ref_gapped_strand.extend(self.ref_sequence[ref_pointer: ref_pointer + int(pieces[0])])
+        # Now done processing all the lines in this chain
+        if minus_strand:
+            ref_gapped_strand = rev_comp(ref_gapped_strand)
+        self.ref_seq_gapped.extend(ref_gapped_strand)
 
-    def setup_chain_start(self, header, is_master_alignment):
+
+    def setup_chain_start(self, header, tStart, tEnd, qStart, qEnd, is_master_alignment):
         assert header.startswith('chain')
-        # TODO: support different contig names
-        label, score, tName, tSize, tStrand, tStart, \
-        tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
-        query_pointer = int(tStart)  # this is correct, don't switch these around
-        ref_pointer = int(qStart)
-        if self.swap_columns:
-            query_pointer, ref_pointer = ref_pointer, query_pointer
+        query_pointer, ref_pointer = (qStart, tStart) if self.swap_columns else (tStart, qStart)   # this is correct, don't switch these around
+        if tEnd - tStart > 100 * 1000:
+            print('>>>>', header)
         if is_master_alignment:  # include the unaligned beginning of the sequence
             longer_gap = max(ref_pointer, query_pointer)
             self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))  # one of these gaps will be 0
@@ -176,6 +206,8 @@ class ChainParser:
         return query_pointer, ref_pointer
 
     def do_translocation_housework(self, header, chain_lines, ref_pointer, query_pointer):
+        self.ref_seq_gapped.extend('G' * (500 + (100 - len(self.ref_seq_gapped) % 100)))  # visual separators
+        self.query_seq_gapped.extend('G' * (500 + (100 - len(self.query_seq_gapped) % 100)))
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,
         # 	replace query with X's, redundant gaps will be closed later
@@ -250,13 +282,13 @@ class ChainParser:
                  'ref': ref_chr + '_%s.fa' % first_word(self.ref_source)}  # for collecting all the files names in a modifiable way
 
         self.read_seq_to_memory(ref_chr, query_chr, self.query_source, self.ref_source, names['query'], names['ref'])
-        all_chains = fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)
-        is_master_alignment = True
+        # Reference chain that establishes coordinate frame
+        #self.mash_fasta_and_chain_together(fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)[0], True)
+
+        all_chains = fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)[1:]  # skip the reference chain
+        all_chains.extend(fetch_all_chains(ref_chr, '+', query_chr, '-', filename=self.chain_name))  # all the inversions
         for chain in all_chains:
-            self.mash_fasta_and_chain_together(chain, is_master_alignment)
-            self.ref_seq_gapped.extend('G' * (500 + (100 - len(self.ref_seq_gapped) % 100)))  # visual separators
-            self.query_seq_gapped.extend('G' * (500 + (100 - len(self.query_seq_gapped) % 100)))
-            is_master_alignment = False
+            self.mash_fasta_and_chain_together(chain, False)
 
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         names['ref_unique'], names['query_unique'] = self.print_only_unique(names['ref_gapped'], names['query_gapped'])
@@ -278,9 +310,9 @@ class ChainParser:
 
 def do_chromosome(chr):
     parser = ChainParser(chain_name='panTro4ToHg38.over.chain',  # 'chr20_sample_no_synteny_panTro4ToHg38.chain',  #
-                         query_source='panTro4.fa',
-                         ref_source='HongKong\\hg38.fa',
-                         output_folder_prefix='panTro4_and_Hg38_no_random_',
+                         query_source='panTro4_chr20.fa',  #  'panTro4.fa',
+                         ref_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
+                         output_folder_prefix='panTro4_and_Hg38_alignment1_',
                          trial_run=True,
                          swap_columns=False)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
