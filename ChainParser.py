@@ -21,8 +21,6 @@ def find_contig(chromosome_name, genome_source):
     with open(genome_source, 'r') as genome:
         for line in genome.readlines():
             line = line.rstrip()
-            if printing:
-                seq_collection.append(line.upper())  # always upper case so equality checks work
             if line.startswith('>'):
                 # headers.append(line)
                 if line == chromosome_name:
@@ -31,6 +29,8 @@ def find_contig(chromosome_name, genome_source):
                     contig_header = line
                 elif printing:
                     break  # we've collected all sequence and reached the beginning of the next contig
+            if printing:  # This MUST come after the check for a '>'
+                seq_collection.append(line.upper())  # always upper case so equality checks work
     assert len(seq_collection), "Contig not found." + chromosome_name  # File contained these contigs:\n" + '\n'.join(headers)
     return ''.join(seq_collection), contig_header
 
@@ -146,7 +146,7 @@ class ChainParser:
 
         if not is_master_alignment:
             self.do_translocation_housework(header, chain_lines, ref_pointer, query_pointer)
-        self.process_chain_body(chain_lines, ref_pointer, query_pointer, is_master_alignment, minus_strand=qStrand == '-')
+        self.process_chain_body(chain_lines, ref_pointer, query_pointer, is_master_alignment, False)  #minus_strand=qStrand == '-')
 
         return True
 
@@ -168,7 +168,7 @@ class ChainParser:
                     ref_seq_absolute = self.ref_sequence[-(ref_pointer + size + gap_query) - 1: -ref_pointer - 1]
                 ref_snippet = ref_seq_absolute + 'X' * gap_reference
                 ref_pointer += size + gap_query  # alignable and unalignable block concatenated together
-                ref_gapped_strand.extend(ref_snippet)
+                ref_gapped_strand.extend(ref_snippet if not minus_strand else rev_comp(ref_snippet))
 
                 query_snippet = self.query_sequence[query_pointer: query_pointer + size] + 'X' * gap_query
                 query_snippet += self.query_sequence[query_pointer + size: query_pointer + size + gap_reference]
@@ -185,12 +185,12 @@ class ChainParser:
                 # else:
                     self.query_seq_gapped.extend(self.query_sequence[query_pointer: query_pointer + int(pieces[0])])
                     if minus_strand:
-                        ref_gapped_strand.extend(self.ref_sequence[-(ref_pointer + int(pieces[0])) - 1: -ref_pointer - 1])
+                        ref_gapped_strand.extend(rev_comp(self.ref_sequence[-(ref_pointer + int(pieces[0])) - 1: -ref_pointer - 1]))
                     else:
                         ref_gapped_strand.extend(self.ref_sequence[ref_pointer: ref_pointer + int(pieces[0])])
         # Now done processing all the lines in this chain
-        if minus_strand:
-            ref_gapped_strand = rev_comp(ref_gapped_strand)
+        # if minus_strand:
+        #     ref_gapped_strand = rev_comp(ref_gapped_strand)
         self.ref_seq_gapped.extend(ref_gapped_strand)
 
 
@@ -286,7 +286,13 @@ class ChainParser:
         #self.mash_fasta_and_chain_together(fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)[0], True)
 
         all_chains = fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)[1:]  # skip the reference chain
-        all_chains.extend(fetch_all_chains(ref_chr, '+', query_chr, '-', filename=self.chain_name))  # all the inversions
+        for chain in all_chains:
+            self.mash_fasta_and_chain_together(chain, False)
+        # all the inversions
+        all_chains = fetch_all_chains(ref_chr, '+', query_chr, '-', filename=self.chain_name)
+        print("Creating reverse complement")
+        self.ref_sequence = ''.join(rev_comp(self.ref_sequence))
+        print("Done Creating reverse complement")
         for chain in all_chains:
             self.mash_fasta_and_chain_together(chain, False)
 
@@ -312,7 +318,7 @@ def do_chromosome(chr):
     parser = ChainParser(chain_name='panTro4ToHg38.over.chain',  # 'chr20_sample_no_synteny_panTro4ToHg38.chain',  #
                          query_source='panTro4_chr20.fa',  #  'panTro4.fa',
                          ref_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
-                         output_folder_prefix='panTro4_and_Hg38_alignment1_',
+                         output_folder_prefix='panTro4_and_Hg38_alignment4_',
                          trial_run=True,
                          swap_columns=False)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
