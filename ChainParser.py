@@ -201,6 +201,10 @@ class ChainParser:
         filler = 'G' if not minus_strand else 'C'
         self.ref_seq_gapped.extend(filler * (500 + (100 - len(self.ref_seq_gapped) % 100)))  # visual separators
         self.query_seq_gapped.extend(filler * (500 + (100 - len(self.query_seq_gapped) % 100)))
+        # label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
+        # self.ref_seq_gapped.extend('_'.join(['\n>' + tName, qStrand, qName]) + '\n')  # visual separators
+        # self.query_seq_gapped.extend('_'.join(['\n>' + qName, qStrand, tName]) + '\n')
+
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,
         # 	replace query with X's, redundant gaps will be closed later
@@ -230,7 +234,15 @@ class ChainParser:
         que_uniq_array = array('u', self.query_seq_gapped)
         print("Done allocating unique array")
         shortest_sequence = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
+        # scanning_past_header = False
         for i in range(shortest_sequence):
+            # if self.ref_seq_gapped[i] == '\n':
+            #     scanning_past_header = False  # stop scanning once you hit the terminating newline
+            #     continue
+            # if self.ref_seq_gapped[i] in '>;':  # ; is for comments
+            #     scanning_past_header = True
+            # if scanning_past_header:  # ref_uniq_array is already initialized to contain header characters
+            #     continue
             # only overlapping section
             if self.ref_seq_gapped[i] == self.query_seq_gapped[i]:
                 ref_uniq_array[i] = 'X'
@@ -295,7 +307,7 @@ class ChainParser:
 
         folder_name = self.output_folder_prefix + query_chr
         source_path = '.\\bin\\Release\\output\\dnadata\\'
-        if self.trial_run:  # these files are never used in the viz
+        if True:  #self.trial_run:  # these files are never used in the viz
             del names['query']
             del names['ref']
         self.move_fasta_source_to_destination(names, folder_name, source_path)
@@ -308,11 +320,11 @@ class ChainParser:
 
 
 def do_chromosome(chr):
-    parser = ChainParser(chain_name='panTro4ToHg38.over.chain',  # 'chr20_sample_no_synteny_panTro4ToHg38.chain',  #
-                         query_source='panTro4_chr20.fa',  #  'panTro4.fa',
-                         ref_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
-                         output_folder_prefix='panTro4_and_Hg38_alignment1_',
-                         trial_run=True,
+    parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
+                         ref_source='panTro4_chr20.fa',  # 'panTro4.fa',
+                         query_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
+                         output_folder_prefix='panTro4_and_Hg38_alignment2_',
+                         trial_run=False,
                          swap_columns=False)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
     #                      query_source='HongKong\\susie3_agp.fasta',
