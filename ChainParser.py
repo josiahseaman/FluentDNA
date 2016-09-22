@@ -1,8 +1,10 @@
 import os
-from collections import defaultdict
-from array import array
 import shutil
+from array import array
+from collections import defaultdict
 from datetime import datetime
+
+from ChainFiles import chain_file_to_list, fetch_all_chains
 
 
 def chunks(seq, size):
@@ -11,7 +13,7 @@ def chunks(seq, size):
         yield seq[i:i + size]
 
 
-def find_contig(chromosome_name, genome_source):
+def pluck_contig(chromosome_name, genome_source):
     """Scan through a genome fasta file looking for a matching contig name.  When it find it, find_contig collects
     the sequence and returns it as a string with no cruft."""
     chromosome_name = '>' + chromosome_name
@@ -35,38 +37,6 @@ def find_contig(chromosome_name, genome_source):
     return ''.join(seq_collection), contig_header
 
 
-def match(target, current):
-    """Returns true if current satisfies the target requirements"""
-    if target is None:
-        return True
-    return target == current
-
-
-def fetch_all_chains(ref_chr, query_chr, query_strand, chain_file, ref_strand='+'):
-    """Fetches all chains that match the requirements.
-    any of {query_chr, query_strand, ref_chr, ref_strand} can be None which means the match to anything.
-    """
-    all_chains = []
-    chain = []  # never actually used before assignment
-    printing = False
-    for line in chain_file:
-        if line.startswith('chain'):
-            label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
-            printing = match(ref_chr, tName) and match(query_chr, qName) and match(ref_strand, tStrand) and match(query_strand, qStrand)
-            if printing:
-                if int(tEnd) - int(tStart) > 5000:
-                    print(line, end='')
-                chain = [line]  # write header
-                all_chains.append(chain)  # "chain" will continue to be edited inside of "all_chains"
-        else:
-            pieces = line.split()
-            if printing:
-                if len(pieces) == 3 or len(pieces) == 1:
-                    chain.append(line)  # "chain" will continue to be edited inside of "all_chains"
-    print(ref_chr, query_chr, ":", len(all_chains))
-    return all_chains
-
-
 def first_word(string):
     import re
     if '\\' in string:
@@ -76,9 +46,6 @@ def first_word(string):
 
 def rev_comp(plus_strand):
     comp = {'A': 'T', 'G': 'C', 'T': 'A', 'C': 'G', 'N': 'N', 'X': 'X'}
-    # rev = array('u')
-    # for a in reversed(plus_strand):
-    #     rev.extend(comp[a])
     return ''.join([comp[a] for a in reversed(plus_strand)])
 
 
@@ -95,9 +62,10 @@ class ChainParser:
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
-        self.referenced_contigs = []  # list of contigs that contribute to ref_chr in chain entries
-        with open(chain_name, 'r') as infile:
-            self.chain_file = infile.readlines()
+        self.relevant_chains = []  # list of contigs that contribute to ref_chr in chain entries
+        self.stored_rev_comps = {}
+
+        self.chain_list = chain_file_to_list(chain_name)
 
     def read_contigs(self, input_file_path):
         print("Reading contigs... ", input_file_path)
@@ -132,9 +100,9 @@ class ChainParser:
         self.read_contigs(query_source)
         self.query_sequence = self.query_contigs[query_chr]
 
-        if False:  # not self.trial_run:
-            self.write_fasta_lines(query_file_name, self.query_sequence)
-            self.write_fasta_lines(ref_file_name, self.ref_sequence)
+        # if not self.trial_run:
+        #     self.write_fasta_lines(query_file_name, self.query_sequence)
+        #     self.write_fasta_lines(ref_file_name, self.ref_sequence)
 
 
     def write_fasta_lines(self, filestream, seq):
@@ -163,56 +131,46 @@ class ChainParser:
         except Exception as e:
             print(e)
 
-    def mash_fasta_and_chain_together(self, chain_lines, is_master_alignment=False):
-        header, chain_lines = chain_lines[0], chain_lines[1:]
-        ref_pointer, query_pointer = self.setup_chain_start(header, is_master_alignment)
+    def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
+        ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
 
         if not is_master_alignment:
-            self.do_translocation_housework(header, chain_lines, query_pointer, ref_pointer)
-        self.process_chain_body(chain_lines, query_pointer, ref_pointer, is_master_alignment)
-        return True
+            self.do_translocation_housework(chain, query_pointer, ref_pointer)
+        self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
 
 
-    def process_chain_body(self, chain_lines, query_pointer, ref_pointer, is_master_alignment):
-        for chain_line in chain_lines:
-            pieces = chain_line.split()
-            if len(pieces) == 3:
-                size, gap_query, gap_ref = [int(x) for x in pieces]
+    def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
+        for entry in chain.entries:  # ChainEntry
+            size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
 
-                # Debugging code
-                if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000
-                    break
+            # Debugging code
+            if self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
+                break
 
-                query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
-                query_snippet = query_seq_absolute + 'X' * gap_query
-                query_pointer += size + gap_ref  # alignable and unalignable block concatenated together
-                self.query_seq_gapped.extend(query_snippet)
+            query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
+            query_snippet = query_seq_absolute + 'X' * gap_query
+            query_pointer += size + gap_ref  # alignable and unalignable block concatenated together
+            self.query_seq_gapped.extend(query_snippet)
 
-                ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * gap_ref
-                ref_snippet += self.ref_sequence[ref_pointer + size: ref_pointer + size + gap_query]
-                ref_pointer += size + gap_query  # two blocks of sequence separated by gap
-                self.ref_seq_gapped.extend(ref_snippet)
+            ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * gap_ref
+            ref_snippet += self.ref_sequence[ref_pointer + size: ref_pointer + size + gap_query]
+            ref_pointer += size + gap_query  # two blocks of sequence separated by gap
+            self.ref_seq_gapped.extend(ref_snippet)
 
-                if len(ref_snippet) != len(query_snippet):
-                    print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
+            if len(ref_snippet) != len(query_snippet):
+                print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
 
-            elif len(pieces) == 1:
-                # if is_master_alignment:  # last one: print out all remaining sequence
-                #     # query_gapped_strand.extend(self.query_sequence[query_pointer:])
-                #     # self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
-                # else:
-                    self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer: ref_pointer + int(pieces[0])])
-                    self.query_seq_gapped.extend(self.query_sequence[query_pointer: query_pointer + int(pieces[0])])
+        # if is_master_alignment:  # last one: print out all remaining sequence
+        #     # query_gapped_strand.extend(self.query_sequence[query_pointer:])
+        #     # self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
+        # else:
 
 
-    def setup_chain_start(self, header, is_master_alignment):
-        assert header.startswith('chain')
-        label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
+    def setup_chain_start(self, chain, is_master_alignment):
         # convert to int except for chr names and strands
-        score, tSize, tStart, tEnd, qSize, qStart, qEnd, chain_id = [int(x) for x in (score, tSize, tStart, tEnd, qSize, qStart, qEnd, chain_id)]
-        ref_pointer, query_pointer = tStart, qStart
-        if tEnd - tStart > 100 * 1000:
-            print('>>>>', header)
+        ref_pointer, query_pointer = chain.tStart, chain.qStart
+        if chain.tEnd - chain.tStart > 100 * 1000:
+            print('>>>>', chain)
         if is_master_alignment:  # include the unaligned beginning of the sequence
             longer_gap = max(query_pointer, ref_pointer)
             self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))  # one of these gaps will be 0
@@ -220,8 +178,8 @@ class ChainParser:
         return ref_pointer, query_pointer
 
 
-    def do_translocation_housework(self, header, chain_lines, query_pointer, ref_pointer):
-        minus_strand = header.split()[9] != '+'
+    def do_translocation_housework(self, chain, query_pointer, ref_pointer):
+        minus_strand = chain.qStrand != '+'
         filler = 'G' if not minus_strand else 'C'
         self.query_seq_gapped.extend(filler * (500 + (100 - len(self.query_seq_gapped) % 100)))  # visual separators
         self.ref_seq_gapped.extend(filler * (500 + (100 - len(self.ref_seq_gapped) % 100)))
@@ -299,10 +257,28 @@ class ChainParser:
             fasta[key] = os.path.join(destination_folder, fasta[key])
 
 
+    def do_all_relevant_chains(self):
+        """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
+        I think it's a rule that you always flip the query strand instead."""
+        previous = None
+        for chain in self.relevant_chains:
+            if chain.qStrand == '-':  # need to load rev_comp
+                if chain.qName not in self.stored_rev_comps:
+                    if len(self.query_contigs[chain.qName]) > 1000000:
+                        print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
+                    self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
+                    # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
+                self.query_sequence = self.stored_rev_comps[chain.qName]
+            else:
+                self.query_sequence = self.query_contigs[chain.qName]
+            self.mash_fasta_and_chain_together(chain, previous is None)
+            previous = chain
+
+
     def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
-        translocations = fetch_all_chains(ref_chr, query_chr, query_strand, self.chain_file)
+        translocations = fetch_all_chains(ref_chr, query_chr, query_strand, self.chain_list)
         if len(translocations):
             if query_strand == '-':
                 self.query_sequence = rev_comp(self.query_contigs[query_chr])
@@ -317,21 +293,10 @@ class ChainParser:
 
         names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
-        self.ref_sequence, contig_header = find_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
+        self.ref_sequence, contig_header = pluck_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
 
         # Reference chain that establishes coordinate frame
-        all_forward_chains = fetch_all_chains(ref_chr, query_chr, '+', self.chain_file)
-        for index, chain in enumerate(all_forward_chains):
-            self.mash_fasta_and_chain_together(chain, index == 0)
-        # All the inversions ###
-        self.do_all_chain_matches(ref_chr, query_chr, '-')
-
-        # From other contigs ##
-        for contig_name in self.referenced_contigs:
-            if contig_name == query_chr:  # already did this
-                continue
-            self.do_all_chain_matches(ref_chr, contig_name, '+')
-            self.do_all_chain_matches(ref_chr, contig_name, '-')
+        self.do_all_relevant_chains()
 
         names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
         names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
@@ -365,13 +330,8 @@ class ChainParser:
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
         self.read_seq_to_memory(query_chr, ref_chr, self.query_source, self.ref_source, names['query'], names['ref'])
-        self.referenced_contigs = []
-        for line in self.chain_file:
-            if line.startswith('chain'):
-                label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
-                if tName == ref_chr:
-                    self.referenced_contigs.append(qName)
-        # self.referenced_contigs = [line.split()[7] for line in self.chain_file if line.startswith('chain') and line.split()[2] == ref_chr]
+
+        self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
 
         return names, query_chr, ref_chr
 
