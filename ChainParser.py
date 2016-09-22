@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 from array import array
 import shutil
+from datetime import datetime
 
 
 def chunks(seq, size):
@@ -16,7 +17,6 @@ def find_contig(chromosome_name, genome_source):
     chromosome_name = '>' + chromosome_name
     contig_header = ''
     seq_collection = []
-    headers = []
     printing = False
     with open(genome_source, 'r') as genome:
         for line in genome.readlines():
@@ -42,32 +42,28 @@ def match(target, current):
     return target == current
 
 
-def fetch_all_chains(ref_chr, ref_strand, query_chr, query_strand, filename):
+def fetch_all_chains(ref_chr, query_chr, query_strand, chain_file, ref_strand='+'):
     """Fetches all chains that match the requirements.
-    any of {query_chr, query_strand, ref_chr, ref_strand} can be None which means the match to anything."""
+    any of {query_chr, query_strand, ref_chr, ref_strand} can be None which means the match to anything.
+    """
     all_chains = []
     chain = []  # never actually used before assignment
-    example_line = ''
-    with open(filename, 'r') as infile:
-        printing = False
-        for line in infile.readlines():
-            if line.startswith('chain'):
-                label, score, tName, tSize, tStrand, tStart, \
-                tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
-                example_line = line
-                printing = match(ref_chr, tName) and match(query_chr, qName) and match(ref_strand, tStrand) and match(query_strand, qStrand)
-                if printing:
+    printing = False
+    for line in chain_file:
+        if line.startswith('chain'):
+            label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
+            printing = match(ref_chr, tName) and match(query_chr, qName) and match(ref_strand, tStrand) and match(query_strand, qStrand)
+            if printing:
+                if int(tEnd) - int(tStart) > 5000:
                     print(line, end='')
-                    chain = [line]  # write header
-                    all_chains.append(chain)  # "chain" will continue to be edited inside of "all_chains"
-            else:
-                pieces = line.split()
-                if printing:
-                    if len(pieces) == 3 or len(pieces) == 1:
-                        chain.append(line)  # "chain" will continue to be edited inside of "all_chains"
-    if len(all_chains) == 0:
-        raise ValueError("A chain entry for %s and %s could not be found." % (query_chr, ref_chr) +
-                         "     Example: %s" % example_line)
+                chain = [line]  # write header
+                all_chains.append(chain)  # "chain" will continue to be edited inside of "all_chains"
+        else:
+            pieces = line.split()
+            if printing:
+                if len(pieces) == 3 or len(pieces) == 1:
+                    chain.append(line)  # "chain" will continue to be edited inside of "all_chains"
+    print(ref_chr, query_chr, ":", len(all_chains))
     return all_chains
 
 
@@ -89,26 +85,56 @@ def rev_comp(plus_strand):
 class ChainParser:
     def __init__(self, chain_name, second_source, first_source, output_folder_prefix, trial_run=False, swap_columns=False):
         self.width_remaining = defaultdict(lambda: 70)
-        self.chain_name = chain_name
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_folder_prefix = output_folder_prefix
+        self.query_contigs = dict()
         self.trial_run = trial_run
         self.swap_columns = swap_columns
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
+        self.referenced_contigs = []  # list of contigs that contribute to ref_chr in chain entries
+        with open(chain_name, 'r') as infile:
+            self.chain_file = infile.readlines()
+
+    def read_contigs(self, input_file_path):
+        print("Reading contigs... ", input_file_path)
+        start_time = datetime.now()
+        self.query_contigs = {}
+        current_name = ""
+        seq_collection = []
+
+        # Pre-read generates an array of contigs with labels and sequences
+        with open(input_file_path, 'r') as streamFASTAFile:
+            for read in streamFASTAFile.read().splitlines():
+                if read == "":
+                    continue
+                if read[0] == ">":
+                    # If we have sequence gathered and we run into a second (or more) block
+                    if len(seq_collection) > 0:
+                        sequence = "".join(seq_collection)
+                        seq_collection = []  # clear
+                        self.query_contigs[current_name] = sequence
+                    current_name = read[1:].strip()  # remove >
+                else:
+                    # collects the sequence to be stored in the contig, constant time performance don't concat strings!
+                    seq_collection.append(read.upper())
+
+        # add the last contig to the list
+        sequence = "".join(seq_collection)
+        self.query_contigs[current_name] = sequence
+        print("Read FASTA Contigs in:", datetime.now() - start_time)
 
 
-    def read_seq_to_memory(self, query_chr, ref_chr, ref_source, query_source, ref_file_name, query_file_name):
-        self.ref_sequence, contig_header = find_contig(ref_chr, ref_source)
-        if not self.trial_run:
-            self.write_fasta_lines(ref_file_name, self.ref_sequence)
+    def read_seq_to_memory(self, query_chr, ref_chr, query_source, ref_source, query_file_name, ref_file_name):
+        self.read_contigs(query_source)
+        self.query_sequence = self.query_contigs[query_chr]
 
-        self.query_sequence, contig_header = find_contig(query_chr, query_source)
-        if not self.trial_run:
+        if False:  # not self.trial_run:
             self.write_fasta_lines(query_file_name, self.query_sequence)
+            self.write_fasta_lines(ref_file_name, self.ref_sequence)
 
 
     def write_fasta_lines(self, filestream, seq):
@@ -273,33 +299,39 @@ class ChainParser:
             fasta[key] = os.path.join(destination_folder, fasta[key])
 
 
+    def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
+        """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
+        I think it's a rule that you always flip the query strand instead."""
+        translocations = fetch_all_chains(ref_chr, query_chr, query_strand, self.chain_file)
+        if len(translocations):
+            if query_strand == '-':
+                self.query_sequence = rev_comp(self.query_contigs[query_chr])
+            else:
+                self.query_sequence = self.query_contigs[query_chr]
+            for chain in translocations:
+                self.mash_fasta_and_chain_together(chain, False)
+
+
     def main(self, chromosome_name):
         import DDV
 
-        if isinstance(chromosome_name, str):
-            chromosome_name = (chromosome_name, chromosome_name)
-        query_chr, ref_chr = chromosome_name
+        names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
-
-        names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
-                 'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
-
-        self.read_seq_to_memory(query_chr, ref_chr, self.ref_source, self.query_source, names['ref'], names['query'])
+        self.ref_sequence, contig_header = find_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
 
         # Reference chain that establishes coordinate frame
-        all_chains = fetch_all_chains(ref_chr, '+', query_chr, '+', filename=self.chain_name)
-        master_chain, translocations = all_chains[0], all_chains[1:]  # skip the reference chain
-        self.mash_fasta_and_chain_together(master_chain, True)
-        for chain in translocations:
-            self.mash_fasta_and_chain_together(chain, False)
-
+        all_forward_chains = fetch_all_chains(ref_chr, query_chr, '+', self.chain_file)
+        for index, chain in enumerate(all_forward_chains):
+            self.mash_fasta_and_chain_together(chain, index == 0)
         # All the inversions ###
-        """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
-        I think it's a rule that you always flip the query strand instead."""
-        inversions = fetch_all_chains(ref_chr, '+', query_chr, '-', filename=self.chain_name)
-        self.query_sequence = rev_comp(self.query_sequence)
-        for chain in inversions:
-            self.mash_fasta_and_chain_together(chain, False)
+        self.do_all_chain_matches(ref_chr, query_chr, '-')
+
+        # From other contigs ##
+        for contig_name in self.referenced_contigs:
+            if contig_name == query_chr:  # already did this
+                continue
+            self.do_all_chain_matches(ref_chr, contig_name, '+')
+            self.do_all_chain_matches(ref_chr, contig_name, '-')
 
         names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
         names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
@@ -326,12 +358,29 @@ class ChainParser:
                           names['query_unique'],
                           names['query_gapped']])
 
+    def setup_for_reference_chromosome(self, chromosome_name):
+        if isinstance(chromosome_name, str):
+            chromosome_name = (chromosome_name, chromosome_name)
+        query_chr, ref_chr = chromosome_name
+        names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
+                 'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
+        self.read_seq_to_memory(query_chr, ref_chr, self.query_source, self.ref_source, names['query'], names['ref'])
+        self.referenced_contigs = []
+        for line in self.chain_file:
+            if line.startswith('chain'):
+                label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
+                if tName == ref_chr:
+                    self.referenced_contigs.append(qName)
+        # self.referenced_contigs = [line.split()[7] for line in self.chain_file if line.startswith('chain') and line.split()[2] == ref_chr]
+
+        return names, query_chr, ref_chr
+
 
 def do_chromosome(chr):
     parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
                          first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
-                         second_source='panTro4_chr20.fa',  # 'panTro4.fa',
-                         output_folder_prefix='panTro4_and_Hg38_alignment0_',
+                         second_source='panTro4.fa',  # 'panTro4_chr20.fa',
+                         output_folder_prefix='panTro4_and_Hg38_trans1_',
                          trial_run=True,
                          swap_columns=True)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
