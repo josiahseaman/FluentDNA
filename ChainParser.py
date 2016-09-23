@@ -17,7 +17,6 @@ def pluck_contig(chromosome_name, genome_source):
     """Scan through a genome fasta file looking for a matching contig name.  When it find it, find_contig collects
     the sequence and returns it as a string with no cruft."""
     chromosome_name = '>' + chromosome_name
-    contig_header = ''
     seq_collection = []
     printing = False
     with open(genome_source, 'r') as genome:
@@ -28,13 +27,12 @@ def pluck_contig(chromosome_name, genome_source):
                 if line == chromosome_name:
                     printing = True
                     print("Found", line)
-                    contig_header = line
                 elif printing:
                     break  # we've collected all sequence and reached the beginning of the next contig
             elif printing:  # This MUST come after the check for a '>'
                 seq_collection.append(line.upper())  # always upper case so equality checks work
     assert len(seq_collection), "Contig not found." + chromosome_name  # File contained these contigs:\n" + '\n'.join(headers)
-    return ''.join(seq_collection), contig_header
+    return ''.join(seq_collection)
 
 
 def first_word(string):
@@ -93,7 +91,7 @@ class ChainParser:
         # add the last contig to the list
         sequence = "".join(seq_collection)
         self.query_contigs[current_name] = sequence
-        print("Read FASTA Contigs in:", datetime.now() - start_time)
+        print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
 
     def read_seq_to_memory(self, query_chr, ref_chr, query_source, ref_source, query_file_name, ref_file_name):
@@ -140,11 +138,12 @@ class ChainParser:
 
 
     def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
+        assert len(chain.entries), "Chain has no data"
         for entry in chain.entries:  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
 
             # Debugging code
-            if self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
+            if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
                 break
 
             query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
@@ -257,22 +256,27 @@ class ChainParser:
             fasta[key] = os.path.join(destination_folder, fasta[key])
 
 
-    def do_all_relevant_chains(self):
+    def do_all_relevant_chains(self, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
+        if relevant_chains is None:
+            relevant_chains = self.relevant_chains
         previous = None
-        for chain in self.relevant_chains:
-            if chain.qStrand == '-':  # need to load rev_comp
-                if chain.qName not in self.stored_rev_comps:
-                    if len(self.query_contigs[chain.qName]) > 1000000:
-                        print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
-                    self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
-                    # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
-                self.query_sequence = self.stored_rev_comps[chain.qName]
+        for chain in relevant_chains:
+            if chain.qName in self.query_contigs:
+                if chain.qStrand == '-':  # need to load rev_comp
+                    if chain.qName not in self.stored_rev_comps:
+                        if len(self.query_contigs[chain.qName]) > 1000000:
+                            print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
+                        self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
+                        # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
+                    self.query_sequence = self.stored_rev_comps[chain.qName]
+                else:
+                    self.query_sequence = self.query_contigs[chain.qName]
+                self.mash_fasta_and_chain_together(chain, previous is None)  # first chain is the master alignment
+                previous = chain
             else:
-                self.query_sequence = self.query_contigs[chain.qName]
-            self.mash_fasta_and_chain_together(chain, previous is None)
-            previous = chain
+                print("No fasta source for", chain.qName)
 
 
     def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
@@ -293,10 +297,22 @@ class ChainParser:
 
         names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
-        self.ref_sequence, contig_header = pluck_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
+        self.ref_sequence = pluck_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
 
         # Reference chain that establishes coordinate frame
         self.do_all_relevant_chains()
+        # all_forward_chains = fetch_all_chains(ref_chr, query_chr, '+', self.chain_list)
+        # for index, chain in enumerate(all_forward_chains):
+        #     self.mash_fasta_and_chain_together(chain, index == 0)
+        # # All the inversions ###
+        # self.do_all_chain_matches(ref_chr, query_chr, '-')
+        #
+        # # From other contigs ##
+        # for contig_name in self.relevant_chains:
+        #     if contig_name == query_chr:  # already did this
+        #         continue
+        #     self.do_all_chain_matches(ref_chr, contig_name, '+')
+        #     self.do_all_chain_matches(ref_chr, contig_name, '-')
 
         names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
         names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
@@ -337,10 +353,10 @@ class ChainParser:
 
 
 def do_chromosome(chr):
-    parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
+    parser = ChainParser(chain_name='hg38ToPanTro4.sample.chain',
                          first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
                          second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                         output_folder_prefix='panTro4_and_Hg38_trans1_',
+                         output_folder_prefix='panTro4_and_Hg38_trans3_',
                          trial_run=True,
                          swap_columns=True)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
