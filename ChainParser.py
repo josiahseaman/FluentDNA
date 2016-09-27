@@ -37,7 +37,7 @@ def find_contig(chromosome_name, genome_source):
     return ''.join(seq_collection), contig_header
 
 
-def sample_chain_file(chromosome_name, filename='panTro4ToHg38.over.chain'):
+def sample_chain_file(chromosome_name, filename):
     chain = []
     with open(filename, 'r') as infile:
         printing = False
@@ -60,12 +60,15 @@ def sample_chain_file(chromosome_name, filename='panTro4ToHg38.over.chain'):
 
 
 class ChainParser:
-    def __init__(self):
+    extra_generated_fastas = []
+
+    def __init__(self, output_folder):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_sequence = ''
         self.query_sequence = ''
         self.ref_seq_gapped = ''
         self.query_seq_gapped = ''
+        self.output_folder = output_folder
 
     def read_seq_to_memory(self, chromosome_name, query_source, ref_source, query_file_name, ref_file_name):
         self.query_sequence, contig_header = find_contig(chromosome_name, query_source)
@@ -76,7 +79,7 @@ class ChainParser:
 
     def write_fasta_lines(self, filestream, seq):
         if isinstance(filestream, str):  # I'm actually given a file name and have to open it myself
-            file_name = filestream
+            file_name = os.path.join(self.output_folder, filestream)
             with open(file_name, 'w') as filestream:
                 self.do_write(filestream, 70, seq)
                 print("Wrote", file_name, len(self.query_sequence))
@@ -158,14 +161,16 @@ class ChainParser:
         return gapped_fasta_ref, gapped_fasta_query
 
     def write_gapped_fasta(self, filename_a, filename_b, query_collection, ref_collection):
-        gapped_fasta_query = os.path.splitext(filename_a)[0] + '_gapped.fa'
-        gapped_fasta_ref = os.path.splitext(filename_b)[0] + '_gapped.fa'
+        gapped_fasta_query = os.path.join(self.output_folder, os.path.splitext(filename_a)[0] + '_gapped.fa')
+        gapped_fasta_ref = os.path.join(self.output_folder, os.path.splitext(filename_b)[0] + '_gapped.fa')
         with open(gapped_fasta_query, 'w') as query_file:
             with open(gapped_fasta_ref, 'w') as ref_file:
                 self.ref_seq_gapped = ''.join(ref_collection)
                 self.query_seq_gapped = ''.join(query_collection)
                 self.write_fasta_lines(ref_file, self.ref_seq_gapped)
                 self.write_fasta_lines(query_file, self.query_seq_gapped)
+        self.extra_generated_fastas.append(gapped_fasta_query)
+        self.extra_generated_fastas.append(gapped_fasta_ref)
         return gapped_fasta_query, gapped_fasta_ref
 
     def print_only_unique(self, ref_gapped_name, query_gapped_name, is_master_alignment=True):
@@ -187,26 +192,30 @@ class ChainParser:
                     que_array[i] = 'X'
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        with open(ref_unique, 'w') as ref_filestream:
+        ref_unique_filepath = os.path.join(self.output_folder, ref_unique)
+        query_unique_filepath = os.path.join(self.output_folder, query_unique)
+        with open(ref_unique_filepath, 'w') as ref_filestream:
             self.write_fasta_lines(ref_filestream, ''.join(ref_array))
-        with open(query_unique, 'w') as query_filestream:
+        with open(query_unique_filepath, 'w') as query_filestream:
             self.write_fasta_lines(query_filestream, ''.join(que_array))
+        self.extra_generated_fastas.append(ref_unique_filepath)
+        self.extra_generated_fastas.append(query_unique_filepath)
 
         return ref_unique, query_unique
 
     def _parse_chromosome_in_chain(self, chromosome_name):
-        query_source = 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
-        ref_source = 'hg38.fa'
+        query_source = os.path.join("www-data", "to_process", "panTro4.fa")  # won't be copied to the final output, because it is sub-sampled for chromosome_name
+        ref_source = os.path.join("www-data", "to_process", "hg38.fa")
         fasta = {'query_name': chromosome_name + '_panTro4.fa', 'ref_name': chromosome_name + '_hg38.fa'}  # for collecting all the files names in a modifiable way
 
-        chain = sample_chain_file(chromosome_name)
+        chain = sample_chain_file(chromosome_name, os.path.join("www-data", "to_process", "panTro4ToHg38.over.chain"))
         self.read_seq_to_memory(chromosome_name, query_source, ref_source, fasta['query_name'], fasta['ref_name'])
         fasta['ref_gapped_name'], fasta['query_gapped_name'] = self.mash_fasta_and_chain_together(chain, fasta['query_name'], fasta['ref_name'], True)
         fasta['ref_unique_name'], fasta['query_unique_name'] = self.print_only_unique(fasta['ref_gapped_name'], fasta['query_gapped_name'])
         print("Finished creating gapped fasta files", fasta['query_name'], fasta['ref_name'])
 
-        folder_name = 'Parallel_' + chromosome_name + '_PanTro4_and_Hg38'
-        source_path = '.\\bin\\Release\\output\\dnadata\\'
+        # folder_name = 'Parallel_' + chromosome_name + '_PanTro4_and_Hg38'
+        # source_path = '.\\bin\\Release\\output\\dnadata\\'
 
     def parse_chain(self, chromosomes=None):  # TODO: Remove ability to not pass in chromosomes
         if not chromosomes:
@@ -214,11 +223,6 @@ class ChainParser:
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
         # TODO: handle Chr2A and Chr2B separately
-        # for chr in chromosomes:
-        #     ChainParser()._parse_chromosome_in_chain(chr)
-
-        def work_on_chromosome(chr):
+        for chr in chromosomes:
             self._parse_chromosome_in_chain(chr)
 
-        workers = multiprocessing.Pool(2)  # TODO: Watch your RAM and make variable?
-        workers.map(work_on_chromosome, chromosomes)

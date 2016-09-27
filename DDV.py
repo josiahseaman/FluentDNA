@@ -60,10 +60,11 @@ def ddv(args):
 
         if args.chain_file:
             print("Created Gapped and Unique Fastas from Chain File...")
-            chain_parser = ChainParser()
+            chain_parser = ChainParser(output_dir)
             chain_parser.parse_chain()
             n_genomes = 4
-            args.extra_fastas = []
+            args.extra_fastas = chain_parser.extra_generated_fastas
+            args.fasta = args.extra_fastas.pop()
             print("Done creating Gapped and Unique Fastas.")
 
         print("Creating Large Comparison Image from Input Fastas...")
