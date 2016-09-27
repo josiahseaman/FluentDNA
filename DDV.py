@@ -56,12 +56,26 @@ def ddv(args):
 
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
-        # layout = ParallelLayout(n_arguments - 3)
-        # additional_files = argv[4:]
-        # layout.process_file(input_file_path, folder, image, additional_files)
+        n_genomes = len(args.extra_fastas) + 1
+
+        if args.chain_file:
+            print("Created Gapped and Unique Fastas from Chain File...")
+            chain_parser = ChainParser()
+            chain_parser.parse_chain()
+            n_genomes = 4
+            args.extra_fastas = []
+            print("Done creating Gapped and Unique Fastas.")
+
+        print("Creating Large Comparison Image from Input Fastas...")
+        layout = ParallelLayout(n_genomes=n_genomes)
+        layout.process_file(args.input_fasta, output_dir, args.output_name, args.extra_fastas)
+        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
+        for extra_fasta in args.extra_fastas:
+            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
+        print("Done creating Large Image and HTML.")
 
         print("Creating Deep Zoom Structure from Generated Image...")
-        # create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
@@ -97,11 +111,11 @@ if __name__ == "__main__":
                         help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
                         choices=["original", "tiled", "parallel"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
-    parser.add_argument("-x", "--comparisonfasta",
+    parser.add_argument("-x", "--extrafastas",
                         nargs='+',
                         type=str,
                         help="Path to secondary FASTA file to process when doing Parallel Comparisons layout.",
-                        dest="second_fasta")
+                        dest="extra_fastas")
     parser.add_argument("-c", "--chainfile",
                         type=str,
                         help="Path to Chain File when doing Parallel Comparisons layout.",
@@ -117,19 +131,21 @@ if __name__ == "__main__":
     if args.layout_type == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
 
-    if args.image and (args.input_fasta or args.layout_type or args.second_fasta or args.chain_file):
+    if args.image and (args.input_fasta or args.layout_type or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.input_fasta:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
-    if args.layout_type == "parallel" and not args.second_fasta:
-        parser.error("When doing a Parallel layout, you must at least define 'comparisonfasta' if not 'comparisonfasta' and a 'chainfile'!")
-    if args.second_fasta and not args.layout_type:
+    if args.layout_type == "parallel" and not args.extra_fastas:
+        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
+    if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
-    if args.second_fasta and args.layout_type != "parallel":
-        parser.error("The 'comparisonfasta' argument is only used when doing a Parallel layout!")
+    if args.extra_fastas and args.layout_type != "parallel":
+        parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout_type != "parallel":
         parser.error("The 'chainfile' argument is only used when doing a Parallel layout!")
+    if args.chain_file and len(args.extra_fastas) > 1:
+        parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
 
     # Set post error checking defaults
     if not args.image and not args.layout_type:

@@ -194,16 +194,6 @@ class ChainParser:
 
         return ref_unique, query_unique
 
-    @staticmethod
-    def move_fasta_source_to_destination(fasta, folder_name, source_path):
-        destination_folder = os.path.join(source_path, folder_name)
-        if os.path.exists(destination_folder):
-            shutil.rmtree(destination_folder, ignore_errors=True)  # Make sure we can overwrite the contents
-        os.makedirs(destination_folder, exist_ok=False)
-        for key in fasta:
-            shutil.move(fasta[key], destination_folder)
-            fasta[key] = os.path.join(destination_folder, fasta[key])
-
     def _parse_chromosome_in_chain(self, chromosome_name):
         query_source = 'panTro4.fa'  # won't be copied to the final output, because it is sub-sampled for chromosome_name
         ref_source = 'hg38.fa'
@@ -217,7 +207,6 @@ class ChainParser:
 
         folder_name = 'Parallel_' + chromosome_name + '_PanTro4_and_Hg38'
         source_path = '.\\bin\\Release\\output\\dnadata\\'
-        self.move_fasta_source_to_destination(fasta, folder_name, source_path)
 
     def parse_chain(self, chromosomes=None):  # TODO: Remove ability to not pass in chromosomes
         if not chromosomes:
