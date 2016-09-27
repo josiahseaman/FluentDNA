@@ -18,47 +18,44 @@ from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
 
 
-def ddv(argv):
+def ddv(args):
     if getattr(sys, 'frozen', False):
         BASE_DIR = os.path.dirname(sys.executable)
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    input_file_path = argv[1]
-    chromosome_name = os.path.basename(input_file_path[:input_file_path.rfind(".")])  # name between /<path>/ and .png
-    image = chromosome_name
-    n_arguments = len(argv)
+    output_dir = os.path.join(BASE_DIR, "www-data", "dnadata", args.output_name)
 
-    if n_arguments == 2:  # Shortcut for old visualizations to create dz stack from existing large image
-        output_file = chromosome_name + '.dzi'
-        output_dir = os.path.dirname(input_file_path)
-        create_deepzoom_stack(input_file_path, os.path.join(output_dir, output_file))
+    print("Creating Chromosome Output Directory...")
+    os.makedirs(output_dir, exist_ok=True)
+    print("Done creating Directories.")
+
+    if not args.layout_type:  # Shortcut for old visualizations to create dz stack from existing large image
+        print("Creating Deep Zoom Structure for Existing Image...")
+        create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        shutil.copy(args.image, os.path.join(output_dir, os.path.basename(args.image)))
+        print("Done creating Deep Zoom Structure.")
+        # TODO: Copy over html structure
         sys.exit(0)
+    elif args.layout_type == "tiled":  # Typical Use Case
+        output_image = args.output_name if args.output_name.lower().endswith(".png") else args.output_name + ".png"
 
-    if n_arguments == 3:
-        raise ValueError("You need to specify an output folder and an image name")
-
-    if n_arguments >= 4:  # Typical use case
-        image = argv[3]
-        chromosome_name = image  # based on image name, not fasta
-        folder = os.path.join(argv[2], chromosome_name)  # place inside a folder with chromosome_name
-
-    if n_arguments > 4:  # Multiple inputs => Parallel genome column layout
-        pass
-        layout = ParallelLayout(n_arguments - 3)
-        additional_files = argv[4:]
-        layout.process_file(input_file_path, folder, image, additional_files)
-    else:  # Typical use case
         layout = TileLayout()
-        layout.process_file(input_file_path, folder, image)
+        layout.process_file(args.fasta_input, output_dir, output_image)
+        create_deepzoom_stack(os.path.join(output_dir, output_image), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        sys.exit(0)
+    elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
+        output_image = args.output_name if args.output_name.lower().endswith(".png") else args.output_name + ".png"
 
-    create_deepzoom_stack(os.path.join(folder, image + '.png'), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
-    print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
-    destination = os.path.join(folder, os.path.basename(input_file_path))
-    if not os.path.exists(destination):  # could have been created by ChainParser.py
-        shutil.copy(input_file_path, destination)  # copy source file
-
-    sys.exit(0)
+        # layout = ParallelLayout(n_arguments - 3)
+        # additional_files = argv[4:]
+        # layout.process_file(input_file_path, folder, image, additional_files)
+        create_deepzoom_stack(os.path.join(output_dir, output_image), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        sys.exit(0)
+    elif args.layout_type == "original":
+        raise NotImplementedError("Original layout is not implemented!")
+    else:
+        raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
 if __name__ == "__main__":
@@ -76,37 +73,40 @@ if __name__ == "__main__":
                         dest="input_fasta")
     parser.add_argument("-o", "--outname",
                         type=str,
-                        help="What to name the DeepZoom output DZI file.",
+                        help="What to name the DeepZoom output DZI file (not a path).",
                         dest="output_name")
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
                         choices=["original", "tiled", "parallel"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
-    parser.add_argument("-x", "--extrafastas",
+    parser.add_argument("-x", "--comparisonfasta",
                         nargs='+',
                         type=str,
-                        help="Path to secondary FASTA files to process when doing Parallel layout.",
-                        dest="extra_fastas")
+                        help="Path to secondary FASTA file to process when doing Parallel Comparisons layout.",
+                        dest="second_fasta")
     parser.add_argument("-c", "--chainfile",
                         type=str,
-                        help="Path to Chain File when doing Parallel layout.",
+                        help="Path to Chain File when doing Parallel Comparisons layout.",
                         dest="chain_file")
 
     args = parser.parse_args()
 
     # Errors
-    if args.image and (args.input_fasta or args.layout_type or args.extra_fastas or args.chain_file):
+    if args.layout_type == "original":
+        parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
+
+    if args.image and (args.input_fasta or args.layout_type or args.second_fasta or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.input_fasta:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
-    if args.layout_type == "parallel" and not args.extra_fastas:
-        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
-    if args.extra_fastas and not args.layout_type:
+    if args.layout_type == "parallel" and not args.second_fasta:
+        parser.error("When doing a Parallel layout, you must at least define 'comparisonfasta' if not 'comparisonfasta' and a 'chainfile'!")
+    if args.second_fasta and not args.layout_type:
         args.layout_type = "parallel"
-    if args.extra_fastas and args.layout_type != "parallel":
-        parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
+    if args.second_fasta and args.layout_type != "parallel":
+        parser.error("The 'comparisonfasta' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout_type != "parallel":
         parser.error("The 'chainfile' argument is only used when doing a Parallel layout!")
 
@@ -116,8 +116,6 @@ if __name__ == "__main__":
 
     # Set dependent defaults
     if not args.output_name:
-        args.output_name = os.path.basename(args.input_fasta)
-    if not args.output_name.lower().endswith(".dzi"):
-        args.output_name += ".dzi"
+        args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
 
-    ddv(sys.argv)  # TODO: Pass in the newly parsed args
+    ddv(args)
