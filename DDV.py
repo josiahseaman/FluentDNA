@@ -12,6 +12,8 @@ import sys
 import shutil
 import argparse
 
+from http import server
+
 from DDVUtils import create_deepzoom_stack
 from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
@@ -42,11 +44,16 @@ def ddv(args):
         layout = TileLayout()
         layout.process_file(args.input_fasta, output_dir, args.output_name)
         shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
-        print("Done creating Large Image.")
+        print("Done creating Large Image and HTML.")
 
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
+
+        if args.run_server:
+            handler_class = server.BaseHTTPRequestHandler
+            server.test(HandlerClass=handler_class, port=8000, bind='')
+
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         # layout = ParallelLayout(n_arguments - 3)
@@ -56,6 +63,11 @@ def ddv(args):
         print("Creating Deep Zoom Structure from Generated Image...")
         # create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
+
+        if args.run_server:
+            handler_class = server.BaseHTTPRequestHandler
+            server.test(HandlerClass=handler_class, port=8000, bind='')
+
         sys.exit(0)
     elif args.layout_type == "original":
         raise NotImplementedError("Original layout is not implemented!")
@@ -94,6 +106,10 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to Chain File when doing Parallel Comparisons layout.",
                         dest="chain_file")
+    parser.add_argument("-s", "--server",
+                        action='store_true',
+                        help="Run Web Server after computing.",
+                        dest="run_server")
 
     args = parser.parse_args()
 
