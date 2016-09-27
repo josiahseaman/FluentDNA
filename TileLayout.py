@@ -9,6 +9,8 @@ from DDVUtils import LayoutLevel, Contig, pretty_contig_name, multi_line_height,
 
 
 class TileLayout:
+    final_output_location = None
+
     def __init__(self, use_fat_headers=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
@@ -238,7 +240,8 @@ class TileLayout:
         del self.pixels
         del self.draw
         print("-- Writing:", output_file_name, "--")
-        self.image.save(os.path.join(output_folder, output_file_name + '.png'), 'PNG')
+        self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
+        self.image.save(self.final_output_location, 'PNG')
         del self.image
 
     def max_dimensions(self, image_length):

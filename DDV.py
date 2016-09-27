@@ -38,19 +38,24 @@ def ddv(args):
         # TODO: Copy over html structure
         sys.exit(0)
     elif args.layout_type == "tiled":  # Typical Use Case
-        output_image = args.output_name if args.output_name.lower().endswith(".png") else args.output_name + ".png"
-
+        print("Creating Large Image from Input Fasta...")
         layout = TileLayout()
-        layout.process_file(args.fasta_input, output_dir, output_image)
-        create_deepzoom_stack(os.path.join(output_dir, output_image), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        layout.process_file(args.input_fasta, output_dir, args.output_name)
+        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
+        print("Done creating Large Image.")
+
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
-        output_image = args.output_name if args.output_name.lower().endswith(".png") else args.output_name + ".png"
-
         # layout = ParallelLayout(n_arguments - 3)
         # additional_files = argv[4:]
         # layout.process_file(input_file_path, folder, image, additional_files)
-        create_deepzoom_stack(os.path.join(output_dir, output_image), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+
+        print("Creating Deep Zoom Structure from Generated Image...")
+        # create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
         sys.exit(0)
     elif args.layout_type == "original":
         raise NotImplementedError("Original layout is not implemented!")
