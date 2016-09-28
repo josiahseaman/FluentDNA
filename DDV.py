@@ -36,6 +36,7 @@ __version__ = '1.0.0'
 import shutil
 import argparse
 import psutil
+import subprocess
 
 from http import server
 
@@ -43,6 +44,41 @@ from DDVUtils import create_deepzoom_stack
 from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
+
+
+if sys.platform == 'win32':
+    OS_DIR = 'windows'
+    EXTENSION = '.exe'
+    SCRIPT = '.cmd'
+else:
+    OS_DIR = 'linux'
+    EXTENSION = ''
+    SCRIPT = ''
+
+
+def query_yes_no(question, default='yes'):
+    valid = {'yes': True, 'y': True, "no": False, 'n': False}
+
+    if default is None:
+        prompt = " [y/n] "
+    elif default in ['yes', 'y']:
+        prompt = " [Y/n] "
+    elif default in ['no', 'n']:
+        prompt = " [y/N] "
+    else:
+        raise ValueError("Invalid default answer!")
+
+    while True:
+        sys.stdout.write('\n' + question + prompt)
+
+        choice = input().lower()
+
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no'.\n")
 
 
 def ddv(args):
@@ -115,6 +151,52 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
+def launch_external_program_and_exit(launch, code=0, close_self=True, cmd_args=None, launch_args=None):
+    if not launch_args:
+        launch_args = {}
+    if not cmd_args:
+        cmd_args = []
+    launch = [launch, ]
+    if cmd_args:
+        for cmd_arg in cmd_args:
+            launch.append(cmd_arg)
+    launch = ' '.join(launch)
+    if sys.platform == 'win32':  # Yes, this is also x64.
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        DETACHED_PROCESS = 0x00000008
+        launch_args.update(creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
+    else:
+        launch_args.update(preexec_fn=os.setsid)
+        launch_args.update(start_new_session=True)
+    subprocess.Popen(launch, stdin=subprocess.PIPE, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **launch_args)
+    if close_self:
+        sys.exit(code)
+
+
+def check_update():
+    new_version = None
+    try:
+        npu = os.path.join(BASE_DIR, 'npu'+EXTENSION)
+        process = subprocess.Popen(npu + " --check_update --silent", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            output, error = process.communicate(timeout=60000)
+            exit_code = process.returncode
+        except:
+            exit_code = 1
+            output = None
+        try:
+            process.kill()
+        except:
+            pass
+
+        if output:
+            new_version = output.splitlines()[-1].decode().strip()
+    except:
+        print("Unable to get DDV Version!")
+
+    return new_version
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
@@ -181,6 +263,23 @@ if __name__ == "__main__":
             print("\nPress any key to exit...")
             input()
             sys.exit(1)
+
+    if getattr(sys, 'frozen', False):
+        print("Checking for updates...")
+        version = check_update()
+        if version and version != 'False' and version != '0':
+            print("New version available:", version)
+            if query_yes_no("Do you want to update now?"):
+                try:
+                    print("Launching Newline Program Updater...")
+                    npu = os.path.join(BASE_DIR, 'npu'+EXTENSION)
+                    launch_external_program_and_exit(npu)#cmd_args=['--silent'])
+                except:
+                    print("Failed to run the Program Updater!")
+            else:
+                print("Skipping update.")
+        else:
+            print("No updates currently.")
 
     # Errors
     if args.layout_type == "original":
