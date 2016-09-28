@@ -18,6 +18,7 @@ def pluck_contig(chromosome_name, genome_source):
     """Scan through a genome fasta file looking for a matching contig name.  When it find it, find_contig collects
     the sequence and returns it as a string with no cruft."""
     chromosome_name = '>' + chromosome_name
+    print("Searching for", chromosome_name)
     seq_collection = []
     printing = False
     with open(genome_source, 'r') as genome:
@@ -95,7 +96,7 @@ class ChainParser:
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
 
-    def read_seq_to_memory(self, query_chr, ref_chr, query_source, ref_source, query_file_name, ref_file_name):
+    def read_query_seq_to_memory(self, query_chr, query_source):
         self.read_contigs(query_source)
         self.query_sequence = self.query_contigs[query_chr]
 
@@ -149,7 +150,7 @@ class ChainParser:
 
             if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # 26 lines is the height of a label
                 # Don't show intervening sequence
-                # 14 Skipping display of large gaps formed by bad netting.
+                # #14 Skipping display of large gaps formed by bad netting.
                 # TODO insert header
                 gap_query, gap_ref = 0, 0
                 # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
@@ -353,7 +354,7 @@ class ChainParser:
         query_chr, ref_chr = chromosome_name
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
-        self.read_seq_to_memory(query_chr, ref_chr, self.query_source, self.ref_source, names['query'], names['ref'])
+        self.read_query_seq_to_memory(query_chr, self.query_source)
 
         self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
 
