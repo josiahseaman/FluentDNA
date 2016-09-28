@@ -29,7 +29,7 @@ class UniquenessViz(ChainParser):
         """Start with whole chromosome, subtract coverage from there"""
         self.uncovered_areas = [(0, len(self.ref_sequence))]  # TODO: zero indexed?
         master = fetch_all_chains('chr20', 'chr20', '+', self.chain_list)[0]
-        ref_pointer = 0  # where we are in the reference  Todo: or is it 1?
+        ref_pointer = master.tStart  # where we are in the reference  Todo: or is it 1?
         scrutiny_index = 0
         for entry in master.entries:
             first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), (ref_pointer, ref_pointer + entry.size))
@@ -56,11 +56,12 @@ class UniquenessViz(ChainParser):
         uniq_collection = []  # of strings
         ref_unique_name = ref_name[:-10] + '_unique.fa'
         self.find_zero_coverage_areas()
-        for line in self.uncovered_areas[:100]:
-            print(line)
+        for region in self.uncovered_areas:
+            if region[1] - region[0] > 20:
+                uniq_collection.append(self.ref_sequence[region[0]: region[1]])
 
-        # with open(ref_unique_name, 'w') as ref_filestream:
-        #     self.write_fasta_lines(ref_filestream, ''.join(uniq_collection))
+        with open(ref_unique_name, 'w') as ref_filestream:
+            self.write_fasta_lines(ref_filestream, ''.join(uniq_collection))
         return ref_unique_name
 
 
@@ -80,8 +81,8 @@ class UniquenessViz(ChainParser):
         if True:  #self.trial_run:  # these files are never used in the viz
             del names['ref']
             del names['query']
-        # self.move_fasta_source_to_destination(names, folder_name, source_path)
-        # DDV.DDV_main(['DDV', names['ref_unique'], source_path, folder_name])
+        self.move_fasta_source_to_destination(names, folder_name, source_path)
+        DDV.DDV_main(['DDV', names['ref_unique'], source_path, folder_name])
 
 
 
@@ -89,7 +90,7 @@ def do_chromosome(chr):
     parser = UniquenessViz(chain_name='hg38ToPanTro4.over.chain',
                            first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
                            second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                           output_folder_prefix='Hg38_unique_vs_panTro4_',
+                           output_folder_prefix='Hg38_unique20_vs_panTro4_',
                            trial_run=False)
     parser.main(chr)
 
