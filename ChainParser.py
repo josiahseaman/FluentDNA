@@ -3,6 +3,7 @@ import shutil
 from array import array
 from collections import defaultdict
 from datetime import datetime
+from Bio import Seq
 
 from ChainFiles import chain_file_to_list, fetch_all_chains
 
@@ -146,14 +147,21 @@ class ChainParser:
             if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
                 break
 
+            if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # 26 lines is the height of a label
+                # Don't show intervening sequence
+                # 14 Skipping display of large gaps formed by bad netting.
+                # TODO insert header
+                gap_query, gap_ref = 0, 0
+                # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
+
             query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
             query_snippet = query_seq_absolute + 'X' * gap_query
-            query_pointer += size + gap_ref  # alignable and unalignable block concatenated together
+            query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             self.query_seq_gapped.extend(query_snippet)
 
             ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * gap_ref
             ref_snippet += self.ref_sequence[ref_pointer + size: ref_pointer + size + gap_query]
-            ref_pointer += size + gap_query  # two blocks of sequence separated by gap
+            ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
             self.ref_seq_gapped.extend(ref_snippet)
 
             if len(ref_snippet) != len(query_snippet):
@@ -353,10 +361,10 @@ class ChainParser:
 
 
 def do_chromosome(chr):
-    parser = ChainParser(chain_name='hg38ToPanTro4.sample.chain',
+    parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
                          first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
                          second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                         output_folder_prefix='panTro4_and_Hg38_trans3_',
+                         output_folder_prefix='panTro4_and_Hg38_trans0_',
                          trial_run=True,
                          swap_columns=True)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
