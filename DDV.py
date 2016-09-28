@@ -9,8 +9,33 @@ Josiah's "Tiled Layout" algorithm which is also in DDVLayoutManager.cs.
 """
 import os
 import sys
+import multiprocessing
+
+
+print("Setting up Python...")
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin')
+    os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin', 'env')
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+print('Running in:', BASE_DIR)
+
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, 'bin'))
+sys.path.append(os.path.join(BASE_DIR, 'bin', 'env'))
+
+os.chdir(BASE_DIR)
+
+multiprocessing.freeze_support()
+
+# ----------BEGIN MAIN PROGRAM----------
+__version__ = '1.0.0'
+
 import shutil
 import argparse
+import psutil
 
 from http import server
 
@@ -95,6 +120,10 @@ if __name__ == "__main__":
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
                                      add_help=True)
 
+    parser = argparse.ArgumentParser(prog='DDV.exe')
+    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
+    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
+
     parser.add_argument("-i", "--image",
                         type=str,
                         help="Path to already laid out big image to process with DeepZoom. No layout will be performed if an image is passed in.",
@@ -132,6 +161,26 @@ if __name__ == "__main__":
                         dest="run_server")
 
     args = parser.parse_args()
+
+    # Respond to an updater query
+    if args.update_name:
+        print("DDV")
+        sys.exit(0)
+    elif args.version:
+        print(__version__)
+        sys.exit(0)
+
+    # Check that another instance of the program isn't running
+    for proc in psutil.process_iter():
+        try:
+            proc_name = proc.name().lower()
+        except psutil.AccessDenied as e:
+            continue
+        if 'DDV'.lower() in proc_name:  # TODO: Is DDV actually the process name? Hopefully...
+            print("\nThere is already an instance of ADSM running!")
+            print("\nPress any key to exit...")
+            input()
+            sys.exit(1)
 
     # Errors
     if args.layout_type == "original":
