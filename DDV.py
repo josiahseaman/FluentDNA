@@ -60,7 +60,7 @@ def ddv(args):
 
         if args.chain_file:
             print("Created Gapped and Unique Fastas from Chain File...")
-            chain_parser = ChainParser(output_dir)
+            chain_parser = ChainParser(args.fasta, args.extra_fastas[0], args.chain_file, output_dir)
             chain_parser.parse_chain()
             n_genomes = 4
             args.extra_fastas = chain_parser.extra_generated_fastas
@@ -154,6 +154,9 @@ if __name__ == "__main__":
 
     # Set dependent defaults
     if not args.output_name:
-        args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
+        if args.chain_file:
+            args.output_name = os.path.splitext(os.path.basename(args.input_fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
+        else:
+            args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
 
     ddv(args)
