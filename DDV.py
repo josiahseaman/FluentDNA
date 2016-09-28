@@ -35,10 +35,9 @@ __version__ = '1.0.0'
 
 import shutil
 import argparse
-import psutil
 import subprocess
 
-from http import server
+# from http import server
 
 from DDVUtils import create_deepzoom_stack
 from TileLayout import TileLayout
@@ -112,8 +111,9 @@ def ddv(args):
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
-            handler_class = server.BaseHTTPRequestHandler
-            server.test(HandlerClass=handler_class, port=8000, bind='')
+            pass
+            # handler_class = server.BaseHTTPRequestHandler
+            # server.test(HandlerClass=handler_class, port=8000, bind='')
 
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -141,8 +141,9 @@ def ddv(args):
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
-            handler_class = server.BaseHTTPRequestHandler
-            server.test(HandlerClass=handler_class, port=8000, bind='')
+            pass
+            # handler_class = server.BaseHTTPRequestHandler
+            # server.test(HandlerClass=handler_class, port=8000, bind='')
 
         sys.exit(0)
     elif args.layout_type == "original":
@@ -251,18 +252,6 @@ if __name__ == "__main__":
     elif args.version:
         print(__version__)
         sys.exit(0)
-
-    # Check that another instance of the program isn't running
-    for proc in psutil.process_iter():
-        try:
-            proc_name = proc.name().lower()
-        except psutil.AccessDenied as e:
-            continue
-        if 'DDV'.lower() in proc_name:  # TODO: Is DDV actually the process name? Hopefully...
-            print("\nThere is already an instance of ADSM running!")
-            print("\nPress any key to exit...")
-            input()
-            sys.exit(1)
 
     if getattr(sys, 'frozen', False):
         print("Checking for updates...")
