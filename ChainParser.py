@@ -216,8 +216,6 @@ class ChainParser:
         print("Finished creating gapped fasta files", fasta['query_name'], fasta['ref_name'])
 
     def parse_chain(self, chromosomes=None):  # TODO: Remove ability to not pass in chromosomes
-        if not chromosomes:
-            chromosomes = ['chr21']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
         # TODO: handle Chr2A and Chr2B separately

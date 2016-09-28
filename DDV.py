@@ -60,8 +60,8 @@ def ddv(args):
 
         if args.chain_file:
             print("Created Gapped and Unique Fastas from Chain File...")
-            chain_parser = ChainParser(args.fasta, args.extra_fastas[0], args.chain_file, output_dir)
-            chain_parser.parse_chain()
+            chain_parser = ChainParser(args.input_fasta, args.extra_fastas[0], args.chain_file, output_dir)
+            chain_parser.parse_chain(args.chromosomes)
             n_genomes = 4
             args.extra_fastas = chain_parser.extra_generated_fastas
             args.fasta = args.extra_fastas.pop()
@@ -121,6 +121,11 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to Chain File when doing Parallel Comparisons layout.",
                         dest="chain_file")
+    parser.add_argument("-ch", "--chromosomes",
+                        nargs='+',
+                        type=str,
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        dest="chromosomes")
     parser.add_argument("-s", "--server",
                         action='store_true',
                         help="Run Web Server after computing.",
@@ -141,6 +146,8 @@ if __name__ == "__main__":
         parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
+    if args.chromosomes and not args.layout_type == "parallel" or not args.chain_file:
+        parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
     if args.extra_fastas and args.layout_type != "parallel":
         parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout_type != "parallel":
@@ -151,6 +158,9 @@ if __name__ == "__main__":
     # Set post error checking defaults
     if not args.image and not args.layout_type:
         args.layout_type = "tiled"
+
+    if args.chain_file and not args.chromosomes:
+        args.chromosomes = ['chr21']
 
     # Set dependent defaults
     if not args.output_name:
