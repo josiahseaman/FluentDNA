@@ -62,8 +62,6 @@ def fetch_all_chains(ref_chr, query_chr, query_strand, chain_list, ref_strand='+
     collected = []
     for chain in chain_list:
         if match(ref_chr, chain.tName) and match(query_chr, chain.qName) and match(ref_strand, chain.tStrand) and match(query_strand, chain.qStrand):
-            if int(chain.tEnd) - int(chain.tStart) > 5000:
-                print(str(chain))
             collected.append(chain)
     print(ref_chr, query_chr, query_strand, ":", len(collected))
     return collected
