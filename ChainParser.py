@@ -244,8 +244,8 @@ class ChainParser:
                     que_uniq_array[i] = 'X'
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = query_gapped_name[:-10] + '_unique.fa'
-        ref_unique_name = ref_gapped_name[:-10] + '_unique.fa'
+        query_unique_name = query_gapped_name[:query_gapped_name.rindex('.')] + '_unique.fa'
+        ref_unique_name = ref_gapped_name[:ref_gapped_name.rindex('.')] + '_unique.fa'
         with open(query_unique_name, 'w') as query_filestream:
             self.write_fasta_lines(query_filestream, ''.join(query_uniq_array))
         with open(ref_unique_name, 'w') as ref_filestream:
@@ -306,22 +306,9 @@ class ChainParser:
 
         names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
-        self.ref_sequence = pluck_contig(ref_chr, names['ref'])  # only need the reference chromosome read, skip the others
+        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
-        # Reference chain that establishes coordinate frame
         self.do_all_relevant_chains()
-        # all_forward_chains = fetch_all_chains(ref_chr, query_chr, '+', self.chain_list)
-        # for index, chain in enumerate(all_forward_chains):
-        #     self.mash_fasta_and_chain_together(chain, index == 0)
-        # # All the inversions ###
-        # self.do_all_chain_matches(ref_chr, query_chr, '-')
-        #
-        # # From other contigs ##
-        # for contig_name in self.relevant_chains:
-        #     if contig_name == query_chr:  # already did this
-        #         continue
-        #     self.do_all_chain_matches(ref_chr, contig_name, '+')
-        #     self.do_all_chain_matches(ref_chr, contig_name, '-')
 
         names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
         names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
@@ -363,10 +350,10 @@ class ChainParser:
 
 def do_chromosome(chr):
     parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
-                         first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
+                         first_source='HongKong\\hg38.fa',  # 'hg38_chr20.fa',  #
                          second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                         output_folder_prefix='panTro4_and_Hg38_trans0_',
-                         trial_run=True,
+                         output_folder_prefix='panTro4_and_Hg38_',
+                         trial_run=False,
                          swap_columns=True)
     # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
     #                      ref_source='HongKong\\susie3_agp.fasta',
@@ -378,7 +365,7 @@ def do_chromosome(chr):
 
 
 if __name__ == '__main__':
-    chromosomes = [('chr20', 'chr20')]  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
+    chromosomes = ['chrY']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
     # TODO: handle Chr2A and Chr2B separately
     for chr in chromosomes:
         do_chromosome(chr)
