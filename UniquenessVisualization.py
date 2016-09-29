@@ -45,7 +45,7 @@ class UniquenessViz(ChainParser):
     def find_zero_coverage_areas(self, ref_chr):
         """Start with whole chromosome, subtract coverage from there"""
         self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
-        all_chains = fetch_all_chains(ref_chr, ref_chr, '+', self.chain_list)
+        all_chains = fetch_all_chains(ref_chr, None, None, self.chain_list)
         for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
             ref_pointer = chain.tStart  # where we are in the reference
             for entry in chain.entries:
@@ -91,7 +91,7 @@ class UniquenessViz(ChainParser):
 
     def write_zero_coverage_areas(self, ref_name, ref_chr):
         uniq_collection = []  # of strings
-        ref_unique_name = ref_name[:-10] + '_unique.fa'
+        ref_unique_name = ref_name[:ref_name.rindex('.')] + '_unique.fa'
         self.find_zero_coverage_areas(ref_chr)
         for region in self.uncovered_areas:
             uniq_collection.append(self.ref_sequence[region.begin: region.end].replace('N', ''))
@@ -123,19 +123,21 @@ class UniquenessViz(ChainParser):
 
 
 def do_chromosome(chr):
-    parser = UniquenessViz(chain_name='hg38ToPanTro4.over.chain',
-                           first_source='HongKong\\hg38.fa',
-                           second_source='',
-                           output_folder_prefix='Hg38_unique_vs_panTro4_')
-    parser.main(chr)
+    try:
+        parser = UniquenessViz(chain_name='hg38ToPanTro4.over.chain',
+                               first_source='HongKong\\hg38.fa',
+                               second_source='',
+                               output_folder_prefix='Hg38_unique_vs_panTro4_')
+        parser.main(chr)
+    except BaseException as e:
+        print(e)
+        print("Continuing to next task...")
 
 
 if __name__ == '__main__':
-    # do_chromosome('chr21')
-    chromosomes = 'chr1 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr21 chr22 chrX'.split()
-    # TODO: handle Chr2A and Chr2B separately
-
+    # do_chromosome('chr20')  chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13
     import multiprocessing
+    chromosomes = 'chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY'.split()
     workers = multiprocessing.Pool(6)  # number of simultaneous processes.  Watch your RAM usage
     workers.map(do_chromosome, chromosomes)
 
