@@ -1,19 +1,33 @@
+from collections import namedtuple
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser, pluck_contig
+
+
+Span = namedtuple('Span', ['begin', 'end'])
+def compare_start(self, other_int):
+    return self.begin < other_int
+Span.__lt__ = compare_start
 
 
 def remove_from_range(original, remove_this):
     """Original is a range defined by (start, end).  Remove a middle range 'remove_this'
     with a (start, end) and you end up with a pair of two ranges on either side of the removal.
     Special casing for the removal overlapping the beginning or end."""
-    first = (original[0], remove_this[0])
-    second = (remove_this[1], original[1])
+    assert isinstance(original, Span) and isinstance(remove_this, Span)
+    # doesn't even overlap
+    if remove_this.end < original.begin \
+            or remove_this.begin >= original.end \
+            or (remove_this.end == original.begin and remove_this.begin != remove_this.end):
+        raise IndexError("Remove_this doesn't overlap original at all %s %s" % (str(remove_this), str(original)))
 
-    if remove_this[0] <= original[0] and remove_this[1] >= original[1]:  # delete the whole thing
+    first = Span(original.begin, remove_this.begin)
+    second = Span(remove_this.end, original.end)
+
+    if remove_this.begin <= original.begin and remove_this.end >= original.end:  # delete the whole thing
         return None, None
-    if remove_this[0] <= original[0] < remove_this[1]:  # overlaps start
+    if remove_this.begin <= original.begin < remove_this.end:  # overlaps start
         return None, second
-    if remove_this[1] >= original[1] > remove_this[0]:  # overlaps ending
+    if remove_this.end >= original.end > remove_this.begin:  # overlaps ending
         return first, None
 
     return first, second  # happy path
@@ -27,29 +41,33 @@ class UniquenessViz(ChainParser):
 
     def find_zero_coverage_areas(self):
         """Start with whole chromosome, subtract coverage from there"""
-        self.uncovered_areas = [(0, len(self.ref_sequence))]  # TODO: zero indexed?
-        master = fetch_all_chains('chr20', 'chr20', '+', self.chain_list)[0]
-        ref_pointer = master.tStart  # where we are in the reference  Todo: or is it 1?
-        scrutiny_index = 0
-        for entry in master.entries:
-            first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), (ref_pointer, ref_pointer + entry.size))
-            while second is None:  # eating the tail, this could be multiple ranges before the end is satisfied
-                if first is not None:  # leaving behind a beginning, advance scrutiny_index by 1
+        self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
+        chain = fetch_all_chains('chr20', 'chr20', '+', self.chain_list)[0]
+        # for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
+        if True:
+            ref_pointer = chain.tStart  # where we are in the reference
+            scrutiny_index = 0  # Todo: do a binary search for scrutiny instead of incrementing
+            # Find the start region that's right before <= the end of entry
+            for entry in chain.entries:
+                scrutiny_index = scrutiny_index  # Binary search
+                first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), Span(ref_pointer, ref_pointer + entry.size))
+                while second is None:  # eating the tail, this could be multiple ranges before the end is satisfied
+                    if first is not None:  # leaving behind a beginning, advance scrutiny_index by 1
+                        self.uncovered_areas.insert(scrutiny_index, first)
+                        scrutiny_index += 1  # insert first, but the next thing to be checked is whether it affects the next area as well
+                    else:
+                        pass  # if both are None, then we've just deleted the uncovered entry
+                    # check again on the next one
+                    first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), Span(ref_pointer, ref_pointer + entry.size))
+
+                if first is None:
+                    self.uncovered_areas.insert(scrutiny_index, second)
+                elif None not in [first, second]:  # neither are None
                     self.uncovered_areas.insert(scrutiny_index, first)
-                    scrutiny_index += 1  # insert first, but the next thing to be checked is whether it affects the next area as well
-                else:
-                    pass  # if both are None, then we've just deleted the uncovered entry
-                # check again on the next one
-                first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), (ref_pointer, ref_pointer + entry.size))
+                    scrutiny_index += 1  # since chain entries don't overlap themselves, we're always mutating the next entry
+                    self.uncovered_areas.insert(scrutiny_index, second)
 
-            if first is None:
-                self.uncovered_areas.insert(scrutiny_index, second)
-            elif None not in [first, second]:  # neither are None
-                self.uncovered_areas.insert(scrutiny_index, first)
-                scrutiny_index += 1  # since chain entries don't overlap themselves, we're always mutating the next entry
-                self.uncovered_areas.insert(scrutiny_index, second)
-
-            ref_pointer += entry.size + entry.gap_query
+                ref_pointer += entry.size + entry.gap_query
 
 
     def write_zero_coverage_areas(self, ref_name):
@@ -57,8 +75,8 @@ class UniquenessViz(ChainParser):
         ref_unique_name = ref_name[:-10] + '_unique.fa'
         self.find_zero_coverage_areas()
         for region in self.uncovered_areas:
-            if region[1] - region[0] > 20:
-                uniq_collection.append(self.ref_sequence[region[0]: region[1]])
+            if region.end - region.begin > 20:
+                uniq_collection.append(self.ref_sequence[region.begin: region.end])
 
         with open(ref_unique_name, 'w') as ref_filestream:
             self.write_fasta_lines(ref_filestream, ''.join(uniq_collection))
@@ -90,7 +108,7 @@ def do_chromosome(chr):
     parser = UniquenessViz(chain_name='hg38ToPanTro4.over.chain',
                            first_source='hg38_chr20.fa',  # 'HongKong\\hg38.fa',
                            second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                           output_folder_prefix='Hg38_unique20_vs_panTro4_',
+                           output_folder_prefix='Hg38_unique_anywhere_vs_panTro4_',
                            trial_run=False)
     parser.main(chr)
 
