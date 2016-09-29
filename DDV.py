@@ -217,17 +217,17 @@ if __name__ == "__main__":
                         dest="input_fasta")
     parser.add_argument("-o", "--outname",
                         type=str,
-                        help="What to name the DeepZoom output DZI file (not a path).",
+                        help="What to name the output folder (not a path). Defaults to name of the fasta file.",
                         dest="output_name")
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
-                        choices=["original", "tiled", "parallel"],
+                        choices=["original", "tiled", "parallel", "unique-parallel"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
                         type=str,
-                        help="Path to secondary FASTA file to process when doing Parallel Comparisons layout.",
+                        help="Path to secondary FASTA files to process when doing Parallel layout.",
                         dest="extra_fastas")
     parser.add_argument("-c", "--chainfile",
                         type=str,
@@ -262,15 +262,15 @@ if __name__ == "__main__":
     if not args.image and not args.input_fasta:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
-    if args.layout_type == "parallel" and not args.extra_fastas:
+    if "parallel" in args.layout_type and not args.extra_fastas:
         parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
-    if args.chromosomes and not args.layout_type == "parallel" or not args.chain_file:
+    if args.chromosomes and not args.chain_file:
         parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
-    if args.extra_fastas and args.layout_type != "parallel":
+    if args.extra_fastas and "parallel" not in args.layout_type:
         parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
-    if args.chain_file and args.layout_type != "parallel":
+    if args.chain_file and "parallel" not in args.layout_type:
         parser.error("The 'chainfile' argument is only used when doing a Parallel layout!")
     if args.chain_file and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
@@ -286,6 +286,8 @@ if __name__ == "__main__":
     if not args.output_name:
         if args.chain_file:
             args.output_name = os.path.splitext(os.path.basename(args.input_fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
+            if args.layout_type == "unique-parallel":
+                args.output_name += "_UNIQUE"
         else:
             args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
 
