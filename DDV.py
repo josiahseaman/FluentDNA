@@ -8,139 +8,285 @@ self.python file contains basic image handling methods.  It also contains a re-i
 Josiah's "Tiled Layout" algorithm which is also in DDVLayoutManager.cs.
 """
 import os
-import re as regex
 import sys
-import textwrap
+import multiprocessing
+
+
+print("Setting up Python...")
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin')
+    os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin', 'env')
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+print('Running in:', BASE_DIR)
+
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, 'bin'))
+sys.path.append(os.path.join(BASE_DIR, 'bin', 'env'))
+
+os.chdir(BASE_DIR)
+
+multiprocessing.freeze_support()
+
+# ----------BEGIN MAIN PROGRAM----------
+__version__ = '1.0.0'
 
 import shutil
-from PIL import ImageDraw
-import deepzoom
+import argparse
+import subprocess
+
+# from http import server
+
+from DDVUtils import create_deepzoom_stack
+from TileLayout import TileLayout
+from ParallelGenomeLayout import ParallelLayout
+from ChainParser import ChainParser
 
 
+if sys.platform == 'win32':
+    OS_DIR = 'windows'
+    EXTENSION = '.exe'
+    SCRIPT = '.cmd'
+else:
+    OS_DIR = 'linux'
+    EXTENSION = ''
+    SCRIPT = ''
 
 
-class LayoutLevel:
-    def __init__(self, name, modulo, chunk_size=None, padding=0, thickness=1, levels=None):
-        self.modulo = modulo
-        if chunk_size is not None:
-            self.chunk_size = chunk_size
-            self._padding = padding
-            self.thickness = thickness
-        else:
-            child = levels[-1]
-            self.chunk_size = child.modulo * child.chunk_size
-            self._padding = 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
-            last_parallel = levels[-2]
-            self.thickness = last_parallel.modulo * last_parallel.thickness + self.padding
+def query_yes_no(question, default='yes'):
+    valid = {'yes': True, 'y': True, "no": False, 'n': False}
 
-    @property
-    def padding(self):
-        return self._padding
-
-    @padding.setter
-    def padding(self, value):
-        original_thickness = self.thickness - self._padding
-        self._padding = value
-        self.thickness = original_thickness + value
-
-
-class Contig:
-    def __init__(self, name, seq, reset_padding, title_padding, tail_padding, title_index, title_length):
-        self.name = name
-        self.seq = seq
-        self.reset_padding = reset_padding
-        self.title_padding = title_padding
-        self.tail_padding = tail_padding
-        self.nuc_title_start = title_index
-        self.nuc_seq_start = title_index + title_length
-
-
-def multi_line_height(font, multi_line_title, txt):
-    sum_line_spacing = ImageDraw.Draw(txt).multiline_textsize(multi_line_title, font)[1]
-    descender = font.getsize('y')[1] - font.getsize('A')[1]
-    return sum_line_spacing + descender
-
-
-def pretty_contig_name(contig, title_width, title_lines):
-    """Since textwrap.wrap break on whitespace, it's important to make sure there's whitespace
-    where there should be.  Contig names don't tend to be pretty."""
-    pretty_name = contig.name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
-    pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)
-    pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)  # don't ask
-    if title_width < 20:
-        # For small spaces, cram every last bit into the line labels, there's not much room
-        pretty_name = pretty_name[:title_width] + '\n' + pretty_name[title_width:title_width * 2]
+    if default is None:
+        prompt = " [y/n] "
+    elif default in ['yes', 'y']:
+        prompt = " [Y/n] "
+    elif default in ['no', 'n']:
+        prompt = " [y/N] "
     else:
-        pretty_name = '\n'.join(textwrap.wrap(pretty_name, title_width)[:title_lines])  # approximate width
-    return pretty_name
+        raise ValueError("Invalid default answer!")
 
+    while True:
+        sys.stdout.write('\n' + question + prompt)
 
-def copytree(src, dst, symlinks=False, ignore=None):
-    if not os.path.exists(dst):
-        os.makedirs(dst, exist_ok=True)
-    for item in os.listdir(src):
-        s = os.path.join(src, item)
-        d = os.path.join(dst, item)
-        if os.path.isdir(s):
-            copytree(s, d, symlinks, ignore)
+        choice = input().lower()
+
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
         else:
-            if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
-                shutil.copy2(s, d)
+            sys.stdout.write("Please respond with 'yes' or 'no'.\n")
 
 
-def create_deepzoom_stack(input_image, output_dzi):
-    dz_params = {'tile_size': 256,
-                 'tile_overlap': 1,
-                 'tile_format': "png",
-                 'resize_filter': "antialias"}  # cubic bilinear bicubic nearest antialias
-    creator = deepzoom.ImageCreator(tile_size=dz_params['tile_size'],
-                                    tile_overlap=dz_params['tile_overlap'],
-                                    tile_format=dz_params['tile_format'],
-                                    resize_filter=dz_params['resize_filter'])
-    creator.create(input_image, output_dzi)
+def ddv(args):
+    if getattr(sys, 'frozen', False):
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+    output_dir = os.path.join(BASE_DIR, "www-data", "dnadata", args.output_name)
 
-def DDV_main(argv):
-    from DDVTileLayout import DDVTileLayout
-    from ParallelGenomeLayout import ParallelLayout
+    print("Creating Chromosome Output Directory...")
+    os.makedirs(output_dir, exist_ok=True)
+    print("Done creating Directories.")
 
-    folder = "."
-    input_file_path = argv[1]
-    chromosome_name = os.path.basename(input_file_path[:input_file_path.rfind(".")])  # name between /<path>/ and .png
-    image = chromosome_name
-    n_arguments = len(argv)
-
-    if n_arguments == 2:  # Shortcut for old visualizations
-        output_file = chromosome_name + '.dzi'
-        output_dir = os.path.dirname(input_file_path)
-        create_deepzoom_stack(input_file_path, os.path.join(output_dir, output_file))
+    if not args.layout_type:  # Shortcut for old visualizations to create dz stack from existing large image
+        print("Creating Deep Zoom Structure for Existing Image...")
+        create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        shutil.copy(args.image, os.path.join(output_dir, os.path.basename(args.image)))
+        print("Done creating Deep Zoom Structure.")
+        # TODO: Copy over html structure
         sys.exit(0)
+    elif args.layout_type == "tiled":  # Typical Use Case
+        print("Creating Large Image from Input Fasta...")
+        layout = TileLayout()
+        layout.process_file(args.input_fasta, output_dir, args.output_name)
+        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
+        print("Done creating Large Image and HTML.")
 
-    if n_arguments == 3:
-        raise ValueError("You need to specify an output folder and an image name")
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
 
-    if n_arguments >= 4:  # Typical use case
-        image = argv[3]
-        chromosome_name = image  # based on image name, not fasta
-        folder = os.path.join(argv[2], chromosome_name)  # place inside a folder with chromosome_name
+        if args.run_server:
+            pass
+            # handler_class = server.BaseHTTPRequestHandler
+            # server.test(HandlerClass=handler_class, port=8000, bind='')
 
-    if n_arguments > 4:  # Multiple inputs => Parallel genome column layout
-        pass
-        layout = ParallelLayout(n_arguments - 3)
-        additional_files = argv[4:]
-        layout.process_file(input_file_path, folder, image, additional_files)
-    else:  # Typical use case
-        layout = DDVTileLayout()
-        layout.process_file(input_file_path, folder, image)
+        sys.exit(0)
+    elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
+        n_genomes = len(args.extra_fastas) + 1
 
-    create_deepzoom_stack(os.path.join(folder, image + '.png'), os.path.join(folder, 'GeneratedImages', 'dzc_output.xml'))
-    print("Done creating Deep Zoom Structure\nCopying Source File:", input_file_path)
-    destination = os.path.join(folder, os.path.basename(input_file_path))
-    if not os.path.exists(destination):  # could have been created by ChainParser.py
-        shutil.copy(input_file_path, destination)  # copy source file
+        if args.chain_file:
+            print("Created Gapped and Unique Fastas from Chain File...")
+            chain_parser = ChainParser(args.input_fasta, args.extra_fastas[0], args.chain_file, output_dir)
+            chain_parser.parse_chain(args.chromosomes)
+            n_genomes = 4
+            args.extra_fastas = chain_parser.extra_generated_fastas
+            args.fasta = args.extra_fastas.pop()
+            print("Done creating Gapped and Unique Fastas.")
 
-    # sys.exit(0)
+        print("Creating Large Comparison Image from Input Fastas...")
+        layout = ParallelLayout(n_genomes=n_genomes)
+        layout.process_file(args.input_fasta, output_dir, args.output_name, args.extra_fastas)
+        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
+        for extra_fasta in args.extra_fastas:
+            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
+        print("Done creating Large Image and HTML.")
+
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
+
+        if args.run_server:
+            pass
+            # handler_class = server.BaseHTTPRequestHandler
+            # server.test(HandlerClass=handler_class, port=8000, bind='')
+
+        sys.exit(0)
+    elif args.layout_type == "original":
+        raise NotImplementedError("Original layout is not implemented!")
+    else:
+        raise NotImplementedError("What you are trying to do is not currently implemented!")
+
+
+def launch_external_program_and_exit(launch, code=0, close_self=True, cmd_args=None, launch_args=None):
+    if not launch_args:
+        launch_args = {}
+    if not cmd_args:
+        cmd_args = []
+    launch = [launch, ]
+    if cmd_args:
+        for cmd_arg in cmd_args:
+            launch.append(cmd_arg)
+    launch = ' '.join(launch)
+    if sys.platform == 'win32':  # Yes, this is also x64.
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        DETACHED_PROCESS = 0x00000008
+        launch_args.update(creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
+    else:
+        launch_args.update(preexec_fn=os.setsid)
+        launch_args.update(start_new_session=True)
+    subprocess.Popen(launch, stdin=subprocess.PIPE, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **launch_args)
+    if close_self:
+        sys.exit(code)
+
+
+def check_update():
+    new_version = None
+    try:
+        npu = os.path.join(BASE_DIR, 'npu'+EXTENSION)
+        process = subprocess.Popen(npu + " --check_update --silent", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            output, error = process.communicate(timeout=60000)
+            exit_code = process.returncode
+        except:
+            exit_code = 1
+            output = None
+        try:
+            process.kill()
+        except:
+            pass
+
+        if output:
+            new_version = output.splitlines()[-1].decode().strip()
+    except:
+        print("Unable to get DDV Version!")
+
+    return new_version
 
 
 if __name__ == "__main__":
-    DDV_main(sys.argv)
+    parser = argparse.ArgumentParser(usage="%(prog)s [options]",
+                                     description="Creates visualizations of FASTA formatted DNA nucleotide data.",
+                                     add_help=True)
+
+    parser = argparse.ArgumentParser(prog='DDV.exe')
+    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
+    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
+
+    parser.add_argument("-i", "--image",
+                        type=str,
+                        help="Path to already laid out big image to process with DeepZoom. No layout will be performed if an image is passed in.",
+                        dest="image")
+    parser.add_argument("-f", "--fasta",
+                        type=str,
+                        help="Path to main FASTA file to process into new visualization.",
+                        dest="input_fasta")
+    parser.add_argument("-o", "--outname",
+                        type=str,
+                        help="What to name the DeepZoom output DZI file (not a path).",
+                        dest="output_name")
+    parser.add_argument("-l", "--layout",
+                        type=str,
+                        help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
+                        choices=["original", "tiled", "parallel"],
+                        dest="layout_type")  # Don't set a default so we can do error checking on it later
+    parser.add_argument("-x", "--extrafastas",
+                        nargs='+',
+                        type=str,
+                        help="Path to secondary FASTA file to process when doing Parallel Comparisons layout.",
+                        dest="extra_fastas")
+    parser.add_argument("-c", "--chainfile",
+                        type=str,
+                        help="Path to Chain File when doing Parallel Comparisons layout.",
+                        dest="chain_file")
+    parser.add_argument("-ch", "--chromosomes",
+                        nargs='+',
+                        type=str,
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        dest="chromosomes")
+    parser.add_argument("-s", "--server",
+                        action='store_true',
+                        help="Run Web Server after computing.",
+                        dest="run_server")
+
+    args = parser.parse_args()
+
+    # Respond to an updater query
+    if args.update_name:
+        print("DDV")
+        sys.exit(0)
+    elif args.version:
+        print(__version__)
+        sys.exit(0)
+
+    # Errors
+    if args.layout_type == "original":
+        parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
+
+    if args.image and (args.input_fasta or args.layout_type or args.extra_fastas or args.chain_file):
+        parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
+    if not args.image and not args.input_fasta:
+        parser.error("Please either define a 'fasta' file or an 'image' file!")
+
+    if args.layout_type == "parallel" and not args.extra_fastas:
+        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
+    if args.extra_fastas and not args.layout_type:
+        args.layout_type = "parallel"
+    if args.chromosomes and not args.layout_type == "parallel" or not args.chain_file:
+        parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
+    if args.extra_fastas and args.layout_type != "parallel":
+        parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
+    if args.chain_file and args.layout_type != "parallel":
+        parser.error("The 'chainfile' argument is only used when doing a Parallel layout!")
+    if args.chain_file and len(args.extra_fastas) > 1:
+        parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
+
+    # Set post error checking defaults
+    if not args.image and not args.layout_type:
+        args.layout_type = "tiled"
+
+    if args.chain_file and not args.chromosomes:
+        args.chromosomes = ['chr21']
+
+    # Set dependent defaults
+    if not args.output_name:
+        if args.chain_file:
+            args.output_name = os.path.splitext(os.path.basename(args.input_fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
+        else:
+            args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
+
+    ddv(args)
