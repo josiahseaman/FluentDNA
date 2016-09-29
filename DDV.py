@@ -125,7 +125,6 @@ def DDV_main(argv):
         folder = os.path.join(argv[2], chromosome_name)  # place inside a folder with chromosome_name
 
     if n_arguments > 4:  # Multiple inputs => Parallel genome column layout
-        pass
         layout = ParallelLayout(n_arguments - 3)
         additional_files = argv[4:]
         layout.process_file(input_file_path, folder, image, additional_files)
