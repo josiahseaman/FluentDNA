@@ -1,6 +1,7 @@
 # Project specific ignores
 www-data/to_process
 www-data/dnadata
+build.cmd
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Windows template

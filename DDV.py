@@ -253,23 +253,6 @@ if __name__ == "__main__":
         print(__version__)
         sys.exit(0)
 
-    if getattr(sys, 'frozen', False):
-        print("Checking for updates...")
-        version = check_update()
-        if version and version != 'False' and version != '0':
-            print("New version available:", version)
-            if query_yes_no("Do you want to update now?"):
-                try:
-                    print("Launching Newline Program Updater...")
-                    npu = os.path.join(BASE_DIR, 'npu'+EXTENSION)
-                    launch_external_program_and_exit(npu)#cmd_args=['--silent'])
-                except:
-                    print("Failed to run the Program Updater!")
-            else:
-                print("Skipping update.")
-        else:
-            print("No updates currently.")
-
     # Errors
     if args.layout_type == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
