@@ -35,9 +35,8 @@ __version__ = '1.0.0'
 
 import shutil
 import argparse
-import subprocess
-
-# from http import server
+from http import server
+from socketserver import TCPServer
 
 from DDVUtils import create_deepzoom_stack
 from TileLayout import TileLayout
@@ -81,11 +80,30 @@ def query_yes_no(question, default='yes'):
             sys.stdout.write("Please respond with 'yes' or 'no'.\n")
 
 
+def run_server(home_directory):
+    print("Setting up HTTP Server based from", home_directory)
+    os.chdir(home_directory)
+
+    ADDRESS = "127.0.0.1"
+    PORT = 8000
+
+    handler = server.SimpleHTTPRequestHandler
+    httpd = TCPServer((ADDRESS, PORT), handler)
+
+    print("Serving at %s on port %s" %(ADDRESS, str(PORT)))
+    httpd.serve_forever()
+
+
 def ddv(args):
     if getattr(sys, 'frozen', False):
         BASE_DIR = os.path.dirname(sys.executable)
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
+
+    if not args.layout_type and args.run_server:
+        run_server(SERVER_HOME)
+        sys.exit(0)
 
     output_dir = os.path.join(BASE_DIR, "www-data", "dnadata", args.output_name)
 
@@ -93,7 +111,7 @@ def ddv(args):
     os.makedirs(output_dir, exist_ok=True)
     print("Done creating Directories.")
 
-    if not args.layout_type:  # Shortcut for old visualizations to create dz stack from existing large image
+    if args.layout_type == "NONE":  # Shortcut for old visualizations to create dz stack from existing large image
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         shutil.copy(args.image, os.path.join(output_dir, os.path.basename(args.image)))
@@ -112,9 +130,7 @@ def ddv(args):
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
-            pass
-            # handler_class = server.BaseHTTPRequestHandler
-            # server.test(HandlerClass=handler_class, port=8000, bind='')
+            run_server(output_dir)
 
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -133,9 +149,9 @@ def ddv(args):
                 swap_columns = True  # TODO: Make this variable
                 if swap_columns:
                     args.extra_fastas = chain_parser.output_fastas.reverse()
-                else:
-                    args.extra_fastas = chain_parser.output_fastas
+                args.extra_fastas = chain_parser.output_fastas
                 args.fasta = args.extra_fastas.pop()
+                del chain_parser
             elif args.layout_type == "unique-parallel":
                 unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
                                                             first_source=args.input_fasta,
@@ -147,6 +163,7 @@ def ddv(args):
                 args.extra_fastas = unique_chain_parser.output_fastas
                 args.fasta = args.extras.pop()
                 # TODO: Does this need to be sent to NOT Parallel Layout?
+                del unique_chain_parser
             print("Done creating Gapped and Unique Fastas.")
 
         print("Creating Large Comparison Image from Input Fastas...")
@@ -162,9 +179,7 @@ def ddv(args):
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
-            pass
-            # handler_class = server.BaseHTTPRequestHandler
-            # server.test(HandlerClass=handler_class, port=8000, bind='')
+            run_server(output_dir)
 
         sys.exit(0)
     elif args.layout_type == "original":
@@ -213,7 +228,7 @@ if __name__ == "__main__":
                         type=str,
                         help="Chromosome to parse from Chain File. NOTE: Defaults to 'chrY' for testing.",
                         dest="chromosomes")
-    parser.add_argument("-s", "--server",
+    parser.add_argument("-s", "--runserver",
                         action='store_true',
                         help="Run Web Server after computing.",
                         dest="run_server")
@@ -234,12 +249,12 @@ if __name__ == "__main__":
 
     if args.image and (args.input_fasta or args.layout_type or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
-    if not args.image and not args.input_fasta:
+    if not args.image and not args.input_fasta and not args.run_server:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
-    if "parallel" in args.layout_type and not args.extra_fastas:
+    if args.layout_type and "parallel" in args.layout_type and not args.extra_fastas:
         parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.chromosomes and not args.chain_file:
         parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
@@ -251,14 +266,16 @@ if __name__ == "__main__":
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
 
     # Set post error checking defaults
-    if not args.image and not args.layout_type:
+    if not args.image and not args.layout_type and args.input_fasta:
         args.layout_type = "tiled"
+    if args.image and not args.layout_type:
+        args.layout_type = "NONE"
 
     if args.chain_file and not args.chromosomes:
         args.chromosomes = ['chrY']
 
     # Set dependent defaults
-    if not args.output_name:
+    if not args.output_name and args.layout_type:
         if args.chain_file:
             args.output_name = os.path.splitext(os.path.basename(args.input_fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
             if args.layout_type == "unique-parallel":
