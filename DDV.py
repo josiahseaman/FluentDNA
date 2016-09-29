@@ -122,11 +122,13 @@ def ddv(args):
         print("Creating Large Image from Input Fasta...")
         layout = TileLayout()
         layout.process_file(args.input_fasta, output_dir, args.output_name)
+        layout_final_output_location = layout.final_output_location
+        del layout
         shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
         print("Done creating Large Image and HTML.")
 
         print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
@@ -169,13 +171,15 @@ def ddv(args):
         print("Creating Large Comparison Image from Input Fastas...")
         layout = ParallelLayout(n_genomes=n_genomes)
         layout.process_file(args.input_fasta, output_dir, args.output_name, args.extra_fastas)
+        layout_final_output_location = layout.final_output_location
+        del layout
         shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
         for extra_fasta in args.extra_fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
         print("Done creating Large Image and HTML.")
 
         print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout.final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
 
         if args.run_server:
