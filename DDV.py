@@ -43,6 +43,7 @@ from DDVUtils import create_deepzoom_stack
 from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
+from UniqueOnlyChainParser import UniqueOnlyChainParser
 
 
 if sys.platform == 'win32':
@@ -120,12 +121,32 @@ def ddv(args):
         n_genomes = len(args.extra_fastas) + 1
 
         if args.chain_file:
-            print("Created Gapped and Unique Fastas from Chain File...")
-            chain_parser = ChainParser(args.input_fasta, args.extra_fastas[0], args.chain_file, output_dir)
-            chain_parser.parse_chain(args.chromosomes)
-            n_genomes = 4
-            args.extra_fastas = chain_parser.extra_generated_fastas
-            args.fasta = args.extra_fastas.pop()
+            print("Creating Gapped and Unique Fastas from Chain File...")
+            if args.layout_type == "parallel":
+                chain_parser = ChainParser(chain_name=args.chain_file,
+                                           first_source=args.input_fasta,
+                                           second_source=args.extra_fastas[0],
+                                           output_folder=output_dir,
+                                           trial_run=False)
+                chain_parser.parse_chain(args.chromosomes)
+                n_genomes = 4
+                swap_columns = True  # TODO: Make this variable
+                if swap_columns:
+                    args.extra_fastas = chain_parser.output_fastas.reverse()
+                else:
+                    args.extra_fastas = chain_parser.output_fastas
+                args.fasta = args.extra_fastas.pop()
+            elif args.layout_type == "unique-parallel":
+                unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
+                                                            first_source=args.input_fasta,
+                                                            second_source=args.extra_fastas[0],
+                                                            output_folder=output_dir,
+                                                            trial_run=False)
+                unique_chain_parser.parse_chain(args.chromosomes)
+                n_genomes = 2
+                args.extra_fastas = unique_chain_parser.output_fastas
+                args.fasta = args.extras.pop()
+                # TODO: Does this need to be sent to NOT Parallel Layout?
             print("Done creating Gapped and Unique Fastas.")
 
         print("Creating Large Comparison Image from Input Fastas...")
@@ -150,52 +171,6 @@ def ddv(args):
         raise NotImplementedError("Original layout is not implemented!")
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
-
-
-def launch_external_program_and_exit(launch, code=0, close_self=True, cmd_args=None, launch_args=None):
-    if not launch_args:
-        launch_args = {}
-    if not cmd_args:
-        cmd_args = []
-    launch = [launch, ]
-    if cmd_args:
-        for cmd_arg in cmd_args:
-            launch.append(cmd_arg)
-    launch = ' '.join(launch)
-    if sys.platform == 'win32':  # Yes, this is also x64.
-        CREATE_NEW_PROCESS_GROUP = 0x00000200
-        DETACHED_PROCESS = 0x00000008
-        launch_args.update(creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
-    else:
-        launch_args.update(preexec_fn=os.setsid)
-        launch_args.update(start_new_session=True)
-    subprocess.Popen(launch, stdin=subprocess.PIPE, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **launch_args)
-    if close_self:
-        sys.exit(code)
-
-
-def check_update():
-    new_version = None
-    try:
-        npu = os.path.join(BASE_DIR, 'npu'+EXTENSION)
-        process = subprocess.Popen(npu + " --check_update --silent", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            output, error = process.communicate(timeout=60000)
-            exit_code = process.returncode
-        except:
-            exit_code = 1
-            output = None
-        try:
-            process.kill()
-        except:
-            pass
-
-        if output:
-            new_version = output.splitlines()[-1].decode().strip()
-    except:
-        print("Unable to get DDV Version!")
-
-    return new_version
 
 
 if __name__ == "__main__":
@@ -236,7 +211,7 @@ if __name__ == "__main__":
     parser.add_argument("-ch", "--chromosomes",
                         nargs='+',
                         type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chrY' for testing.",
                         dest="chromosomes")
     parser.add_argument("-s", "--server",
                         action='store_true',
@@ -262,10 +237,10 @@ if __name__ == "__main__":
     if not args.image and not args.input_fasta:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
-    if "parallel" in args.layout_type and not args.extra_fastas:
-        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
+    if "parallel" in args.layout_type and not args.extra_fastas:
+        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.chromosomes and not args.chain_file:
         parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
     if args.extra_fastas and "parallel" not in args.layout_type:
@@ -280,7 +255,7 @@ if __name__ == "__main__":
         args.layout_type = "tiled"
 
     if args.chain_file and not args.chromosomes:
-        args.chromosomes = ['chr21']
+        args.chromosomes = ['chrY']
 
     # Set dependent defaults
     if not args.output_name:

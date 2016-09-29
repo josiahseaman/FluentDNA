@@ -1,5 +1,7 @@
 import os
 import shutil
+import multiprocessing
+
 from array import array
 from collections import defaultdict
 from datetime import datetime
@@ -50,14 +52,15 @@ def rev_comp(plus_strand):
 
 
 class ChainParser:
-    def __init__(self, chain_name, second_source, first_source, output_folder_prefix, trial_run=False, swap_columns=False):
+    output_fastas = []
+
+    def __init__(self, chain_name, second_source, first_source, output_folder, trial_run=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
-        self.output_folder_prefix = output_folder_prefix
+        self.output_folder = output_folder
         self.query_contigs = dict()
         self.trial_run = trial_run
-        self.swap_columns = swap_columns
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
@@ -95,7 +98,6 @@ class ChainParser:
         self.query_contigs[current_name] = sequence
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
-
     def read_query_seq_to_memory(self, query_chr, query_source):
         self.read_contigs(query_source)
         self.query_sequence = self.query_contigs[query_chr]
@@ -104,10 +106,9 @@ class ChainParser:
         #     self.write_fasta_lines(query_file_name, self.query_sequence)
         #     self.write_fasta_lines(ref_file_name, self.ref_sequence)
 
-
     def write_fasta_lines(self, filestream, seq):
         if isinstance(filestream, str):  # I'm actually given a file name and have to open it myself
-            file_name = filestream
+            file_name = os.path.join(self.output_folder, filestream)
             with open(file_name, 'w') as filestream:
                 self.do_write(filestream, 70, seq)
                 print("Wrote", file_name, len(self.ref_sequence))
@@ -137,7 +138,6 @@ class ChainParser:
         if not is_master_alignment:
             self.do_translocation_housework(chain, query_pointer, ref_pointer)
         self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
-
 
     def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
         assert len(chain.entries), "Chain has no data"
@@ -173,7 +173,6 @@ class ChainParser:
         #     # self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
         # else:
 
-
     def setup_chain_start(self, chain, is_master_alignment):
         # convert to int except for chr names and strands
         ref_pointer, query_pointer = chain.tStart, chain.qStart
@@ -184,7 +183,6 @@ class ChainParser:
             self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))  # one of these gaps will be 0
             self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))
         return ref_pointer, query_pointer
-
 
     def do_translocation_housework(self, chain, query_pointer, ref_pointer):
         minus_strand = chain.qStrand != '+'
@@ -210,14 +208,13 @@ class ChainParser:
         pass
 
     def write_gapped_fasta(self, query, reference):
-        query_gap_name = os.path.splitext(query)[0] + '_gapped.fa'
-        ref_gap_name = os.path.splitext(reference)[0] + '_gapped.fa'
+        query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + '_gapped.fa')
+        ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + '_gapped.fa')
         with open(query_gap_name, 'w') as query_file:
             self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
         with open(ref_gap_name, 'w') as ref_file:
             self.write_fasta_lines(ref_file, ''.join(self.ref_seq_gapped))
         return query_gap_name, ref_gap_name
-
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
         query_uniq_array = array('u', self.query_seq_gapped)
@@ -244,26 +241,14 @@ class ChainParser:
                     que_uniq_array[i] = 'X'
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = query_gapped_name[:query_gapped_name.rindex('.')] + '_unique.fa'
-        ref_unique_name = ref_gapped_name[:ref_gapped_name.rindex('.')] + '_unique.fa'
+        query_unique_name = os.path.join(self.output_folder, query_gapped_name[:query_gapped_name.rindex('.')] + '_unique.fa')
+        ref_unique_name = os.path.join(self.output_folder, ref_gapped_name[:ref_gapped_name.rindex('.')] + '_unique.fa')
         with open(query_unique_name, 'w') as query_filestream:
             self.write_fasta_lines(query_filestream, ''.join(query_uniq_array))
         with open(ref_unique_name, 'w') as ref_filestream:
             self.write_fasta_lines(ref_filestream, ''.join(que_uniq_array))
 
         return query_unique_name, ref_unique_name
-
-
-    @staticmethod
-    def move_fasta_source_to_destination(fasta, folder_name, source_path):
-        destination_folder = os.path.join(source_path, folder_name)
-        if os.path.exists(destination_folder):
-            shutil.rmtree(destination_folder, ignore_errors=True)  # Make sure we can overwrite the contents
-        os.makedirs(destination_folder, exist_ok=False)
-        for key in fasta:
-            shutil.move(fasta[key], destination_folder)
-            fasta[key] = os.path.join(destination_folder, fasta[key])
-
 
     def do_all_relevant_chains(self, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
@@ -287,7 +272,6 @@ class ChainParser:
             else:
                 print("No fasta source for", chain.qName)
 
-
     def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
@@ -299,41 +283,6 @@ class ChainParser:
                 self.query_sequence = self.query_contigs[query_chr]
             for chain in translocations:
                 self.mash_fasta_and_chain_together(chain, False)
-
-
-    def main(self, chromosome_name):
-        import DDV
-
-        names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-
-        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
-
-        self.do_all_relevant_chains()
-
-        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
-        names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
-        print("Finished creating gapped fasta files", names['ref'], names['query'])
-
-        folder_name = self.output_folder_prefix + ref_chr
-        source_path = '.\\bin\\Release\\output\\dnadata\\'
-        if True:  #self.trial_run:  # these files are never used in the viz
-            del names['ref']
-            del names['query']
-        self.move_fasta_source_to_destination(names, folder_name, source_path)
-        if self.swap_columns:
-            DDV.DDV_main(['DDV',
-                          names['query_gapped'],
-                          source_path, folder_name,
-                          names['query_unique'],
-                          names['ref_unique'],
-                          names['ref_gapped']])
-        else:
-            DDV.DDV_main(['DDV',
-                          names['ref_gapped'],
-                          source_path, folder_name,
-                          names['ref_unique'],
-                          names['query_unique'],
-                          names['query_gapped']])
 
     def setup_for_reference_chromosome(self, chromosome_name):
         if isinstance(chromosome_name, str):
@@ -347,30 +296,31 @@ class ChainParser:
 
         return names, query_chr, ref_chr
 
+    def _parse_chromosome_in_chain(self, chromosome_name):
+        names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
-def do_chromosome(chr):
-    parser = ChainParser(chain_name='hg38ToPanTro4.over.chain',
-                         first_source='HongKong\\hg38.fa',  # 'hg38_chr20.fa',  #
-                         second_source='panTro4.fa',  # 'panTro4_chr20.fa',
-                         output_folder_prefix='panTro4_and_Hg38_',
-                         trial_run=False,
-                         swap_columns=True)
-    # parser = ChainParser(chain_name='HongKong\\human_gorilla.bland.chain',
-    #                      ref_source='HongKong\\susie3_agp.fasta',
-    #                      query_source='HongKong\\hg38.fa',
-    #                      output_folder_prefix='Susie3_and_Hg38_short3_',
-    #                      trial_run=True,
-    #                      swap_columns=True)
-    parser.main(chr)
+        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
+        self.do_all_relevant_chains()
 
-if __name__ == '__main__':
-    chromosomes = ['chrY']  # 'chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr22 chrX'.split()
-    # TODO: handle Chr2A and Chr2B separately
-    for chr in chromosomes:
-        do_chromosome(chr)
+        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
+        names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        # NOTE: Order of these appends DOES matter!
+        self.output_fastas.append(names['ref_gapped'])
+        self.output_fastas.append(names['ref_unique'])
+        self.output_fastas.append(names['query_unique'])
+        self.output_fastas.append(names['query_gapped'])
+        print("Finished creating gapped fasta files", names['ref'], names['query'])
 
-    # import multiprocessing
-    # workers = multiprocessing.Pool(6)  # number of simultaneous processes.  Watch your RAM usage
-    # workers.map(do_chromosome, chromosomes)
+        if True:  #self.trial_run:  # these files are never used in the viz
+            del names['ref']
+            del names['query']
 
+    def parse_chain(self, chromosomes=None):
+        assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
+
+        for chromosome in chromosomes:
+            self._parse_chromosome_in_chain(chromosome)
+
+        # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
+        # workers.map(self._parse_chromosome_in_chain, chromosomes)

@@ -36,9 +36,9 @@ def remove_from_range(original, remove_this):
     return first, second  # happy path
 
 
-class UniquenessViz(ChainParser):
+class UniqueOnlyChainParser(ChainParser):
     def __init__(self, *args, **kwargs):
-        super(UniquenessViz, self).__init__(*args, **kwargs)
+        super(UniqueOnlyChainParser, self).__init__(*args, **kwargs)
         self.uncovered_areas = []  # Absolute coordinates.  highly mutable: better as a blist
 
 
@@ -124,10 +124,10 @@ class UniquenessViz(ChainParser):
 
 def do_chromosome(chr):
     try:
-        parser = UniquenessViz(chain_name='hg38ToPanTro4.over.chain',
-                               first_source='HongKong\\hg38.fa',
-                               second_source='',
-                               output_folder_prefix='Hg38_unique_vs_panTro4_')
+        parser = UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
+                                       first_source='HongKong\\hg38.fa',
+                                       second_source='',
+                                       output_folder_prefix='Hg38_unique_vs_panTro4_')
         parser.main(chr)
     except BaseException as e:
         print(e)
