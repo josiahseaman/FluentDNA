@@ -38,6 +38,7 @@ def remove_from_range(original, remove_this):
 
 class UniqueOnlyChainParser(ChainParser):
     def __init__(self, *args, **kwargs):
+        kwargs['second_source'] = ''  # the query sequence is not actually used anywhere
         super(UniqueOnlyChainParser, self).__init__(*args, **kwargs)
         self.uncovered_areas = []  # Absolute coordinates.  highly mutable: better as a blist
 
@@ -106,38 +107,42 @@ class UniqueOnlyChainParser(ChainParser):
 
 
     def main(self, chromosome_name):
-        import DDV
         fasta_names, ignored, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         # actual work
         fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
 
-        folder_name = self.output_folder_prefix + ref_chr
-        source_path = '.\\bin\\Release\\output\\dnadata\\'
         if True:  #self.trial_run:  # these files are never used in the viz
             del fasta_names['ref']
             del fasta_names['query']
-        self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
-        DDV.DDV_main(['DDV', fasta_names['ref_unique'], source_path, folder_name])
+        # self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
+        # DDV.DDV_main(['DDV', fasta_names['ref_unique'], source_path, folder_name])
+        batch_arguments = [fasta_names['ref_unique'], ]
+        return batch_arguments  # the name of the one file to be processed by Viz
 
 
+    def parse_chain(self, chromosomes=None):
+        if chromosomes is None:
+            chromosomes = 'chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY'.split()
 
-def do_chromosome(chr):
-    try:
-        parser = UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
-                                       first_source='HongKong\\hg38.fa',
-                                       second_source='',
-                                       output_folder_prefix='Hg38_unique_vs_panTro4_')
-        parser.main(chr)
-    except BaseException as e:
-        print(e)
-        print("Continuing to next task...")
+        batches = []
+        for chromosome in chromosomes:
+            args = self.do_chromosome(chromosome)
+            if args is not None:  # could be None if there was an error
+                batches.append(args)
+        return batches
+        # import multiprocessing
+        # workers = multiprocessing.Pool(6)  # number of simultaneous processes.  Watch your RAM usage
+        # workers.map(self.do_chromosome, chromosomes)
+        # return ..
 
 
-if __name__ == '__main__':
-    # do_chromosome('chr20')  chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13
-    import multiprocessing
-    chromosomes = 'chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY'.split()
-    workers = multiprocessing.Pool(6)  # number of simultaneous processes.  Watch your RAM usage
-    workers.map(do_chromosome, chromosomes)
+    def do_chromosome(self, chromosome):
+        try:
+            return self.main(chromosome)
+        except BaseException as e:
+            import traceback
+            traceback.print_exc()
+            print("Continuing to next task...")
+            return None  # Error return value
 

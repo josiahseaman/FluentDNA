@@ -105,13 +105,13 @@ def ddv(args):
         run_server(SERVER_HOME)
         sys.exit(0)
 
-    output_dir = os.path.join(BASE_DIR, "www-data", "dnadata", args.output_name)
+    output_dir = os.path.join(SERVER_HOME, args.output_name)
 
     print("Creating Chromosome Output Directory...")
     os.makedirs(output_dir, exist_ok=True)
     print("Done creating Directories.")
 
-    if args.layout_type == "NONE":  # Shortcut for old visualizations to create dz stack from existing large image
+    if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         shutil.copy(args.image, os.path.join(output_dir, os.path.basename(args.image)))
@@ -119,77 +119,81 @@ def ddv(args):
         # TODO: Copy over html structure
         sys.exit(0)
     elif args.layout_type == "tiled":  # Typical Use Case
-        print("Creating Large Image from Input Fasta...")
-        layout = TileLayout()
-        layout.process_file(args.input_fasta, output_dir, args.output_name)
-        layout_final_output_location = layout.final_output_location
-        del layout
-        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
-        print("Done creating Large Image and HTML.")
-
-        print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-        print("Done creating Deep Zoom Structure.")
-
-        if args.run_server:
-            run_server(output_dir)
-
+        create_tile_layout_viz_from_fasta(args, output_dir)
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
-        n_genomes = len(args.extra_fastas) + 1
-
-        if args.chain_file:
+        if not args.chain_file:  # life is simple
+            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir)
+            sys.exit(0)
+        else:  # parse chain files, possibly in batch
+            chain_parser = ChainParser(chain_name=args.chain_file,
+                                       first_source=args.fasta,
+                                       second_source=args.extra_fastas[0],
+                                       output_folder=output_dir,
+                                       trial_run=False,
+                                       swap_columns=False)
+            batches = chain_parser.parse_chain(args.chromosomes)
             print("Creating Gapped and Unique Fastas from Chain File...")
-            if args.layout_type == "parallel":
-                chain_parser = ChainParser(chain_name=args.chain_file,
-                                           first_source=args.input_fasta,
-                                           second_source=args.extra_fastas[0],
-                                           output_folder=output_dir,
-                                           trial_run=False)
-                chain_parser.parse_chain(args.chromosomes)
-                n_genomes = 4
-                swap_columns = True  # TODO: Make this variable
-                if swap_columns:
-                    args.extra_fastas = chain_parser.output_fastas.reverse()
-                args.extra_fastas = chain_parser.output_fastas
-                args.fasta = args.extra_fastas.pop()
-                del chain_parser
-            elif args.layout_type == "unique-parallel":
-                unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
-                                                            first_source=args.input_fasta,
-                                                            second_source=args.extra_fastas[0],
-                                                            output_folder=output_dir,
-                                                            trial_run=False)
-                unique_chain_parser.parse_chain(args.chromosomes)
-                n_genomes = 2
-                args.extra_fastas = unique_chain_parser.output_fastas
-                args.fasta = args.extras.pop()
-                # TODO: Does this need to be sent to NOT Parallel Layout?
-                del unique_chain_parser
-            print("Done creating Gapped and Unique Fastas.")
-
-        print("Creating Large Comparison Image from Input Fastas...")
-        layout = ParallelLayout(n_genomes=n_genomes)
-        layout.process_file(args.input_fasta, output_dir, args.output_name, args.extra_fastas)
-        layout_final_output_location = layout.final_output_location
-        del layout
-        shutil.copy(args.input_fasta, os.path.join(output_dir, os.path.basename(args.input_fasta)))
-        for extra_fasta in args.extra_fastas:
-            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
-        print("Done creating Large Image and HTML.")
-
-        print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-        print("Done creating Deep Zoom Structure.")
-
-        if args.run_server:
-            run_server(output_dir)
-
+            del chain_parser
+            for batch in batches:  # multiple chromosomes, multiple views
+                args.extra_fastas = batch
+                args.fasta = args.extra_fastas.pop(0)  # first, not last
+                create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir)
+            sys.exit(0)
+    elif args.layout_type == "unique":
+        assert args.chain_file, "You must have a chain file to make a unique sequence view"
+        """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
+                               first_source='HongKong\\hg38.fa',
+                               second_source='',
+                               output_folder_prefix='Hg38_unique_vs_panTro4_')"""
+        unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
+                                                    first_source=args.fasta,
+                                                    output_folder=output_dir,
+                                                    trial_run=False)
+        batches = unique_chain_parser.parse_chain(args.chromosomes)
+        print("Done creating Gapped and Unique Fastas.")
+        del unique_chain_parser
+        for batch in batches:
+            args.fasta = batch[0]  # should only be one fasta
+            create_tile_layout_viz_from_fasta(args, output_dir)
         sys.exit(0)
+
     elif args.layout_type == "original":
         raise NotImplementedError("Original layout is not implemented!")
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
+
+
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir):
+    print("Creating Large Comparison Image from Input Fastas...")
+    layout = ParallelLayout(n_genomes=n_genomes)
+    layout.process_file(args.fasta, output_dir, args.output_name, args.extra_fastas)
+    layout_final_output_location = layout.final_output_location
+    del layout
+    shutil.copy(args.fasta, os.path.join(output_dir, os.path.basename(args.fasta)))
+    for extra_fasta in args.extra_fastas:
+        shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
+    print("Done creating Large Image and HTML.")
+    print("Creating Deep Zoom Structure from Generated Image...")
+    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+    print("Done creating Deep Zoom Structure.")
+    if args.run_server:
+        run_server(output_dir)
+
+
+def create_tile_layout_viz_from_fasta(args, output_dir):
+    print("Creating Large Image from Input Fasta...")
+    layout = TileLayout()
+    layout.process_file(args.fasta, output_dir, args.output_name)
+    layout_final_output_location = layout.final_output_location
+    del layout
+    shutil.copy(args.fasta, os.path.join(output_dir, os.path.basename(args.fasta)))
+    print("Done creating Large Image and HTML.")
+    print("Creating Deep Zoom Structure from Generated Image...")
+    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+    print("Done creating Deep Zoom Structure.")
+    if args.run_server:
+        run_server(output_dir)
 
 
 if __name__ == "__main__":
@@ -216,7 +220,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
-                        choices=["original", "tiled", "parallel", "unique-parallel"],
+                        choices=["original", "tiled", "parallel", "unique"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
@@ -251,9 +255,9 @@ if __name__ == "__main__":
     if args.layout_type == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
 
-    if args.image and (args.input_fasta or args.layout_type or args.extra_fastas or args.chain_file):
+    if args.image and (args.fasta or args.layout_type or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
-    if not args.image and not args.input_fasta and not args.run_server:
+    if not args.image and not args.fasta and not args.run_server:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
 
     if args.extra_fastas and not args.layout_type:
@@ -270,7 +274,7 @@ if __name__ == "__main__":
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
 
     # Set post error checking defaults
-    if not args.image and not args.layout_type and args.input_fasta:
+    if not args.image and not args.layout_type and args.fasta:
         args.layout_type = "tiled"
     if args.image and not args.layout_type:
         args.layout_type = "NONE"
@@ -281,10 +285,10 @@ if __name__ == "__main__":
     # Set dependent defaults
     if not args.output_name and args.layout_type:
         if args.chain_file:
-            args.output_name = os.path.splitext(os.path.basename(args.input_fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
-            if args.layout_type == "unique-parallel":
+            args.output_name = os.path.splitext(os.path.basename(args.fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
+            if args.layout_type == "unique":
                 args.output_name += "_UNIQUE"
         else:
-            args.output_name = os.path.splitext(os.path.basename(args.input_fasta or args.image))[0]
+            args.output_name = os.path.splitext(os.path.basename(args.fasta or args.image))[0]
 
     ddv(args)

@@ -1,5 +1,4 @@
 import os
-import shutil
 import multiprocessing
 
 from array import array
@@ -54,13 +53,14 @@ def rev_comp(plus_strand):
 class ChainParser:
     output_fastas = []
 
-    def __init__(self, chain_name, second_source, first_source, output_folder, trial_run=False):
+    def __init__(self, chain_name, second_source, first_source, output_folder, trial_run=False, swap_columns=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_folder = output_folder
         self.query_contigs = dict()
         self.trial_run = trial_run
+        self.swap_columns = swap_columns
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
@@ -168,10 +168,9 @@ class ChainParser:
             if len(ref_snippet) != len(query_snippet):
                 print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
 
-        # if is_master_alignment:  # last one: print out all remaining sequence
-        #     # query_gapped_strand.extend(self.query_sequence[query_pointer:])
-        #     # self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
-        # else:
+        if is_master_alignment:  # last one: print out all remaining sequence
+            self.query_seq_gapped.extend(self.query_sequence[query_pointer:])
+            self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
 
     def setup_chain_start(self, chain, is_master_alignment):
         # convert to int except for chr names and strands
@@ -310,17 +309,21 @@ class ChainParser:
         self.output_fastas.append(names['ref_unique'])
         self.output_fastas.append(names['query_unique'])
         self.output_fastas.append(names['query_gapped'])
+        if self.swap_columns:
+            self.output_fastas = self.output_fastas.reverse()
         print("Finished creating gapped fasta files", names['ref'], names['query'])
 
         if True:  #self.trial_run:  # these files are never used in the viz
             del names['ref']
             del names['query']
+        return self.output_fastas
 
-    def parse_chain(self, chromosomes=None):
+    def parse_chain(self, chromosomes):
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
+        batches = []
         for chromosome in chromosomes:
-            self._parse_chromosome_in_chain(chromosome)
-
+            batches.append(self._parse_chromosome_in_chain(chromosome))
+        return batches
         # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
         # workers.map(self._parse_chromosome_in_chain, chromosomes)
