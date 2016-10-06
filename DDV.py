@@ -111,14 +111,7 @@ def ddv(args):
     os.makedirs(output_dir, exist_ok=True)
     print("Done creating Directories.")
 
-    if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
-        print("Creating Deep Zoom Structure for Existing Image...")
-        create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-        shutil.copy(args.image, os.path.join(output_dir, os.path.basename(args.image)))
-        print("Done creating Deep Zoom Structure.")
-        # TODO: Copy over html structure
-        sys.exit(0)
-    elif args.layout_type == "tiled":  # Typical Use Case
+    if args.layout_type == "tiled":  # Typical Use Case
         create_tile_layout_viz_from_fasta(args, output_dir)
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -205,14 +198,10 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
-    parser.add_argument("-i", "--image",
-                        type=str,
-                        help="Path to already laid out big image to process with DeepZoom. No layout will be performed if an image is passed in.",
-                        dest="image")
     parser.add_argument("-f", "--fasta",
                         type=str,
                         help="Path to main FASTA file to process into new visualization.",
-                        dest="input_fasta")
+                        dest="fasta")
     parser.add_argument("-o", "--outname",
                         type=str,
                         help="What to name the output folder (not a path). Defaults to name of the fasta file.",
@@ -255,11 +244,6 @@ if __name__ == "__main__":
     if args.layout_type == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
 
-    if args.image and (args.fasta or args.layout_type or args.extra_fastas or args.chain_file):
-        parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
-    if not args.image and not args.fasta and not args.run_server:
-        parser.error("Please either define a 'fasta' file or an 'image' file!")
-
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
     if args.layout_type and "parallel" in args.layout_type and not args.extra_fastas:
@@ -274,10 +258,8 @@ if __name__ == "__main__":
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
 
     # Set post error checking defaults
-    if not args.image and not args.layout_type and args.fasta:
+    if not args.layout_type and args.fasta:
         args.layout_type = "tiled"
-    if args.image and not args.layout_type:
-        args.layout_type = "NONE"
 
     if args.chain_file and not args.chromosomes:
         args.chromosomes = ['chrY']
@@ -289,6 +271,6 @@ if __name__ == "__main__":
             if args.layout_type == "unique":
                 args.output_name += "_UNIQUE"
         else:
-            args.output_name = os.path.splitext(os.path.basename(args.fasta or args.image))[0]
+            args.output_name = os.path.splitext(os.path.basename(args.fasta))[0]
 
     ddv(args)
