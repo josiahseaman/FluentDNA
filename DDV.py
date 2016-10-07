@@ -38,7 +38,7 @@ import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack
+from DDVUtils import create_deepzoom_stack, just_the_name
 from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
@@ -267,10 +267,10 @@ if __name__ == "__main__":
     # Set dependent defaults
     if not args.output_name and args.layout_type:
         if args.chain_file:
-            args.output_name = os.path.splitext(os.path.basename(args.fasta))[0] + '_AND_' + os.path.splitext(os.path.basename(args.extra_fastas[0]))[0]
+            args.output_name = just_the_name(args.fasta) + '_AND_' + just_the_name(args.extra_fastas[0])
             if args.layout_type == "unique":
                 args.output_name += "_UNIQUE"
         else:
-            args.output_name = os.path.splitext(os.path.basename(args.fasta))[0]
+            args.output_name = just_the_name(args.fasta)
 
     ddv(args)

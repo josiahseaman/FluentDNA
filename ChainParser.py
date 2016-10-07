@@ -7,6 +7,7 @@ from datetime import datetime
 from Bio import Seq
 
 from ChainFiles import chain_file_to_list, fetch_all_chains
+from DDVUtils import just_the_name
 
 
 def chunks(seq, size):
@@ -74,7 +75,7 @@ class ChainParser:
         print("Reading contigs... ", input_file_path)
         start_time = datetime.now()
         self.query_contigs = {}
-        current_name = ""
+        current_name = just_the_name(input_file_path)  # default to filename
         seq_collection = []
 
         # Pre-read generates an array of contigs with labels and sequences

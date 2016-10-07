@@ -4,7 +4,7 @@ from datetime import datetime
 from math import floor
 from PIL import ImageFont
 
-from DDVUtils import LayoutLevel
+from DDVUtils import LayoutLevel, just_the_name
 from TileLayout import TileLayout
 
 
@@ -123,7 +123,7 @@ class ParallelLayout(TileLayout):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
         font = ImageFont.truetype("tahoma.ttf", 380)
-        titles = [os.path.splitext(os.path.basename(x))[0] for x in filenames]  # remove extension and path
+        titles = [just_the_name(x) for x in filenames]  # remove extension and path
         span = '      '.join(titles)
         title_spanning_width = font.getsize(span)[0]  # For centered text
         left_start = self.image.width / 2.0 - title_spanning_width / 2.0

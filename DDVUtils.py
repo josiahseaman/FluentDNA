@@ -87,3 +87,9 @@ def create_deepzoom_stack(input_image, output_dzi):
                                     tile_format=dz_params['tile_format'],
                                     resize_filter=dz_params['resize_filter'])
     creator.create(input_image, output_dzi)
+
+
+def just_the_name(path):
+    """Remove extension and path"""
+    return os.path.splitext(os.path.basename(path))[0]
+
