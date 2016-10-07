@@ -170,8 +170,9 @@ class ChainParser:
                 print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
 
         if is_master_alignment:  # last one: print out all remaining sequence
-            self.query_seq_gapped.extend(self.query_sequence[query_pointer:])
-            self.ref_seq_gapped.extend(self.ref_sequence[ref_pointer:])
+            gap_query, gap_ref = len(self.ref_sequence) - ref_pointer, len(self.query_sequence) - query_pointer
+            self.query_seq_gapped.extend(self.query_sequence[query_pointer:] + 'X' * gap_query)
+            self.ref_seq_gapped.extend('X' * gap_ref + self.ref_sequence[ref_pointer:])
 
     def setup_chain_start(self, chain, is_master_alignment):
         # convert to int except for chr names and strands
