@@ -118,7 +118,7 @@ def ddv(args):
         # TODO: Copy over html structure
         sys.exit(0)
     elif args.layout_type == "tiled":  # Typical Use Case
-        create_tile_layout_viz_from_fasta(args, output_dir)
+        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir)
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
@@ -151,8 +151,7 @@ def ddv(args):
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
         for batch in batches:
-            args.fasta = batch[0]  # should only be one fasta
-            create_tile_layout_viz_from_fasta(args, output_dir)
+            create_tile_layout_viz_from_fasta(args, batch.fastas[0], output_dir)
         sys.exit(0)
 
     elif args.layout_type == "original":
@@ -180,14 +179,14 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
         run_server(output_dir)
 
 
-def create_tile_layout_viz_from_fasta(args, output_dir):
+def create_tile_layout_viz_from_fasta(args, fasta, output_dir):
     print("Creating Large Image from Input Fasta...")
     layout = TileLayout()
-    layout.process_file(args.fasta, output_dir, args.output_name)
+    layout.process_file(fasta, output_dir, args.output_name)
     layout_final_output_location = layout.final_output_location
     del layout
     try:
-        shutil.copy(args.fasta, os.path.join(output_dir, os.path.basename(args.fasta)))
+        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     except shutil.SameFileError:
         pass  # not a problem
     print("Done creating Large Image and HTML.")

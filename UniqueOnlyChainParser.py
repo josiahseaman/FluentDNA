@@ -2,7 +2,7 @@ from bisect import bisect_left
 from collections import namedtuple
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser
-from DDVUtils import pluck_contig
+from DDVUtils import pluck_contig, Batch
 
 Span = namedtuple('Span', ['begin', 'end'])
 def compare_start(self, other_int):
@@ -106,7 +106,7 @@ class UniqueOnlyChainParser(ChainParser):
         pass  # we don't actually need the query sequence, only the chain file
 
 
-    def main(self, chromosome_name):
+    def main(self, chromosome_name) -> Batch:
         fasta_names, ignored, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         # actual work
@@ -117,8 +117,7 @@ class UniqueOnlyChainParser(ChainParser):
             del fasta_names['query']
         # self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
         # DDV.DDV_main(['DDV', fasta_names['ref_unique'], source_path, folder_name])
-        batch_arguments = [fasta_names['ref_unique'], ]
-        return batch_arguments  # the name of the one file to be processed by Viz
+        return Batch(chromosome_name, [fasta_names['ref_unique'], ])  # the name of the one file to be processed by Viz
 
 
     def parse_chain(self, chromosomes=None):
