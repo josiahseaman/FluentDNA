@@ -122,7 +122,7 @@ def ddv(args):
         sys.exit(0)
     elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
-            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir)
+            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, [args.fasta] + args.extra_fastas)
             sys.exit(0)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
@@ -136,9 +136,7 @@ def ddv(args):
             del chain_parser
             print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple chromosomes, multiple views
-                args.extra_fastas = batch
-                args.fasta = args.extra_fastas.pop(0)  # first, not last
-                create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir)
+                create_parallel_viz_from_fastas(args, len(batch.fastas), output_dir, batch.fastas)
             sys.exit(0)
     elif args.layout_type == "unique":
         """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
@@ -163,15 +161,14 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes)
-    layout.process_file(args.fasta, output_dir, args.output_name, args.extra_fastas)
+    layout.process_file(output_dir, args.output_name, fastas)
     layout_final_output_location = layout.final_output_location
     del layout
     try:
-        shutil.copy(args.fasta, os.path.join(output_dir, os.path.basename(args.fasta)))
-        for extra_fasta in args.extra_fastas:
+        for extra_fasta in fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
     except shutil.SameFileError:
         pass  # not a problem

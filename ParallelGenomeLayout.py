@@ -35,32 +35,29 @@ class ParallelLayout(TileLayout):
     def enable_fat_headers(self):
         pass  # just don't
 
-    def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
-        assert len(additional_files) + 1 == self.n_genomes, "List of Genome files must be same length as n_genomes"
+    def process_file(self, output_folder, output_file_name, fasta_files=list()):
+        assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
-        self.image_length = self.read_contigs(file1)
-        self.image_length = max(self.image_length, *[os.path.getsize(file) for file in additional_files])
+        self.image_length = max(*[os.path.getsize(file) for file in fasta_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
         print("Initialized Image:", datetime.now() - start_time)
-        self.draw_nucleotides()
-        print("Drew First File:", file1, datetime.now() - start_time)
 
         try:
             # Do inner work for two other files
-            for filename in additional_files:
-                self.genome_processed += 1
+            for filename in fasta_files:
                 self.read_contigs(filename)
                 if self.using_background_colors:
                     self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
-                print("Drew Additional File:", filename, datetime.now() - start_time)
+                self.genome_processed += 1
+                print("Drew File:", filename, datetime.now() - start_time)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
-        self.write_title([file1] + additional_files)
-        self.generate_html(file1, output_folder, output_file_name)
+        self.write_title(fasta_files)
+        self.generate_html(fasta_files[-1], output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 

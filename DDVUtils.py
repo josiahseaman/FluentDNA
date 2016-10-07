@@ -2,10 +2,13 @@ import os
 import shutil
 import re as regex
 import textwrap
+from collections import namedtuple
 
 import deepzoom
 
 from PIL import ImageDraw
+
+Batch = namedtuple('Batch', ['chr', 'fastas'])
 
 
 class LayoutLevel:
@@ -93,3 +96,38 @@ def just_the_name(path):
     """Remove extension and path"""
     return os.path.splitext(os.path.basename(path))[0]
 
+
+def chunks(seq, size):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(seq), size):
+        yield seq[i:i + size]
+
+
+def pluck_contig(chromosome_name, genome_source):
+    """Scan through a genome fasta file looking for a matching contig name.  When it find it, find_contig collects
+    the sequence and returns it as a string with no cruft."""
+    chromosome_name = '>' + chromosome_name
+    print("Searching for", chromosome_name)
+    seq_collection = []
+    printing = False
+    with open(genome_source, 'r') as genome:
+        for line in genome.readlines():
+            line = line.rstrip()
+            if line.startswith('>'):
+                # headers.append(line)
+                if line == chromosome_name:
+                    printing = True
+                    print("Found", line)
+                elif printing:
+                    break  # we've collected all sequence and reached the beginning of the next contig
+            elif printing:  # This MUST come after the check for a '>'
+                seq_collection.append(line.upper())  # always upper case so equality checks work
+    assert len(seq_collection), "Contig not found." + chromosome_name  # File contained these contigs:\n" + '\n'.join(headers)
+    return ''.join(seq_collection)
+
+
+def first_word(string):
+    import re
+    if '\\' in string:
+        string = string[string.rindex('\\') + 1:]
+    return re.split('[\W_]+', string)[0]

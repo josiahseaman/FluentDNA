@@ -1,49 +1,12 @@
 import os
-import multiprocessing
+#from typing import List
 
 from array import array
 from collections import defaultdict
 from datetime import datetime
-from Bio import Seq
 
 from ChainFiles import chain_file_to_list, fetch_all_chains
-from DDVUtils import just_the_name
-
-
-def chunks(seq, size):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(seq), size):
-        yield seq[i:i + size]
-
-
-def pluck_contig(chromosome_name, genome_source):
-    """Scan through a genome fasta file looking for a matching contig name.  When it find it, find_contig collects
-    the sequence and returns it as a string with no cruft."""
-    chromosome_name = '>' + chromosome_name
-    print("Searching for", chromosome_name)
-    seq_collection = []
-    printing = False
-    with open(genome_source, 'r') as genome:
-        for line in genome.readlines():
-            line = line.rstrip()
-            if line.startswith('>'):
-                # headers.append(line)
-                if line == chromosome_name:
-                    printing = True
-                    print("Found", line)
-                elif printing:
-                    break  # we've collected all sequence and reached the beginning of the next contig
-            elif printing:  # This MUST come after the check for a '>'
-                seq_collection.append(line.upper())  # always upper case so equality checks work
-    assert len(seq_collection), "Contig not found." + chromosome_name  # File contained these contigs:\n" + '\n'.join(headers)
-    return ''.join(seq_collection)
-
-
-def first_word(string):
-    import re
-    if '\\' in string:
-        string = string[string.rindex('\\') + 1:]
-    return re.split('[\W_]+', string)[0]
+from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch
 
 
 def rev_comp(plus_strand):
@@ -52,8 +15,6 @@ def rev_comp(plus_strand):
 
 
 class ChainParser:
-    output_fastas = []
-
     def __init__(self, chain_name, second_source, first_source, output_folder, trial_run=False, swap_columns=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
@@ -68,8 +29,10 @@ class ChainParser:
         self.ref_seq_gapped = array('u', '')
         self.relevant_chains = []  # list of contigs that contribute to ref_chr in chain entries
         self.stored_rev_comps = {}
+        self.output_fastas = []
 
         self.chain_list = chain_file_to_list(chain_name)
+
 
     def read_contigs(self, input_file_path):
         print("Reading contigs... ", input_file_path)
@@ -99,6 +62,7 @@ class ChainParser:
         self.query_contigs[current_name] = sequence
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
+
     def read_query_seq_to_memory(self, query_chr, query_source):
         self.read_contigs(query_source)
         self.query_sequence = self.query_contigs[query_chr]
@@ -106,6 +70,7 @@ class ChainParser:
         # if not self.trial_run:
         #     self.write_fasta_lines(query_file_name, self.query_sequence)
         #     self.write_fasta_lines(ref_file_name, self.ref_sequence)
+
 
     def write_fasta_lines(self, filestream, seq):
         if isinstance(filestream, str):  # I'm actually given a file name and have to open it myself
@@ -116,6 +81,7 @@ class ChainParser:
         else:
             remaining = self.width_remaining[filestream]
             self.do_write(filestream, remaining, seq)
+
 
     def do_write(self, filestream, remaining, seq):
         try:
@@ -133,12 +99,14 @@ class ChainParser:
         except Exception as e:
             print(e)
 
+
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
 
         if not is_master_alignment:
             self.do_translocation_housework(chain, query_pointer, ref_pointer)
         self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
+
 
     def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
         assert len(chain.entries), "Chain has no data"
@@ -174,6 +142,7 @@ class ChainParser:
             self.query_seq_gapped.extend(self.query_sequence[query_pointer:] + 'X' * gap_query)
             self.ref_seq_gapped.extend('X' * gap_ref + self.ref_sequence[ref_pointer:])
 
+
     def setup_chain_start(self, chain, is_master_alignment):
         # convert to int except for chr names and strands
         ref_pointer, query_pointer = chain.tStart, chain.qStart
@@ -184,6 +153,7 @@ class ChainParser:
             self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))  # one of these gaps will be 0
             self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))
         return ref_pointer, query_pointer
+
 
     def do_translocation_housework(self, chain, query_pointer, ref_pointer):
         minus_strand = chain.qStrand != '+'
@@ -208,6 +178,7 @@ class ChainParser:
         # insert the gapped versions on both sides
         pass
 
+
     def write_gapped_fasta(self, query, reference):
         query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + '_gapped.fa')
         ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + '_gapped.fa')
@@ -216,6 +187,7 @@ class ChainParser:
         with open(ref_gap_name, 'w') as ref_file:
             self.write_fasta_lines(ref_file, ''.join(self.ref_seq_gapped))
         return query_gap_name, ref_gap_name
+
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
         query_uniq_array = array('u', self.query_seq_gapped)
@@ -251,6 +223,7 @@ class ChainParser:
 
         return query_unique_name, ref_unique_name
 
+
     def do_all_relevant_chains(self, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
@@ -273,6 +246,7 @@ class ChainParser:
             else:
                 print("No fasta source for", chain.qName)
 
+
     def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
@@ -284,6 +258,7 @@ class ChainParser:
                 self.query_sequence = self.query_contigs[query_chr]
             for chain in translocations:
                 self.mash_fasta_and_chain_together(chain, False)
+
 
     def setup_for_reference_chromosome(self, chromosome_name):
         if isinstance(chromosome_name, str):
@@ -297,7 +272,8 @@ class ChainParser:
 
         return names, query_chr, ref_chr
 
-    def _parse_chromosome_in_chain(self, chromosome_name):
+
+    def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
         names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
@@ -318,9 +294,10 @@ class ChainParser:
         if True:  #self.trial_run:  # these files are never used in the viz
             del names['ref']
             del names['query']
-        return self.output_fastas
+        return Batch(chromosome_name, self.output_fastas)
 
-    def parse_chain(self, chromosomes):
+
+    def parse_chain(self, chromosomes) -> list:
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
         batches = []

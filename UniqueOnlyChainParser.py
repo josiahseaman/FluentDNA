@@ -1,8 +1,8 @@
 from bisect import bisect_left
 from collections import namedtuple
 from ChainFiles import fetch_all_chains
-from ChainParser import ChainParser, pluck_contig
-
+from ChainParser import ChainParser
+from DDVUtils import pluck_contig
 
 Span = namedtuple('Span', ['begin', 'end'])
 def compare_start(self, other_int):
