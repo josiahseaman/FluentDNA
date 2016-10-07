@@ -125,16 +125,16 @@ def ddv(args):
                                        output_folder=output_dir,
                                        trial_run=False,
                                        swap_columns=False)
-            batches = chain_parser.parse_chain(args.chromosomes)
             print("Creating Gapped and Unique Fastas from Chain File...")
+            batches = chain_parser.parse_chain(args.chromosomes)
             del chain_parser
+            print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple chromosomes, multiple views
                 args.extra_fastas = batch
                 args.fasta = args.extra_fastas.pop(0)  # first, not last
                 create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir)
             sys.exit(0)
     elif args.layout_type == "unique":
-        assert args.chain_file, "You must have a chain file to make a unique sequence view"
         """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
                                first_source='HongKong\\hg38.fa',
                                second_source='',
@@ -208,7 +208,7 @@ if __name__ == "__main__":
                         dest="output_name")
     parser.add_argument("-l", "--layout",
                         type=str,
-                        help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout.",
+                        help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
                         choices=["original", "tiled", "parallel", "unique"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
@@ -242,20 +242,22 @@ if __name__ == "__main__":
 
     # Errors
     if args.layout_type == "original":
-        parser.error("The 'original' layout is not yet implemented in Python!")  # TOOD: Implement the original layout
+        parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
 
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
-    if args.layout_type and "parallel" in args.layout_type and not args.extra_fastas:
-        parser.error("When doing a Parallel layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
+    if args.layout_type and (args.layout_type == "parallel" or args.layout_type == "unique") and not args.extra_fastas:
+        parser.error("When doing a Parallel or Unique layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
     if args.chromosomes and not args.chain_file:
         parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
-    if args.extra_fastas and "parallel" not in args.layout_type:
-        parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
-    if args.chain_file and "parallel" not in args.layout_type:
-        parser.error("The 'chainfile' argument is only used when doing a Parallel layout!")
+    if args.extra_fastas and (args.layout_type != "parallel" and args.layout_type != "unique"):
+        parser.error("The 'extrafastas' argument is only used when doing a Parallel or Unique layout!")
+    if args.chain_file and (args.layout_type != "parallel" and args.layout_type != "unique"):
+        parser.error("The 'chainfile' argument is only used when doing a Parallel or Unique layout!")
     if args.chain_file and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
+    if args.layout_type == "unique" and not args.chain_file:
+        parser.error("You must have a 'chainfile' to make a Unique layout!")
 
     # Set post error checking defaults
     if not args.layout_type and args.fasta:
