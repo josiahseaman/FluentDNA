@@ -1,16 +1,14 @@
 import os
+
 from datetime import datetime
 from math import floor
-
-from os import path
-
 from PIL import ImageFont
 
-from DDV import LayoutLevel
-from DDVTileLayout import DDVTileLayout
+from DDVUtils import LayoutLevel, just_the_name
+from TileLayout import TileLayout
 
 
-class ParallelLayout(DDVTileLayout):
+class ParallelLayout(TileLayout):
     def __init__(self, n_genomes):
         super(ParallelLayout, self).__init__(use_fat_headers=False)  # This layout is best used on one chromosome at a time.
         # modify layout with an additional bundled column layer
@@ -34,40 +32,34 @@ class ParallelLayout(DDVTileLayout):
         self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
 
-
     def enable_fat_headers(self):
         pass  # just don't
 
-
-    def process_file(self, file1, output_folder, output_file_name, additional_files=[]):
-        assert len(additional_files) + 1 == self.n_genomes, "List of Genome files must be same length as n_genomes"
+    def process_file(self, output_folder, output_file_name, fasta_files=list()):
+        assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
-        self.image_length = self.read_contigs(file1)
-        self.image_length = max(self.image_length, *[path.getsize(file) for file in additional_files])
+        self.image_length = max(*[os.path.getsize(file) for file in fasta_files])
         print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
         print("Initialized Image:", datetime.now() - start_time)
-        self.draw_nucleotides()
-        print("Drew First File:", file1, datetime.now() - start_time)
 
         try:
             # Do inner work for two other files
-            for filename in additional_files:
-                self.genome_processed += 1
+            for filename in fasta_files:
                 self.read_contigs(filename)
                 if self.using_background_colors:
                     self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
-                print("Drew Additional File:", filename, datetime.now() - start_time)
+                self.genome_processed += 1
+                print("Drew File:", filename, datetime.now() - start_time)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
-        self.write_title([file1] + additional_files)
-        self.generate_html(file1, output_folder, output_file_name)
+        self.write_title(fasta_files)
+        self.generate_html(fasta_files[-1], output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-
 
     def position_on_screen(self, index):
         """ In ParallelLayout, each genome is given a constant x offset in order to interleave the results of each
@@ -106,7 +98,6 @@ class ParallelLayout(DDVTileLayout):
 
         # return 0, 0, 0
 
-
     def fill_in_colored_borders(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
@@ -125,12 +116,11 @@ class ParallelLayout(DDVTileLayout):
                 self.draw.rectangle([left, top, right, bottom], fill=color)
         self.genome_processed = 0
 
-
     def write_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
         font = ImageFont.truetype("tahoma.ttf", 380)
-        titles = [os.path.splitext(os.path.basename(x))[0] for x in filenames]  # remove extension and path
+        titles = [just_the_name(x) for x in filenames]  # remove extension and path
         span = '      '.join(titles)
         title_spanning_width = font.getsize(span)[0]  # For centered text
         left_start = self.image.width / 2.0 - title_spanning_width / 2.0
