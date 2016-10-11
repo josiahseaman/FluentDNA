@@ -129,9 +129,10 @@ def ddv(args):
                                        second_source=args.extra_fastas[0],
                                        first_source=args.fasta,
                                        output_prefix=base_path,
-                                       trial_run=False,
+                                       trial_run=args.trial_run,
                                        swap_columns=False,
-                                       include_translocations=not args.skip_translocations)
+                                       include_translocations=not args.skip_translocations,
+                                       squish_gaps=args.squish_gaps)
             print("Creating Gapped and Unique Fastas from Chain File...")
             batches = chain_parser.parse_chain(args.chromosomes)
             del chain_parser
@@ -148,7 +149,7 @@ def ddv(args):
                                                     second_source=args.fasta,
                                                     first_source=args.fasta,
                                                     output_prefix=base_path,
-                                                    trial_run=False,
+                                                    trial_run=args.trial_run,
                                                     include_translocations=not args.skip_translocations)
         batches = unique_chain_parser.parse_chain(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
@@ -166,7 +167,7 @@ def ddv(args):
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes)
-    layout.process_file(output_dir, args.output_name, fastas)
+    layout.process_file(output_dir, just_the_name(output_dir), fastas)
     layout_final_output_location = layout.final_output_location
     del layout
     try:
@@ -176,7 +177,8 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
         pass  # not a problem
     print("Done creating Large Image and HTML.")
     print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
+                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
     print("Done creating Deep Zoom Structure.")
     if args.run_server:
         run_server(output_dir)
@@ -185,7 +187,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir):
     print("Creating Large Image from Input Fasta...")
     layout = TileLayout()
-    layout.process_file(fasta, output_dir, args.output_name)
+    layout.process_file(fasta, output_dir, just_the_name(output_dir))
     layout_final_output_location = layout.final_output_location
     del layout
     try:
@@ -248,7 +250,14 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Don't include translocation in the alignment.",
                         dest="skip_translocations")
-
+    parser.add_argument("-g", "--squish_gaps",
+                        action='store_true',
+                        help="If two gaps are approximately the same size, subtract the intersection.",
+                        dest="squish_gaps")
+    parser.add_argument("-q", "--trial_run",
+                        action='store_true',
+                        help="Only show the first 10Mbp.  This is faster.",
+                        dest="trial_run")
 
     args = parser.parse_args()
 

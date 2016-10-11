@@ -15,7 +15,8 @@ def rev_comp(plus_strand):
 
 
 class ChainParser:
-    def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False, swap_columns=False, include_translocations=True):
+    def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
+                 swap_columns=False, include_translocations=True, squish_gaps=False):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
@@ -25,6 +26,7 @@ class ChainParser:
         self.trial_run = trial_run
         self.swap_columns = swap_columns
         self.include_translocations = include_translocations
+        self.squish_gaps = squish_gaps
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
@@ -34,6 +36,8 @@ class ChainParser:
         self.output_fastas = []
 
         self.chain_list = chain_file_to_list(chain_name)
+        if self.include_translocations:
+            self.read_contigs(self.query_source)
 
 
     def read_contigs(self, input_file_path):
@@ -66,10 +70,13 @@ class ChainParser:
 
 
     def read_query_seq_to_memory(self, query_chr, query_source):
-        self.read_contigs(query_source)
-        self.query_sequence = self.query_contigs[query_chr]
+        if self.include_translocations:
+            self.query_sequence = self.query_contigs[query_chr]
+        else:
+            self.query_sequence = pluck_contig(query_chr, query_source)  # skip others
+            self.query_contigs[query_chr] = self.query_sequence
 
-        # if not self.trial_run:
+            # if not self.trial_run:
         #     self.write_fasta_lines(query_file_name, self.query_sequence)
         #     self.write_fasta_lines(ref_file_name, self.ref_sequence)
 
@@ -119,19 +126,22 @@ class ChainParser:
             if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
                 break
 
+            space_saved = 0
             if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # 26 lines is the height of a label
                 # Don't show intervening sequence
                 # #14 Skipping display of large gaps formed by bad netting.
                 # TODO insert header
                 gap_query, gap_ref = 0, 0
                 # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
+            elif self.squish_gaps:
+                space_saved = min(gap_query, gap_ref)
 
             query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
-            query_snippet = query_seq_absolute + 'X' * gap_query
+            query_snippet = query_seq_absolute + 'X' * (gap_query - space_saved)
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             self.query_seq_gapped.extend(query_snippet)
 
-            ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * gap_ref
+            ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * (gap_ref - space_saved)
             ref_snippet += self.ref_sequence[ref_pointer + size: ref_pointer + size + gap_query]
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
             self.ref_seq_gapped.extend(ref_snippet)
@@ -139,7 +149,7 @@ class ChainParser:
             if len(ref_snippet) != len(query_snippet):
                 print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
 
-        if is_master_alignment:  # last one: print out all remaining sequence
+        if is_master_alignment and not self.trial_run:  # last one: print out all remaining sequence
             gap_query, gap_ref = len(self.ref_sequence) - ref_pointer, len(self.query_sequence) - query_pointer
             self.query_seq_gapped.extend(self.query_sequence[query_pointer:] + 'X' * gap_query)
             self.ref_seq_gapped.extend('X' * gap_ref + self.ref_sequence[ref_pointer:])
@@ -268,7 +278,8 @@ class ChainParser:
         if isinstance(chromosome_name, str):
             chromosome_name = (chromosome_name, chromosome_name)
         query_chr, ref_chr = chromosome_name
-        self.output_folder = make_output_dir_with_suffix(self.output_prefix, ref_chr)
+        ending = ref_chr + '__squished' * self.squish_gaps + '__master' * (not self.include_translocations)
+        self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
         self.read_query_seq_to_memory(query_chr, self.query_source)
