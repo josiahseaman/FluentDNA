@@ -8,7 +8,7 @@ import deepzoom
 
 from PIL import ImageDraw
 
-Batch = namedtuple('Batch', ['chr', 'fastas'])
+Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 
 
 class LayoutLevel:
@@ -131,3 +131,10 @@ def first_word(string):
     if '\\' in string:
         string = string[string.rindex('\\') + 1:]
     return re.split('[\W_]+', string)[0]
+
+
+def make_output_dir_with_suffix(base_path, suffix):
+    output_dir = base_path + suffix
+    print("Creating Chromosome Output Directory...", os.path.basename(output_dir))
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir

@@ -116,8 +116,7 @@ class UniqueOnlyChainParser(ChainParser):
             del fasta_names['ref']
             del fasta_names['query']
         # self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
-        # DDV.DDV_main(['DDV', fasta_names['ref_unique'], source_path, folder_name])
-        return Batch(chromosome_name, [fasta_names['ref_unique'], ])  # the name of the one file to be processed by Viz
+        return Batch(chromosome_name, [fasta_names['ref_unique']], self.output_folder)  # the name of the one file to be processed by Viz
 
 
     def parse_chain(self, chromosomes=None):

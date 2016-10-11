@@ -7,10 +7,9 @@ or Direct2D. We tried a lot of options.
 self.python file contains basic image handling methods.  It also contains a re-implementation of
 Josiah's "Tiled Layout" algorithm which is also in DDVLayoutManager.cs.
 """
+import multiprocessing
 import os
 import sys
-import multiprocessing
-
 
 print("Setting up Python...")
 
@@ -38,7 +37,7 @@ import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack, just_the_name
+from DDVUtils import create_deepzoom_stack, just_the_name, make_output_dir_with_suffix
 from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
@@ -105,38 +104,40 @@ def ddv(args):
         run_server(SERVER_HOME)
         sys.exit(0)
 
-    output_dir = os.path.join(SERVER_HOME, args.output_name)
-    # TODO: handling for args.chromosomes creating multiple views
-    print("Creating Chromosome Output Directory...")
-    os.makedirs(output_dir, exist_ok=True)
-    print("Done creating Directories.")
-
+    base_path = os.path.join(SERVER_HOME, args.output_name)
     if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
+        output_dir = make_output_dir_with_suffix(base_path, '')
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
         # TODO: Copy over html structure
         sys.exit(0)
     elif args.layout_type == "tiled":  # Typical Use Case
+        # TODO: allow batch of tiling layout by chromosome
+        output_dir = make_output_dir_with_suffix(base_path, '')
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir)
         sys.exit(0)
-    elif args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
+    # views that support batches of chromosomes
+    if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
+            # TODO: allow batch of tiling layout by chromosome
+            output_dir = make_output_dir_with_suffix(base_path, '')
             create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, [args.fasta] + args.extra_fastas)
             sys.exit(0)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
-                                       first_source=args.fasta,
                                        second_source=args.extra_fastas[0],
-                                       output_folder=output_dir,
+                                       first_source=args.fasta,
+                                       output_prefix=base_path,
                                        trial_run=False,
-                                       swap_columns=False)
+                                       swap_columns=False,
+                                       include_translocations=not args.skip_translocations)
             print("Creating Gapped and Unique Fastas from Chain File...")
             batches = chain_parser.parse_chain(args.chromosomes)
             del chain_parser
             print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple chromosomes, multiple views
-                create_parallel_viz_from_fastas(args, len(batch.fastas), output_dir, batch.fastas)
+                create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, batch.fastas)
             sys.exit(0)
     elif args.layout_type == "unique":
         """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
@@ -144,14 +145,16 @@ def ddv(args):
                                second_source='',
                                output_folder_prefix='Hg38_unique_vs_panTro4_')"""
         unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
+                                                    second_source=args.fasta,
                                                     first_source=args.fasta,
-                                                    output_folder=output_dir,
-                                                    trial_run=False)
+                                                    output_prefix=base_path,
+                                                    trial_run=False,
+                                                    include_translocations=not args.skip_translocations)
         batches = unique_chain_parser.parse_chain(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
         for batch in batches:
-            create_tile_layout_viz_from_fasta(args, batch.fastas[0], output_dir)
+            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder)
         sys.exit(0)
 
     elif args.layout_type == "original":
@@ -241,6 +244,11 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Run Web Server after computing.",
                         dest="run_server")
+    parser.add_argument("-t", "--skip_translocations",
+                        action='store_true',
+                        help="Don't include translocation in the alignment.",
+                        dest="skip_translocations")
+
 
     args = parser.parse_args()
 

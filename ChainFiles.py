@@ -44,6 +44,8 @@ def chain_file_to_list(chain_name):
     new_chain = None
     with open(chain_name, 'r') as infile:
         for line in infile.readlines():
+            if line.startswith('#'):
+                continue  # this is a comment, no seriously, the line in the chain file is commented out
             if line.startswith('chain'):
                 if new_chain is not None:
                     all_chains.append(new_chain)

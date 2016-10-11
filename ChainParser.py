@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from ChainFiles import chain_file_to_list, fetch_all_chains
-from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch
+from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix
 
 
 def rev_comp(plus_strand):
@@ -15,14 +15,16 @@ def rev_comp(plus_strand):
 
 
 class ChainParser:
-    def __init__(self, chain_name, second_source, first_source, output_folder, trial_run=False, swap_columns=False):
+    def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False, swap_columns=False, include_translocations=True):
         self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
-        self.output_folder = output_folder
+        self.output_prefix = output_prefix
+        self.output_folder = None
         self.query_contigs = dict()
         self.trial_run = trial_run
         self.swap_columns = swap_columns
+        self.include_translocations = include_translocations
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
@@ -231,20 +233,22 @@ class ChainParser:
             relevant_chains = self.relevant_chains
         previous = None
         for chain in relevant_chains:
-            if chain.qName in self.query_contigs:
-                if chain.qStrand == '-':  # need to load rev_comp
-                    if chain.qName not in self.stored_rev_comps:
-                        if len(self.query_contigs[chain.qName]) > 1000000:
-                            print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
-                        self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
-                        # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
-                    self.query_sequence = self.stored_rev_comps[chain.qName]
+            is_master_alignment = previous is None
+            if self.include_translocations or is_master_alignment:  # otherwise we'll only do the master alignment
+                if chain.qName in self.query_contigs:
+                    if chain.qStrand == '-':  # need to load rev_comp
+                        if chain.qName not in self.stored_rev_comps:
+                            if len(self.query_contigs[chain.qName]) > 1000000:
+                                print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
+                            self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
+                            # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
+                        self.query_sequence = self.stored_rev_comps[chain.qName]
+                    else:
+                        self.query_sequence = self.query_contigs[chain.qName]
+                    self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
+                    previous = chain
                 else:
-                    self.query_sequence = self.query_contigs[chain.qName]
-                self.mash_fasta_and_chain_together(chain, previous is None)  # first chain is the master alignment
-                previous = chain
-            else:
-                print("No fasta source for", chain.qName)
+                    print("No fasta source for", chain.qName)
 
 
     def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
@@ -264,6 +268,7 @@ class ChainParser:
         if isinstance(chromosome_name, str):
             chromosome_name = (chromosome_name, chromosome_name)
         query_chr, ref_chr = chromosome_name
+        self.output_folder = make_output_dir_with_suffix(self.output_prefix, ref_chr)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
         self.read_query_seq_to_memory(query_chr, self.query_source)
@@ -294,7 +299,9 @@ class ChainParser:
         if True:  #self.trial_run:  # these files are never used in the viz
             del names['ref']
             del names['query']
-        return Batch(chromosome_name, self.output_fastas)
+        batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
+        self.output_folder = None  # clear the previous value
+        return batch
 
 
     def parse_chain(self, chromosomes) -> list:
