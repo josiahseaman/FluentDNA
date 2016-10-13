@@ -5,13 +5,8 @@ from array import array
 from collections import defaultdict
 from datetime import datetime
 
-from ChainFiles import chain_file_to_list, fetch_all_chains
-from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix
-
-
-def rev_comp(plus_strand):
-    comp = {'A': 'T', 'G': 'C', 'T': 'A', 'C': 'G', 'N': 'N', 'X': 'X'}
-    return ''.join([comp[a] for a in reversed(plus_strand)])
+from ChainFiles import chain_file_to_list
+from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement
 
 
 class ChainParser:
@@ -252,7 +247,7 @@ class ChainParser:
                         if chain.qName not in self.stored_rev_comps:
                             if len(self.query_contigs[chain.qName]) > 1000000:
                                 print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
-                            self.stored_rev_comps[chain.qName] = rev_comp(self.query_contigs[chain.qName])  # caching for performance
+                            self.stored_rev_comps[chain.qName] = ReverseComplement(self.query_contigs[chain.qName])  # caching for performance
                             # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
                         self.query_sequence = self.stored_rev_comps[chain.qName]
                     else:

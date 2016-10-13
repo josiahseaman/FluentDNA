@@ -47,6 +47,35 @@ class Contig:
         self.nuc_seq_start = title_index + title_length
 
 
+
+comp = {'A': 'T', 'G': 'C', 'T': 'A', 'C': 'G', 'N': 'N', 'X': 'X'}
+def complement(plus_strand):
+    return comp[plus_strand]
+
+
+def rev_comp(plus_strand):
+    return ''.join([comp[a] for a in reversed(plus_strand)])
+
+
+class ReverseComplement:
+    def __init__(self, seq):
+        """Lazy generator for being able to pull out small reverse complement sections out of large chromosomes"""
+        self.seq = seq
+        self.length = len(seq)
+
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            start = self.length - key.start - 1
+            stop = self.length - key.stop - 1
+            if start < 0 or stop < 0 or stop > self.length:
+                raise IndexError("%i %i vs. length %i" % (start, stop, self.length))
+            piece = self.seq[stop + 1: start + 1]
+            return rev_comp(piece)
+        return complement(self.seq[self.length - key - 1])
+
+
+
 def multi_line_height(font, multi_line_title, txt):
     sum_line_spacing = ImageDraw.Draw(txt).multiline_textsize(multi_line_title, font)[1]
     descender = font.getsize('y')[1] - font.getsize('A')[1]
