@@ -34,6 +34,7 @@ class ChainParser:
         self.relevant_chains = []  # list of contigs that contribute to ref_chr in chain entries
         self.stored_rev_comps = {}
         self.output_fastas = []
+        self.gapped = '_gapped'
 
         self.chain_list = chain_file_to_list(chain_name)
         if self.include_translocations:
@@ -70,15 +71,10 @@ class ChainParser:
 
 
     def read_query_seq_to_memory(self, query_chr, query_source):
-        if self.include_translocations:
-            self.query_sequence = self.query_contigs[query_chr]
+        if not self.include_translocations:
+            self.query_contigs[query_chr] = pluck_contig(query_chr, query_source)  # skip others
         else:
-            self.query_sequence = pluck_contig(query_chr, query_source)  # skip others
-            self.query_contigs[query_chr] = self.query_sequence
-
-            # if not self.trial_run:
-        #     self.write_fasta_lines(query_file_name, self.query_sequence)
-        #     self.write_fasta_lines(ref_file_name, self.ref_sequence)
+            pass  # already covered in __init__ query_contigs and do_all_relevant_chains setup
 
 
     def write_fasta_lines(self, filestream, seq):
@@ -119,7 +115,7 @@ class ChainParser:
 
     def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
         assert len(chain.entries), "Chain has no data"
-        for entry in chain.entries:  # ChainEntry
+        for entry_index, entry in enumerate(chain.entries):  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
 
             # Debugging code
@@ -147,7 +143,13 @@ class ChainParser:
             self.ref_seq_gapped.extend(ref_snippet)
 
             if len(ref_snippet) != len(query_snippet):
-                print(len(query_snippet), len(ref_snippet), "You should be outputting equal length strings til the end")
+                if len(ref_snippet) < len(query_snippet):
+                    faulty_source, faulty_chr = self.ref_source, chain.tName
+                else:
+                    faulty_source, faulty_chr = self.query_source, chain.qName
+                remaining_entries = len(chain.entries) - entry_index
+                raise EOFError("Reached the end of %s before expected point.\n"
+                               "Chain file still has %i entries on %s to process." % (faulty_source, remaining_entries, faulty_chr))
 
         if is_master_alignment and not self.trial_run:  # last one: print out all remaining sequence
             gap_query, gap_ref = len(self.ref_sequence) - ref_pointer, len(self.query_sequence) - query_pointer
@@ -160,7 +162,7 @@ class ChainParser:
         ref_pointer, query_pointer = chain.tStart, chain.qStart
         if chain.tEnd - chain.tStart > 100 * 1000:
             print('>>>>', chain)
-        if is_master_alignment:  # include the unaligned beginning of the sequence
+        if is_master_alignment and not self.trial_run:  # include the unaligned beginning of the sequence
             longer_gap = max(query_pointer, ref_pointer)
             self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))  # one of these gaps will be 0
             self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))
@@ -192,8 +194,8 @@ class ChainParser:
 
 
     def write_gapped_fasta(self, query, reference):
-        query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + '_gapped.fa')
-        ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + '_gapped.fa')
+        query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + self.gapped + '.fa')
+        ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + self.gapped + '.fa')
         with open(query_gap_name, 'w') as query_file:
             self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
         with open(ref_gap_name, 'w') as ref_file:
@@ -226,8 +228,8 @@ class ChainParser:
                     que_uniq_array[i] = 'X'
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = os.path.join(self.output_folder, query_gapped_name[:query_gapped_name.rindex('.')] + '_unique.fa')
-        ref_unique_name = os.path.join(self.output_folder, ref_gapped_name[:ref_gapped_name.rindex('.')] + '_unique.fa')
+        query_unique_name = os.path.join(self.output_folder, query_gapped_name.replace('%s' % self.gapped, '_unique'))
+        ref_unique_name = os.path.join(self.output_folder, ref_gapped_name.replace(self.gapped, '_unique'))
         with open(query_unique_name, 'w') as query_filestream:
             self.write_fasta_lines(query_filestream, ''.join(query_uniq_array))
         with open(ref_unique_name, 'w') as ref_filestream:
@@ -261,27 +263,13 @@ class ChainParser:
                     print("No fasta source for", chain.qName)
 
 
-    def do_all_chain_matches(self, ref_chr, query_chr, query_strand):
-        """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
-        I think it's a rule that you always flip the query strand instead."""
-        translocations = fetch_all_chains(ref_chr, query_chr, query_strand, self.chain_list)
-        if len(translocations):
-            if query_strand == '-':
-                self.query_sequence = rev_comp(self.query_contigs[query_chr])
-            else:
-                self.query_sequence = self.query_contigs[query_chr]
-            for chain in translocations:
-                self.mash_fasta_and_chain_together(chain, False)
-
-
     def setup_for_reference_chromosome(self, chromosome_name):
-        if isinstance(chromosome_name, str):
-            chromosome_name = (chromosome_name, chromosome_name)
-        query_chr, ref_chr = chromosome_name
-        ending = ref_chr + '__squished' * self.squish_gaps + '__master' * (not self.include_translocations)
+        query_chr, ref_chr = chromosome_name, chromosome_name
+        ending = ref_chr + '__squished' * self.squish_gaps + '__no_translocations' * (not self.include_translocations)
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
-                 'query': query_chr + '_%s.fa' % first_word(self.query_source)}  # for collecting all the files names in a modifiable way
+                 'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), query_chr)
+                 }  # for collecting all the files names in a modifiable way
         self.read_query_seq_to_memory(query_chr, self.query_source)
 
         self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]

@@ -302,6 +302,9 @@ if __name__ == "__main__":
     if args.chain_file and not args.chromosomes:
         args.chromosomes = ['chrY']
 
+    if args.output_name and args.chain_file and args.output_name[-1] != '_':
+        args.output_name += '_'  # prefix should always end with an underscore
+
     # Set dependent defaults
     if not args.output_name and args.layout_type:
         if args.chain_file:
