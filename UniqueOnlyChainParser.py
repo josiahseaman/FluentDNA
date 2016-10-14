@@ -97,8 +97,7 @@ class UniqueOnlyChainParser(ChainParser):
         for region in self.uncovered_areas:
             uniq_collection.append(self.ref_sequence[region.begin: region.end].replace('N', ''))
 
-        with open(ref_unique_name, 'w') as ref_filestream:
-            self.write_fasta_lines(ref_filestream, ''.join(uniq_collection))
+        self.write_complete_fasta(ref_unique_name, uniq_collection)
         return ref_unique_name
 
 

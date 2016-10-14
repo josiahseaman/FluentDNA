@@ -30,7 +30,7 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 import shutil
 import argparse
@@ -256,7 +256,7 @@ if __name__ == "__main__":
                         dest="squish_gaps")
     parser.add_argument("-q", "--trial_run",
                         action='store_true',
-                        help="Only show the first 10Mbp.  This is faster.",
+                        help="Only show the first 1 Mbp.  This is a fast run for testing.",
                         dest="trial_run")
 
     args = parser.parse_args()
@@ -280,8 +280,10 @@ if __name__ == "__main__":
 
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
-    if args.layout_type and (args.layout_type == "parallel" or args.layout_type == "unique") and not args.extra_fastas:
-        parser.error("When doing a Parallel or Unique layout, you must at least define 'extrafastas' if not 'extrafastas' and a 'chainfile'!")
+    if args.layout_type and args.layout_type == "parallel" and not args.extra_fastas:
+        parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
+    if args.layout_type and args.layout_type == 'unique' and args.extra_fastas:
+        parser.error("For Unique view, you don't need to specify 'extrafastas'.")
     if args.chromosomes and not args.chain_file:
         parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
     if args.extra_fastas and "parallel" not in args.layout_type:

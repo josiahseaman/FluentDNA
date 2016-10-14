@@ -68,7 +68,7 @@ class TileLayout:
             if len(self.contigs) > 1:
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
-        except Exception as e:
+        except BaseException as e:
             print('Encountered exception while drawing titles:', '\n', str(e))
         try:
             self.generate_html(input_file_path, output_folder, output_file_name)
@@ -95,7 +95,8 @@ class TileLayout:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
                           end="")  # pseudo progress bar
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
-        print()
+        print('')
+
 
     def read_contigs(self, input_file_path):
         self.contigs = []
@@ -131,15 +132,16 @@ class TileLayout:
         # add the last contig to the list
         sequence = "".join(seq_collection)
         reset, title, tail = self.calc_padding(total_progress, len(sequence), len(self.contigs) > 0)
-        self.contigs.append(Contig(current_name, sequence, reset, title, tail,
-                                   seq_start, title_length))
+        self.contigs.append(Contig(current_name, sequence, reset, title, tail, seq_start, title_length))
         return total_progress + reset + title + tail + len(sequence)
+
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         self.image = Image.new('RGB', (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
+
 
     def calc_padding(self, total_progress, next_segment_length, multipart_file):
         min_gap = (20 + 6) * 100  # 20px font height, + 6px vertical padding  * 100 nt per line
@@ -170,6 +172,7 @@ class TileLayout:
 
         return 0, 0, 0
 
+
     def position_on_screen(self, index):
         """ Readable unoptimized version:
         Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
@@ -182,8 +185,10 @@ class TileLayout:
             xy[part] += level.thickness * coordinate_in_chunk
         return xy
 
+
     def draw_pixel(self, character, x, y):
         self.pixels[x, y] = self.palette[character]
+
 
     def draw_titles(self):
         total_progress = 0
@@ -191,6 +196,7 @@ class TileLayout:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
             self.draw_title(total_progress, contig)
             total_progress += contig.title_padding + len(contig.seq) + contig.tail_padding
+
 
     def draw_title(self, total_progress, contig):
         upper_left = self.position_on_screen(total_progress)
@@ -235,6 +241,7 @@ class TileLayout:
             upper_left[0] += 8  # adjusts baseline for more polish
 
         self.image.paste(txt, (upper_left[0], upper_left[1]), txt)
+
 
     def output_image(self, output_folder, output_file_name):
         del self.pixels

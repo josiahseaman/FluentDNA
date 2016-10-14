@@ -66,11 +66,11 @@ class ReverseComplement:
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            start = self.length - key.start - 1
-            stop = self.length - key.stop - 1
-            if start < 0 or stop < 0 or stop > self.length:
-                raise IndexError("%i %i vs. length %i" % (start, stop, self.length))
-            piece = self.seq[stop + 1: start + 1]
+            end = self.length - key.start
+            begin = self.length - key.stop
+            if end < 0 or begin < 0 or end > self.length:
+                raise IndexError("%i %i vs. length %i" % (end, begin, self.length))
+            piece = self.seq[begin: end]
             return rev_comp(piece)
         return complement(self.seq[self.length - key - 1])
 

@@ -1,18 +1,28 @@
 import os
-#from typing import List
 
 from array import array
-from collections import defaultdict
 from datetime import datetime
-
+import _io
 from ChainFiles import chain_file_to_list
 from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement
+
+
+def scan_past_header(seq, index):
+    """Moves the pointer past any headers or comments and places index on the next valid sequence character.
+    Doesn't increment at all if it is called in a place that is not the start of a header."""
+    if seq[index] == '\n':  # skip newline marking the end of a contig
+        index += 1
+    scanning_past_header = seq[index] in '>;'  # ; is for comments
+    while scanning_past_header:
+        scanning_past_header = seq[index] != '\n'
+        index += 1  # skip this character
+
+    return index
 
 
 class ChainParser:
     def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
                  swap_columns=False, include_translocations=True, squish_gaps=False):
-        self.width_remaining = defaultdict(lambda: 70)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -72,30 +82,28 @@ class ChainParser:
             pass  # already covered in __init__ query_contigs and do_all_relevant_chains setup
 
 
-    def write_fasta_lines(self, filestream, seq):
-        if isinstance(filestream, str):  # I'm actually given a file name and have to open it myself
-            file_name = os.path.join(self.output_folder, filestream)
-            with open(file_name, 'w') as filestream:
-                self.do_write(filestream, 70, seq)
-                print("Wrote", file_name, len(self.ref_sequence))
-        else:
-            remaining = self.width_remaining[filestream]
-            self.do_write(filestream, remaining, seq)
+    def _write_fasta_lines(self, filestream, seq):
+        assert isinstance(filestream, _io.TextIOWrapper)  # I'm actually given a file name and have to open it myself
+        contigs = seq.split('\n')
+        index = 0
+        while index < len(contigs):
+            if contigs[index].startswith('>'):
+                header, contents = contigs[index], contigs[index + 1]
+                index += 2
+            else:
+                header, contents = None, contigs[index]
+                index += 1
+            self.__do_write(filestream, contents, header)
 
 
-    def do_write(self, filestream, remaining, seq):
+    def __do_write(self, filestream, seq, header=None):
+        """Specialized function for writing sets of headers and sequence in FASTA.
+        It chunks the file up into 70 character lines, but leaves headers alone"""
+        if header is not None:
+            filestream.write(header + '\n')  # double check newlines
         try:
-            left_over_size = 70
-            remainder = seq[:remaining]
-            seq = seq[remaining:]
-            filestream.write(remainder + '\n')
             for line in chunks(seq, 70):
-                if len(line) == 70:
-                    filestream.write(line + '\n')
-                else:
-                    left_over_size = 70 - len(line)
-                    filestream.write(line)  # no newline
-            self.width_remaining[filestream] = left_over_size
+                filestream.write(line + '\n')
         except Exception as e:
             print(e)
 
@@ -121,7 +129,8 @@ class ChainParser:
             if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # 26 lines is the height of a label
                 # Don't show intervening sequence
                 # #14 Skipping display of large gaps formed by bad netting.
-                # TODO insert header
+                if self.query_seq_gapped[-1] != '\n':
+                    self.do_translocation_housework(chain, query_pointer, ref_pointer)
                 gap_query, gap_ref = 0, 0
                 # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
             elif self.squish_gaps:
@@ -165,13 +174,8 @@ class ChainParser:
 
 
     def do_translocation_housework(self, chain, query_pointer, ref_pointer):
-        minus_strand = chain.qStrand != '+'
-        filler = 'G' if not minus_strand else 'C'
-        self.query_seq_gapped.extend(filler * (500 + (100 - len(self.query_seq_gapped) % 100)))  # visual separators
-        self.ref_seq_gapped.extend(filler * (500 + (100 - len(self.ref_seq_gapped) % 100)))
-        # label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = header.split()
-        # self.query_seq_gapped.extend('_'.join(['\n>' + tName, qStrand, qName]) + '\n')  # visual separators
-        # self.ref_seq_gapped.extend('_'.join(['\n>' + qName, qStrand, tName]) + '\n')
+        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.tName, chain.tStrand, ref_pointer))  # visual separators
+        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.qName, chain.qStrand, query_pointer))
 
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,
@@ -191,44 +195,47 @@ class ChainParser:
     def write_gapped_fasta(self, query, reference):
         query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + self.gapped + '.fa')
         ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + self.gapped + '.fa')
-        with open(query_gap_name, 'w') as query_file:
-            self.write_fasta_lines(query_file, ''.join(self.query_seq_gapped))
-        with open(ref_gap_name, 'w') as ref_file:
-            self.write_fasta_lines(ref_file, ''.join(self.ref_seq_gapped))
+        self.write_complete_fasta(query_gap_name, self.query_seq_gapped)
+        self.write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
         return query_gap_name, ref_gap_name
+
+
+    def write_complete_fasta(self, file_path, seq_content_array):
+        """This function ensures that all FASTA files start with a >header\n line"""
+        with open(file_path, 'w') as filestream:
+            if seq_content_array[0] != '>':  # start with a header
+                temp_content = seq_content_array
+                seq_content_array = array('u', '>%s\n' % just_the_name(file_path))
+                seq_content_array.extend(temp_content)
+            self._write_fasta_lines(filestream, ''.join(seq_content_array))
 
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
         query_uniq_array = array('u', self.query_seq_gapped)
-        que_uniq_array = array('u', self.ref_seq_gapped)
+        ref_uniq_array = array('u', self.ref_seq_gapped)
         print("Done allocating unique array")
-        shortest_sequence = min(len(self.query_seq_gapped), len(self.ref_seq_gapped))
-        # scanning_past_header = False
-        for i in range(shortest_sequence):
-            # if self.query_seq_gapped[i] == '\n':
-            #     scanning_past_header = False  # stop scanning once you hit the terminating newline
-            #     continue
-            # if self.query_seq_gapped[i] in '>;':  # ; is for comments
-            #     scanning_past_header = True
-            # if scanning_past_header:  # query_uniq_array is already initialized to contain header characters
-            #     continue
+        r, q = 0, 0  # indices
+        while q < len(self.query_seq_gapped) and r < len(self.ref_seq_gapped):
+            q = scan_past_header(self.query_seq_gapped, q)  # query_uniq_array is already initialized to contain header characters
+            r = scan_past_header(self.ref_seq_gapped, r)
+
             # only overlapping section
-            if self.query_seq_gapped[i] == self.ref_seq_gapped[i]:
-                query_uniq_array[i] = 'X'
-                que_uniq_array[i] = 'X'
+            if self.query_seq_gapped[q] == self.ref_seq_gapped[r]:
+                query_uniq_array[q] = 'X'
+                ref_uniq_array[r] = 'X'
             else:  # Not equal
-                if self.query_seq_gapped[i] == 'N':
-                    query_uniq_array[i] = 'X'
-                if self.ref_seq_gapped[i] == 'N':
-                    que_uniq_array[i] = 'X'
+                if self.query_seq_gapped[q] == 'N':
+                    query_uniq_array[q] = 'X'
+                if self.ref_seq_gapped[r] == 'N':
+                    ref_uniq_array[r] = 'X'
+            q += 1
+            r += 1
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = os.path.join(self.output_folder, query_gapped_name.replace('%s' % self.gapped, '_unique'))
+        query_unique_name = os.path.join(self.output_folder, query_gapped_name.replace(self.gapped, '_unique'))
         ref_unique_name = os.path.join(self.output_folder, ref_gapped_name.replace(self.gapped, '_unique'))
-        with open(query_unique_name, 'w') as query_filestream:
-            self.write_fasta_lines(query_filestream, ''.join(query_uniq_array))
-        with open(ref_unique_name, 'w') as ref_filestream:
-            self.write_fasta_lines(ref_filestream, ''.join(que_uniq_array))
+        self.write_complete_fasta(query_unique_name, query_uniq_array)
+        self.write_complete_fasta(ref_unique_name, ref_uniq_array)
 
         return query_unique_name, ref_unique_name
 

@@ -52,11 +52,12 @@ class ParallelLayout(TileLayout):
                 if self.using_background_colors:
                     self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
+                self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
-        self.write_title(fasta_files)
+        self.draw_the_viz_title(fasta_files)
         self.generate_html(fasta_files[-1], output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
@@ -68,35 +69,14 @@ class ParallelLayout(TileLayout):
         x, y = super(ParallelLayout, self).position_on_screen(index)
         return [x + self.column_offset * self.genome_processed, y]
 
-    def draw_titles(self):
-        return  # Titles should not be draw in 3 column layout
+    # def draw_titles(self):
+    #     return  # Titles should not be draw in 3 column layout
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
-        """Shallow copy of super().calc_padding where space is not allocated for titles"""
-        return 0, 0, 0
-        # min_gap = (20 + 6) * 100  # 20px font height, + 6px vertical padding  * 100 nt per line
-        # if not multipart_file:
-        #     return 0, 0, 0
-        #
-        # for i, current_level in enumerate(self.levels):
-        #     if next_segment_length < current_level.chunk_size:
-        #         # give a full level of blank space just in case the previous
-        #         title_padding = 0 if self.levels[i - 1].chunk_size > min_gap else min_gap
-        #         space_remaining = current_level.chunk_size - total_progress % current_level.chunk_size
-        #         # sequence comes right up to the edge.  There should always be >= 1 full gap
-        #         reset_level = current_level  # bigger reset when close to filling chunk_size
-        #         if next_segment_length + title_padding < space_remaining:
-        #             reset_level = self.levels[i - 1]
-        #             # reset_level = self.levels[i - 1]
-        #         reset_padding = 0
-        #         if total_progress != 0:  # fill out the remainder so we can start at the beginning
-        #             reset_padding = reset_level.chunk_size - total_progress % reset_level.chunk_size
-        #         total_padding = total_progress + title_padding + reset_padding + next_segment_length
-        #         tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
-        #
-        #         return reset_padding, title_padding, tail
 
-        # return 0, 0, 0
+    def max_dimensions(self, image_length):
+        width, height = super(ParallelLayout, self).max_dimensions(image_length)
+        return width * 2, height * 4
+
 
     def fill_in_colored_borders(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
@@ -116,7 +96,7 @@ class ParallelLayout(TileLayout):
                 self.draw.rectangle([left, top, right, bottom], fill=color)
         self.genome_processed = 0
 
-    def write_title(self, filenames):
+    def draw_the_viz_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
         font = ImageFont.truetype("tahoma.ttf", 380)
