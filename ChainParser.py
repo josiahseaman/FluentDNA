@@ -124,7 +124,10 @@ class ChainParser:
                 # Don't show intervening sequence
                 # #14 Skipping display of large gaps formed by bad netting.
                 if self.query_seq_gapped[-1] != '\n':
-                    self.do_translocation_housework(chain, query_pointer, ref_pointer)
+                    if False:
+                        self.pad_next_line()
+                    else:
+                        self.do_translocation_housework(chain, query_pointer, ref_pointer)
                 gap_query, gap_ref = 0, 0
                 # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
             elif self.squish_gaps:
@@ -167,6 +170,11 @@ class ChainParser:
         return ref_pointer, query_pointer
 
 
+    def pad_next_line(self):
+        self.ref_seq_gapped.extend('X' * len(self.ref_seq_gapped) % 100)
+        self.query_seq_gapped.extend('X' * len(self.query_seq_gapped) % 100)
+
+
     def do_translocation_housework(self, chain, query_pointer, ref_pointer):
         self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.tName, chain.tStrand, ref_pointer))  # visual separators
         self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.qName, chain.qStrand, query_pointer))
@@ -199,7 +207,11 @@ class ChainParser:
         with open(file_path, 'w') as filestream:
             if seq_content_array[0] != '>':  # start with a header
                 temp_content = seq_content_array
-                seq_content_array = array('u', '>%s\n' % just_the_name(file_path))
+                header = '>%s\n' % just_the_name(file_path)
+                if isinstance(temp_content, list):
+                    seq_content_array = [header]
+                else:
+                    seq_content_array = array('u', header)
                 seq_content_array.extend(temp_content)
             self._write_fasta_lines(filestream, ''.join(seq_content_array))
 
@@ -265,9 +277,9 @@ class ChainParser:
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
-        #This assumes the chains have been sorted by score, so the highest score is the matching query_chr
+        # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
         self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
-        if self.include_translocations:
+        if self.include_translocations and self.query_source:
             query_chr = self.relevant_chains[0].qName
             self.query_contigs[query_chr] = pluck_contig(query_chr, self.query_source)
         else:  # read in all the contigs
