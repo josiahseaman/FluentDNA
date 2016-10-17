@@ -39,7 +39,6 @@ class ParallelLayout(TileLayout):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
         self.image_length = max(*[os.path.getsize(file) for file in fasta_files])
-        print("Read first sequence :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
@@ -68,14 +67,6 @@ class ParallelLayout(TileLayout):
         """
         x, y = super(ParallelLayout, self).position_on_screen(index)
         return [x + self.column_offset * self.genome_processed, y]
-
-    # def draw_titles(self):
-    #     return  # Titles should not be draw in 3 column layout
-
-
-    def max_dimensions(self, image_length):
-        width, height = super(ParallelLayout, self).max_dimensions(image_length)
-        return width * 2, height * 4
 
 
     def fill_in_colored_borders(self):

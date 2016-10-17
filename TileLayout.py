@@ -66,6 +66,7 @@ class TileLayout:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
         try:
             if len(self.contigs) > 1:
+                print("Drawing %i titles" % len(self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
         except BaseException as e:

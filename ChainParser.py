@@ -43,10 +43,10 @@ class ChainParser:
 
         self.chain_list = chain_file_to_list(chain_name)
         if self.include_translocations:
-            self.read_contigs(self.query_source)
+            self.read_query_contigs(self.query_source)
 
 
-    def read_contigs(self, input_file_path):
+    def read_query_contigs(self, input_file_path):
         print("Reading contigs... ", input_file_path)
         start_time = datetime.now()
         self.query_contigs = {}
@@ -74,12 +74,6 @@ class ChainParser:
         self.query_contigs[current_name] = sequence
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
-
-    def read_query_seq_to_memory(self, query_chr, query_source):
-        if not self.include_translocations:
-            self.query_contigs[query_chr] = pluck_contig(query_chr, query_source)  # skip others
-        else:
-            pass  # already covered in __init__ query_contigs and do_all_relevant_chains setup
 
 
     def _write_fasta_lines(self, filestream, seq):
@@ -174,8 +168,8 @@ class ChainParser:
 
 
     def do_translocation_housework(self, chain, query_pointer, ref_pointer):
-        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.tName, chain.tStrand, ref_pointer))  # visual separators
-        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.qName, chain.qStrand, query_pointer))
+        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.tName, chain.tStrand, ref_pointer))  # visual separators
+        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.qName, chain.qStrand, query_pointer))
 
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,
@@ -265,22 +259,24 @@ class ChainParser:
                     print("No fasta source for", chain.qName)
 
 
-    def setup_for_reference_chromosome(self, chromosome_name):
-        query_chr, ref_chr = chromosome_name, chromosome_name
+    def setup_for_reference_chromosome(self, ref_chr):
         ending = ref_chr + '__squished' * self.squish_gaps + '__no_translocations' * (not self.include_translocations)
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
-                 'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), query_chr)
+                 'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
-        self.read_query_seq_to_memory(query_chr, self.query_source)
-
+        #This assumes the chains have been sorted by score, so the highest score is the matching query_chr
         self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
-
-        return names, query_chr, ref_chr
+        if self.include_translocations:
+            query_chr = self.relevant_chains[0].qName
+            self.query_contigs[query_chr] = pluck_contig(query_chr, self.query_source)
+        else:  # read in all the contigs
+            pass  # already covered in __init__ query_contigs and do_all_relevant_chains setup
+        return names, ref_chr
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
-        names, query_chr, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
+        names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 

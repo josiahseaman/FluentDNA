@@ -88,10 +88,11 @@ def pretty_contig_name(contig, title_width, title_lines):
     pretty_name = contig.name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)  # don't ask
-    if title_width < 20:
+    if title_width < 20 and len(pretty_name) > title_width * 1.5:  # this is a suboptimal special case to try and
+        # cram more characters onto the two lines of the smallest contig titles when there's not enough space
         # For small spaces, cram every last bit into the line labels, there's not much room
         pretty_name = pretty_name[:title_width] + '\n' + pretty_name[title_width:title_width * 2]
-    else:
+    else:  # this is the only case that correctly bottom justifies one line titles
         pretty_name = '\n'.join(textwrap.wrap(pretty_name, title_width)[:title_lines])  # approximate width
     return pretty_name
 
