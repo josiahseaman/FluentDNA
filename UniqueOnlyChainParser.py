@@ -1,39 +1,8 @@
 from bisect import bisect_left
-from collections import namedtuple
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser
 from DDVUtils import pluck_contig, Batch
-
-Span = namedtuple('Span', ['begin', 'end'])
-def compare_start(self, other_int):
-    return self.begin < other_int
-Span.__lt__ = compare_start
-
-
-def remove_from_range(original, remove_this):
-    """Original is a range defined by (start, end).  Remove a middle range 'remove_this'
-    with a (start, end) and you end up with a pair of two ranges on either side of the removal.
-    Special casing for the removal overlapping the beginning or end."""
-    assert isinstance(original, Span) and isinstance(remove_this, Span)
-
-    # doesn't even overlap
-    if remove_this.begin != original.begin \
-            and (remove_this.end < original.begin
-                         or remove_this.begin >= original.end
-                         or (remove_this.end == original.begin and remove_this.begin != remove_this.end)):
-        raise IndexError("Remove_this doesn't overlap original at all %s %s" % (str(remove_this), str(original)))
-
-    first = Span(original.begin, remove_this.begin)
-    second = Span(remove_this.end, original.end)
-
-    if remove_this.begin <= original.begin and remove_this.end >= original.end:  # delete the whole thing
-        return None, None
-    if remove_this.begin <= original.begin < remove_this.end:  # overlaps start
-        return None, second
-    if remove_this.end >= original.end > remove_this.begin:  # overlaps ending
-        return first, None
-
-    return first, second  # happy path
+from Span import Span, remove_from_range
 
 
 class UniqueOnlyChainParser(ChainParser):
