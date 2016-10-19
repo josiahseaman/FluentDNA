@@ -111,7 +111,15 @@ class ChainParser:
 
         # if not is_master_alignment:
         #     self.do_translocation_housework(chain, query_pointer, ref_pointer)
-        self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
+        ref_pointer, query_pointer = self.process_chain_body(chain, ref_pointer, query_pointer, is_master_alignment)
+
+        self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer, is_master_alignment)
+
+
+    def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
+        if is_master_alignment and not self.trial_run:  # include unaligned ends
+            self.alignment.append(AlignedPair(Span(ref_pointer, len(self.ref_sequence), chain.tName, chain.tStrand), None))
+            self.alignment.append(AlignedPair(None, Span(query_pointer, len(self.query_sequence), chain.qName, chain.qStrand)))
 
 
     def alignment_chopping_index(self, aligned_section):
@@ -127,10 +135,11 @@ class ChainParser:
         lo = 0
         hi = len(self.alignment)
 
-        while lo < hi - 1:
+        while lo < hi:
             mid = (lo + hi) // 2
             if self.alignment[mid].ref is None:
                 mid -= 1  # we landed on a query_unique section and should look at the ref_unique entry one after
+                hi -= 1
             if self.alignment[mid] < aligned_section:
                 lo = mid + 1
             else:
@@ -138,7 +147,7 @@ class ChainParser:
         return lo
 
 
-    def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
+    def process_chain_body(self, chain, ref_pointer, query_pointer, is_master_alignment):
         assert len(chain.entries), "Chain has no data"
         for entry_index, entry in enumerate(chain.entries):  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
@@ -150,57 +159,30 @@ class ChainParser:
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
             aligned_section = AlignedPair(aligned_ref, aligned_query)
-            query_unique = AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand))
-            ref_unique = AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None)
 
             if is_master_alignment:
-                scrutiny_index = len(self.alignment)
+                query_unique = AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand))
+                ref_unique = AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None)
+                for pair in [aligned_section, ref_unique, query_unique]:
+                    self.alignment.append(pair)
             else:
                 scrutiny_index = self.alignment_chopping_index(aligned_section)  # Binary search
-                if aligned_ref.begin > self.alignment[scrutiny_index].ref.end:
-                    scrutiny_index += 1  # we missed this one, try the next
+                if not self.alignment[scrutiny_index].ref.overlaps(aligned_section.ref):
+                    scrutiny_index += 1
                 old = self.alignment.pop(scrutiny_index)
-                try:
-                    first, second = old.remove_from_range(aligned_section)
-                except IndexError as e:
-                    print([str(x) for x in [self.alignment[scrutiny_index], aligned_section, self.alignment[scrutiny_index + 1]]])
-                    raise e
+                first, aligned, second = old.align_middle_section(aligned_section)
 
-                while second is None:  # eating the tail, this could be multiple ranges before the end is satisfied
-                    if first is not None:  # leaving behind a beginning, advance scrutiny_index by 1
-                        self.alignment.insert(scrutiny_index, first)
-                        # insert first, but the next thing to be checked is whether it affects the next area as well
+                for pair in [first, aligned, second]:  # insert the three new pieces in place of the removed old
+                    if pair is not None:
+                        self.alignment.insert(scrutiny_index, pair)
                         scrutiny_index += 1
-                        if scrutiny_index >= len(self.alignment):
-                            first, second = None, None  # don't do anything: done processing this removal
-                            break
-                    else:
-                        pass  # if both are None, then we've just deleted the uncovered entry
-                    # check again on the next one
-                    if aligned_section.ref.end > self.alignment[scrutiny_index].ref.begin:
-                        first, second = self.alignment.pop(scrutiny_index).remove_from_range(aligned_section)
-                    else:
-                        first, second = None, None  # don't do anything: done processing this removal
-                        break
-
-                if first is None and second is not None:
-                    self.alignment.insert(scrutiny_index, second)
-                elif None not in [first, second]:  # neither are None
-                    self.alignment.insert(scrutiny_index, first)
-                    self.alignment.insert(scrutiny_index + 1, second)  # since chain entries don't overlap themselves, we're always mutating the next entry
 
 
-
-            for pair in [aligned_section, ref_unique, query_unique]:
-                self.alignment.insert(scrutiny_index, pair)
-                scrutiny_index += 1
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
 
             # TODO handle interlacing
-            if is_master_alignment and not self.trial_run:  # include unaligned ends
-                self.alignment.append(AlignedPair(Span(ref_pointer, len(self.ref_sequence), chain.tName, chain.tStrand), None))
-                self.alignment.append(AlignedPair(None, Span(query_pointer, len(self.query_sequence), chain.qName, chain.qStrand)))
+            return ref_pointer, query_pointer
 
 
     def create_fasta_from_composite_alignment(self):

@@ -103,21 +103,22 @@ class AlignedPair:
         return "(%s) -> (%s)" % (str(self.ref), str(self.query))
 
 
-    def remove_from_range(self, remove_pair):
-        assert isinstance(remove_pair, AlignedPair), "This method is meant for AlignedPairs, not Spans"
+    def align_middle_section(self, new_alignment):
+        assert isinstance(new_alignment, AlignedPair), "This method is meant for AlignedPairs, not Spans"
 
         if self.ref is not None and self.query is None:
-            first, second = self.ref.remove_from_range(remove_pair.ref)
+            first, second = self.ref.remove_from_range(new_alignment.ref)
             A = AlignedPair(first, None) if first is not None else None
             B = AlignedPair(second, None) if second is not None else None
-            return A, B
+            return A, new_alignment, B  # new alignment flanked by leftovers
+
         elif self.query is not None and self.ref is None:
-            first, second = self.query.remove_from_range(remove_pair.query)
+            first, second = self.query.remove_from_range(new_alignment.query)
             A = AlignedPair(None, first) if first is not None else None
             B = AlignedPair(None, second) if second is not None else None
-            return A, B
+            return A, new_alignment, B  # new alignment flanked by leftovers
         else:
-            raise IndexError("You should not be trying to remove %s from the Pair:%s" % (str(remove_pair), str(self)))
+            raise IndexError("You should not be trying to remove %s from the Pair:%s" % (str(new_alignment), str(self)))
 
 
     # def split(self, original_index):
