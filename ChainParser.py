@@ -7,7 +7,7 @@ from blist import blist
 
 from ChainFiles import chain_file_to_list
 from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement
-from Span import AlignedPair, Span
+from Span import AlignedSpans, Span
 
 
 def scan_past_header(seq, index):
@@ -118,8 +118,11 @@ class ChainParser:
 
     def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
         if is_master_alignment and not self.trial_run:  # include unaligned ends
-            self.alignment.append(AlignedPair(Span(ref_pointer, len(self.ref_sequence), chain.tName, chain.tStrand), None))
-            self.alignment.append(AlignedPair(None, Span(query_pointer, len(self.query_sequence), chain.qName, chain.qStrand)))
+            ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
+            query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
+            self.alignment.append(AlignedSpans(ref_end, query_end,
+                                               len(self.query_sequence) - query_pointer,
+                                               len(self.ref_sequence) - ref_pointer))
 
 
     def alignment_chopping_index(self, aligned_section):
@@ -137,9 +140,6 @@ class ChainParser:
 
         while lo < hi:
             mid = (lo + hi) // 2
-            if self.alignment[mid].ref is None:
-                mid -= 1  # we landed on a query_unique section and should look at the ref_unique entry one after
-                hi -= 1
             if self.alignment[mid] < aligned_section:
                 lo = mid + 1
             else:
@@ -158,25 +158,18 @@ class ChainParser:
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            aligned_section = AlignedPair(aligned_ref, aligned_query)
+            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query)
 
             if is_master_alignment:
-                query_unique = AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand))
-                ref_unique = AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None)
-                for pair in [aligned_section, ref_unique, query_unique]:
-                    self.alignment.append(pair)
+                self.alignment.append(aligned_section)
             else:
-                scrutiny_index = self.alignment_chopping_index(aligned_section)  # Binary search
-                if not self.alignment[scrutiny_index].ref.overlaps(aligned_section.ref):
-                    scrutiny_index += 1
+                scrutiny_index = max(self.alignment_chopping_index(aligned_section) - 1, 0)  # Binary search
+                # if not self.alignment[scrutiny_index].ref.overlaps(aligned_section.ref):
+                #     scrutiny_index += 1
                 old = self.alignment.pop(scrutiny_index)
-                first, aligned, second = old.align_middle_section(aligned_section)
-
-                for pair in [first, aligned, second]:  # insert the three new pieces in place of the removed old
-                    if pair is not None:
-                        self.alignment.insert(scrutiny_index, pair)
-                        scrutiny_index += 1
-
+                first, second = old.align_ref_unique(aligned_section)
+                self.alignment.insert(scrutiny_index, first)
+                self.alignment.insert(scrutiny_index + 1, second)
 
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
@@ -228,8 +221,10 @@ class ChainParser:
         if chain.tEnd - chain.tStart > 100 * 1000:
             print('>>>>', chain)
         if is_master_alignment and not self.trial_run:  # include the unaligned beginning of the sequence
-            self.alignment.append(AlignedPair(Span(0, ref_pointer, chain.tName, chain.tStrand), None))
-            self.alignment.append(AlignedPair(None, Span(0, query_pointer, chain.qName, chain.qStrand)))
+            self.alignment.append(AlignedSpans(Span(0, 0, chain.tName, chain.tStrand),
+                                               Span(0, 0, chain.qName, chain.qStrand),
+                                               query_pointer,
+                                               ref_pointer))
         return ref_pointer, query_pointer
 
 

@@ -80,20 +80,24 @@ class Span:
 
 
 
-class AlignedPair:
-    def __init__(self, ref_span, query_span):
+class AlignedSpans:
+    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size):
         """ref_span or query_span can be None to indicate an unaligned area."""
-        if ref_span is not None and query_span is not None:
-            assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
-        elif ref_span is None and query_span is None:
-            raise ValueError("Both Spans in an AlignedPair are not allowed to be None")
+        assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
         self.ref = ref_span
         self.query = query_span
+        self.ref_tail_size = ref_tail_size
+        self.query_tail_size = query_tail_size
 
+    def ref_unique_span(self):
+        return Span(self.ref.end, self.ref.end + self.ref_tail_size, self.ref.contig_name, self.ref.strand)
+
+    def query_unique_span(self):
+        return Span(self.query.end, self.query.end + self.query_tail_size, self.query.contig_name, self.query.strand)
 
     def __lt__(self, other):
         """Useful for putting Spans in a sorted list"""
-        if isinstance(other, AlignedPair):  # TODO: more cases for None
+        if isinstance(other, AlignedSpans):  # TODO: more cases for None
             return self.ref.begin < other.ref.begin
         else:
             return self.ref.begin < other
@@ -103,22 +107,26 @@ class AlignedPair:
         return "(%s) -> (%s)" % (str(self.ref), str(self.query))
 
 
-    def align_middle_section(self, new_alignment):
-        assert isinstance(new_alignment, AlignedPair), "This method is meant for AlignedPairs, not Spans"
+    def align_ref_unique(self, new_alignment):
+        assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
+        my_tail, your_tail = self.ref_unique_span().remove_from_range(new_alignment.ref)
+        size = my_tail.size() if my_tail is not None else 0
+        new_me = AlignedSpans(self.ref, self.query, query_tail_size=self.query_tail_size, ref_tail_size=size)
+        your_tail_size = your_tail.size() if your_tail is not None else 0
+        you = AlignedSpans(new_alignment.ref, new_alignment.query,
+                           query_tail_size=new_alignment.query_tail_size,
+                           ref_tail_size=new_alignment.ref_tail_size + your_tail_size)
+        return new_me, you
 
-        if self.ref is not None and self.query is None:
-            first, second = self.ref.remove_from_range(new_alignment.ref)
-            A = AlignedPair(first, None) if first is not None else None
-            B = AlignedPair(second, None) if second is not None else None
-            return A, new_alignment, B  # new alignment flanked by leftovers
 
-        elif self.query is not None and self.ref is None:
-            first, second = self.query.remove_from_range(new_alignment.query)
-            A = AlignedPair(None, first) if first is not None else None
-            B = AlignedPair(None, second) if second is not None else None
-            return A, new_alignment, B  # new alignment flanked by leftovers
-        else:
-            raise IndexError("You should not be trying to remove %s from the Pair:%s" % (str(new_alignment), str(self)))
+    def align_query_unique(self, new_alignment):
+        assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
+        my_tail, your_tail = self.query_unique_span().remove_from_range(new_alignment.query)
+        new_me = AlignedSpans(self.ref, self.query, query_tail_size=my_tail.size(), ref_tail_size=self.ref_tail_size)
+        you = AlignedSpans(new_alignment.ref, new_alignment.query,
+                           query_tail_size=new_alignment.query_tail_size + your_tail.size(),
+                           ref_tail_size=new_alignment.ref_tail_size)
+        return new_me, you
 
 
     # def split(self, original_index):
