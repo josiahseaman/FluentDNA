@@ -25,7 +25,7 @@ class Span:
 
 
     def __repr__(self):
-        return ">%s:%i-%i" % (self.contig_name, self.begin, self.end)
+        return ">%s:%s-%s" % (self.contig_name, '{:,}'.format(self.begin), '{:,}'.format(self.end))
 
 
     def __len__(self):
@@ -56,12 +56,37 @@ class Span:
         raise ValueError("split_index %i is not in Span %s" % (split_index, str(self)))
 
 
+    def remove_from_range(self, remove_this):
+        """self is a range defined by (start, end).  Remove a middle range 'remove_this'
+        with a (start, end) and you end up with a pair of two ranges on either side of the removal.
+        Special casing for the removal overlapping the beginning or end."""
+        assert isinstance(self, Span) and isinstance(remove_this, Span)
+
+        # doesn't even overlap
+        if not self.overlaps(remove_this):
+            raise IndexError("Remove_this doesn't overlap self at all %s %s" % (str(remove_this), str(self)))
+
+        first = Span(self.begin, remove_this.begin, self.contig_name, self.strand)
+        second = Span(remove_this.end, self.end, self.contig_name, self.strand)
+
+        if remove_this.begin <= self.begin and remove_this.end >= self.end:  # delete the whole thing
+            return None, None
+        if remove_this.begin <= self.begin < remove_this.end:  # overlaps start
+            return None, second
+        if remove_this.end >= self.end > remove_this.begin:  # overlaps ending
+            return first, None
+
+        return first, second  # happy path
+
+
 
 class AlignedPair:
     def __init__(self, ref_span, query_span):
         """ref_span or query_span can be None to indicate an unaligned area."""
         if ref_span is not None and query_span is not None:
             assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
+        elif ref_span is None and query_span is None:
+            raise ValueError("Both Spans in an AlignedPair are not allowed to be None")
         self.ref = ref_span
         self.query = query_span
 
@@ -73,6 +98,28 @@ class AlignedPair:
         else:
             return self.ref.begin < other
 
+
+    def __repr__(self):
+        return "(%s) -> (%s)" % (str(self.ref), str(self.query))
+
+
+    def remove_from_range(self, remove_pair):
+        assert isinstance(remove_pair, AlignedPair), "This method is meant for AlignedPairs, not Spans"
+
+        if self.ref is not None and self.query is None:
+            first, second = self.ref.remove_from_range(remove_pair.ref)
+            A = AlignedPair(first, None) if first is not None else None
+            B = AlignedPair(second, None) if second is not None else None
+            return A, B
+        elif self.query is not None and self.ref is None:
+            first, second = self.query.remove_from_range(remove_pair.query)
+            A = AlignedPair(None, first) if first is not None else None
+            B = AlignedPair(None, second) if second is not None else None
+            return A, B
+        else:
+            raise IndexError("You should not be trying to remove %s from the Pair:%s" % (str(remove_pair), str(self)))
+
+
     # def split(self, original_index):
     #     o1, o2 = self.ref_span.split(original_index)
     #     difference = original_index - self.ref_span.begin
@@ -82,25 +129,3 @@ class AlignedPair:
     #     return first, second
 
 
-
-def remove_from_range(original, remove_this):
-    """Original is a range defined by (start, end).  Remove a middle range 'remove_this'
-    with a (start, end) and you end up with a pair of two ranges on either side of the removal.
-    Special casing for the removal overlapping the beginning or end."""
-    assert isinstance(original, Span) and isinstance(remove_this, Span)
-
-    # doesn't even overlap
-    if not original.overlaps(remove_this):
-        raise IndexError("Remove_this doesn't overlap original at all %s %s" % (str(remove_this), str(original)))
-
-    first = Span(original.begin, remove_this.begin, original.contig_name, original.strand)
-    second = Span(remove_this.end, original.end, original.contig_name, original.strand)
-
-    if remove_this.begin <= original.begin and remove_this.end >= original.end:  # delete the whole thing
-        return None, None
-    if remove_this.begin <= original.begin < remove_this.end:  # overlaps start
-        return None, second
-    if remove_this.end >= original.end > remove_this.begin:  # overlaps ending
-        return first, None
-
-    return first, second  # happy path

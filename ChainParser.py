@@ -1,5 +1,6 @@
 import os
 from array import array
+from bisect import bisect_left
 from datetime import datetime
 import _io
 from blist import blist
@@ -113,6 +114,30 @@ class ChainParser:
         self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
 
 
+    def alignment_chopping_index(self, aligned_section):
+        """Return the index where to insert item x in list a, assuming a is sorted.
+
+        The return value i is such that all e in a[:i] have e < x, and all e in
+        a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
+        insert just before the leftmost x already there.
+
+        Optional args lo (default 0) and hi (default len(a)) bound the
+        slice of a to be searched.
+        """
+        lo = 0
+        hi = len(self.alignment)
+
+        while lo < hi - 1:
+            mid = (lo + hi) // 2
+            if self.alignment[mid].ref is None:
+                mid -= 1  # we landed on a query_unique section and should look at the ref_unique entry one after
+            if self.alignment[mid] < aligned_section:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo
+
+
     def process_chain_body(self, chain, query_pointer, ref_pointer, is_master_alignment):
         assert len(chain.entries), "Chain has no data"
         for entry_index, entry in enumerate(chain.entries):  # ChainEntry
@@ -124,20 +149,68 @@ class ChainParser:
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            self.alignment.append(AlignedPair(aligned_ref, aligned_query))
-            self.alignment.append(AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand)))
-            self.alignment.append(AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None))
+            aligned_section = AlignedPair(aligned_ref, aligned_query)
+            query_unique = AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand))
+            ref_unique = AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None)
+
+            if is_master_alignment:
+                scrutiny_index = len(self.alignment)
+            else:
+                scrutiny_index = self.alignment_chopping_index(aligned_section)  # Binary search
+                if aligned_ref.begin > self.alignment[scrutiny_index].ref.end:
+                    scrutiny_index += 1  # we missed this one, try the next
+                old = self.alignment.pop(scrutiny_index)
+                try:
+                    first, second = old.remove_from_range(aligned_section)
+                except IndexError as e:
+                    print([str(x) for x in [self.alignment[scrutiny_index], aligned_section, self.alignment[scrutiny_index + 1]]])
+                    raise e
+
+                while second is None:  # eating the tail, this could be multiple ranges before the end is satisfied
+                    if first is not None:  # leaving behind a beginning, advance scrutiny_index by 1
+                        self.alignment.insert(scrutiny_index, first)
+                        # insert first, but the next thing to be checked is whether it affects the next area as well
+                        scrutiny_index += 1
+                        if scrutiny_index >= len(self.alignment):
+                            first, second = None, None  # don't do anything: done processing this removal
+                            break
+                    else:
+                        pass  # if both are None, then we've just deleted the uncovered entry
+                    # check again on the next one
+                    if aligned_section.ref.end > self.alignment[scrutiny_index].ref.begin:
+                        first, second = self.alignment.pop(scrutiny_index).remove_from_range(aligned_section)
+                    else:
+                        first, second = None, None  # don't do anything: done processing this removal
+                        break
+
+                if first is None and second is not None:
+                    self.alignment.insert(scrutiny_index, second)
+                elif None not in [first, second]:  # neither are None
+                    self.alignment.insert(scrutiny_index, first)
+                    self.alignment.insert(scrutiny_index + 1, second)  # since chain entries don't overlap themselves, we're always mutating the next entry
+
+
+
+            for pair in [aligned_section, ref_unique, query_unique]:
+                self.alignment.insert(scrutiny_index, pair)
+                scrutiny_index += 1
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
 
             # TODO handle interlacing
+            if is_master_alignment and not self.trial_run:  # include unaligned ends
+                self.alignment.append(AlignedPair(Span(ref_pointer, len(self.ref_sequence), chain.tName, chain.tStrand), None))
+                self.alignment.append(AlignedPair(None, Span(query_pointer, len(self.query_sequence), chain.qName, chain.qStrand)))
 
 
     def create_fasta_from_composite_alignment(self):
+        """self.alignment is a data structure representing the composites of all the relevant
+        chain data.  This method turns that data construct into a gapped FASTA file by reading the original
+        FASTA files."""
         previous_chr = None
         for pair in self.alignment:
-            if previous_chr != (pair.query.contig_name, pair.query.strand):
-                if not self.switch_sequences(pair.ref.contig_name, pair.query.contig_name, pair.query.strand):
+            if pair.query is not None and previous_chr != (pair.query.contig_name, pair.query.strand):
+                if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
                     continue  # We'll have to skip this alignment because we don't have the FASTA for it
                 previous_chr = (pair.query.contig_name, pair.query.strand)
             if pair.query is None:  # whenever there is no alignable sequence, it's filled with N's
@@ -152,13 +225,11 @@ class ChainParser:
             self.ref_seq_gapped.extend(ref_snippet)
 
 
-    def switch_sequences(self, ref_name, query_name, query_strand):
+    def switch_sequences(self, query_name, query_strand):
         # TODO: self.ref_sequence = self.ref_contigs[ref_name]
         if query_name in self.query_contigs:
             if query_strand == '-':  # need to load rev_comp
                 if query_name not in self.stored_rev_comps:
-                    if len(self.query_contigs[query_name]) > 1000000:
-                        print("Reversing", query_name, len(self.query_contigs[query_name]) // 1000000, 'Mbp')
                     self.stored_rev_comps[query_name] = ReverseComplement(self.query_contigs[query_name])  # caching for performance
                 self.query_sequence = self.stored_rev_comps[query_name]
             else:
@@ -175,9 +246,8 @@ class ChainParser:
         if chain.tEnd - chain.tStart > 100 * 1000:
             print('>>>>', chain)
         if is_master_alignment and not self.trial_run:  # include the unaligned beginning of the sequence
-            longer_gap = max(query_pointer, ref_pointer)
-            self.query_seq_gapped.extend(self.query_sequence[:query_pointer] + 'X' * (longer_gap - query_pointer))  # one of these gaps will be 0
-            self.ref_seq_gapped.extend(self.ref_sequence[:ref_pointer] + 'X' * (longer_gap - ref_pointer))
+            self.alignment.append(AlignedPair(Span(0, ref_pointer, chain.tName, chain.tStrand), None))
+            self.alignment.append(AlignedPair(None, Span(0, query_pointer, chain.qName, chain.qStrand)))
         return ref_pointer, query_pointer
 
 

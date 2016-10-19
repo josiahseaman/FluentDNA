@@ -2,7 +2,7 @@ from bisect import bisect_left
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser
 from DDVUtils import pluck_contig, Batch
-from Span import Span, remove_from_range
+from Span import Span
 
 
 class UniqueOnlyChainParser(ChainParser):
