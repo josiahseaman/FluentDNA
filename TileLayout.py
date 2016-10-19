@@ -250,6 +250,7 @@ class TileLayout:
         self.image.save(self.final_output_location, 'PNG')
         del self.image
 
+
     def max_dimensions(self, image_length):
         """ Uses Tile Layout to find the largest chunk size in each dimension (XY) that the
         image_length will reach
@@ -267,7 +268,10 @@ class TileLayout:
         width_height = [sum(x) for x in zip(width_height, self.origin)]  # , [self.levels[2].padding] * 2
         width_height[0] += self.levels[2].padding   # add column padding to both sides
         width_height[1] += self.levels[2].padding   # column padding used as a proxy for vertical padding
+        width_height[0] += self.origin[0]  # add in origin offset
+        width_height[1] += self.origin[1]
         return width_height
+
 
     def generate_html(self, input_file_path, output_folder, output_file_name):
         input_file_name = os.path.basename(input_file_path)
