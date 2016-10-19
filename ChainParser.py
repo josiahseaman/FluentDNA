@@ -1,10 +1,12 @@
 import os
-
 from array import array
 from datetime import datetime
 import _io
+from blist import blist
+
 from ChainFiles import chain_file_to_list
 from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement
+from Span import AlignedPair, Span
 
 
 def scan_past_header(seq, index):
@@ -36,6 +38,7 @@ class ChainParser:
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
+        self.alignment = blist()  # optimized for inserts in the middle
         self.relevant_chains = []  # list of contigs that contribute to ref_chr in chain entries
         self.stored_rev_comps = {}
         self.output_fastas = []
@@ -105,8 +108,8 @@ class ChainParser:
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
 
-        if not is_master_alignment:
-            self.do_translocation_housework(chain, query_pointer, ref_pointer)
+        # if not is_master_alignment:
+        #     self.do_translocation_housework(chain, query_pointer, ref_pointer)
         self.process_chain_body(chain, query_pointer, ref_pointer, is_master_alignment)
 
 
@@ -119,43 +122,51 @@ class ChainParser:
             if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
                 break
 
-            space_saved = 0
-            if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # 26 lines is the height of a label
-                # Don't show intervening sequence
-                # #14 Skipping display of large gaps formed by bad netting.
-                if self.query_seq_gapped[-1] != '\n':
-                    if False:
-                        self.pad_next_line()
-                    else:
-                        self.do_translocation_housework(chain, query_pointer, ref_pointer)
-                gap_query, gap_ref = 0, 0
-                # Pointer += uses unmodified entry.gap_ref, so skips the full sequence
-            elif self.squish_gaps:
-                space_saved = min(gap_query, gap_ref)
-
-            query_seq_absolute = self.query_sequence[query_pointer: query_pointer + size + gap_ref]
-            query_snippet = query_seq_absolute + 'X' * (gap_query - space_saved)
+            aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
+            aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
+            self.alignment.append(AlignedPair(aligned_ref, aligned_query))
+            self.alignment.append(AlignedPair(None, Span(query_pointer + size, query_pointer + size + gap_ref, chain.qName, chain.qStrand)))
+            self.alignment.append(AlignedPair(Span(ref_pointer + size, ref_pointer + size + gap_query, chain.tName, chain.tStrand), None))
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
-            self.query_seq_gapped.extend(query_snippet)
-
-            ref_snippet = self.ref_sequence[ref_pointer: ref_pointer + size] + 'X' * (gap_ref - space_saved)
-            ref_snippet += self.ref_sequence[ref_pointer + size: ref_pointer + size + gap_query]
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
+
+            # TODO handle interlacing
+
+
+    def create_fasta_from_composite_alignment(self):
+        previous_chr = None
+        for pair in self.alignment:
+            if previous_chr != (pair.query.contig_name, pair.query.strand):
+                if not self.switch_sequences(pair.ref.contig_name, pair.query.contig_name, pair.query.strand):
+                    continue  # We'll have to skip this alignment because we don't have the FASTA for it
+                previous_chr = (pair.query.contig_name, pair.query.strand)
+            if pair.query is None:  # whenever there is no alignable sequence, it's filled with N's
+                query_snippet = 'X' * pair.ref.size()
+            else:
+                query_snippet = self.query_sequence[pair.query.begin: pair.query.end]
+            self.query_seq_gapped.extend(query_snippet)
+            if pair.ref is None:
+                ref_snippet = 'X' * pair.query.size()
+            else:
+                ref_snippet = self.ref_sequence[pair.ref.begin: pair.ref.end]
             self.ref_seq_gapped.extend(ref_snippet)
 
-            if len(ref_snippet) != len(query_snippet):
-                if len(ref_snippet) < len(query_snippet):
-                    faulty_source, faulty_chr = self.ref_source, chain.tName
-                else:
-                    faulty_source, faulty_chr = self.query_source, chain.qName
-                remaining_entries = len(chain.entries) - entry_index
-                raise EOFError("Reached the end of %s before expected point.\n"
-                               "Chain file still has %i entries on %s to process." % (faulty_source, remaining_entries, faulty_chr))
 
-        if is_master_alignment and not self.trial_run:  # last one: print out all remaining sequence
-            gap_query, gap_ref = len(self.ref_sequence) - ref_pointer, len(self.query_sequence) - query_pointer
-            self.query_seq_gapped.extend(self.query_sequence[query_pointer:] + 'X' * gap_query)
-            self.ref_seq_gapped.extend('X' * gap_ref + self.ref_sequence[ref_pointer:])
+    def switch_sequences(self, ref_name, query_name, query_strand):
+        # TODO: self.ref_sequence = self.ref_contigs[ref_name]
+        if query_name in self.query_contigs:
+            if query_strand == '-':  # need to load rev_comp
+                if query_name not in self.stored_rev_comps:
+                    if len(self.query_contigs[query_name]) > 1000000:
+                        print("Reversing", query_name, len(self.query_contigs[query_name]) // 1000000, 'Mbp')
+                    self.stored_rev_comps[query_name] = ReverseComplement(self.query_contigs[query_name])  # caching for performance
+                self.query_sequence = self.stored_rev_comps[query_name]
+            else:
+                self.query_sequence = self.query_contigs[query_name]
+        else:
+            print("ERROR: No fasta source for", query_name)
+            return False
+        return True
 
 
     def setup_chain_start(self, chain, is_master_alignment):
@@ -255,20 +266,9 @@ class ChainParser:
         for chain in relevant_chains:
             is_master_alignment = previous is None
             if self.include_translocations or is_master_alignment:  # otherwise we'll only do the master alignment
-                if chain.qName in self.query_contigs:
-                    if chain.qStrand == '-':  # need to load rev_comp
-                        if chain.qName not in self.stored_rev_comps:
-                            if len(self.query_contigs[chain.qName]) > 1000000:
-                                print("Reversing", chain.qName, len(self.query_contigs[chain.qName]) // 1000000, 'Mbp')
-                            self.stored_rev_comps[chain.qName] = ReverseComplement(self.query_contigs[chain.qName])  # caching for performance
-                            # TODO: replace rev_comp with a lazy generator that mimics having the whole string using [x] and [y:x]
-                        self.query_sequence = self.stored_rev_comps[chain.qName]
-                    else:
-                        self.query_sequence = self.query_contigs[chain.qName]
-                    self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
-                    previous = chain
-                else:
-                    print("No fasta source for", chain.qName)
+                self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
+                previous = chain
+        self.create_fasta_from_composite_alignment()
 
 
     def setup_for_reference_chromosome(self, ref_chr):
@@ -322,3 +322,4 @@ class ChainParser:
         return batches
         # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
         # workers.map(self._parse_chromosome_in_chain, chromosomes)
+

@@ -9,15 +9,32 @@ original and gapped sequence as gaps are added."""
 class Span:
     """ Span can have sections in the middle removed, creating two or less new Spans.
     This is used by UniqueOnlyChainParser to track which parts of the file are untouched."""
-    def __init__(self, begin, end):
+    def __init__(self, begin, end, contig_name=None, strand='+'):
         self.begin = begin
         self.end = end
+        self.contig_name = contig_name
+        self.strand = strand
+
 
     def __lt__(self, other_int):
         return self.begin < other_int
 
+
     def __contains__(self, index):
         return self.begin <= index < self.end
+
+
+    def __repr__(self):
+        return ">%s:%i-%i" % (self.contig_name, self.begin, self.end)
+
+
+    def __len__(self):
+        return self.size()
+
+
+    def size(self):
+        return self.end - self.begin
+
 
     def overlaps(self, other):
         boundaries_check = other.begin in self or other.end - 1 in self
@@ -28,32 +45,41 @@ class Span:
         # a = shared_start or not (begin_or_end_on_wrong_side or right_before)
         return boundaries_check or is_superset
 
+
     def split(self, split_index):
+        """Splits the Span so that split_index is the first index of the second Span.
+        The second span starts at split_index.  The first valid split point is begin + 1"""
         assert isinstance(self, Span), "First argument should be a Span"
-        if split_index in self:
-            return Span(self.begin, split_index + 1), Span(split_index, self.end)
+        if split_index in self and split_index != self.begin + 1:
+                return Span(self.begin, split_index, self.contig_name, self.strand), \
+                       Span(split_index, self.end, self.contig_name, self.strand)
         raise ValueError("split_index %i is not in Span %s" % (split_index, str(self)))
 
 
 
-class AlignedSpan:
-    def __init__(self, original_begin, original_end, gapped_begin, gapped_end):
-        assert original_end - original_begin == gapped_end - gapped_begin, "The size of the spans should be the same"
-        self.original = Span(original_begin, original_end)
-        self.gapped = Span(gapped_begin, gapped_end)
+class AlignedPair:
+    def __init__(self, ref_span, query_span):
+        """ref_span or query_span can be None to indicate an unaligned area."""
+        if ref_span is not None and query_span is not None:
+            assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
+        self.ref = ref_span
+        self.query = query_span
+
 
     def __lt__(self, other):
         """Useful for putting Spans in a sorted list"""
-        if isinstance(other, AlignedSpan):
-            return self.original.begin < other.original.begin
+        if isinstance(other, AlignedPair):  # TODO: more cases for None
+            return self.ref.begin < other.ref.begin
         else:
-            return self.original.begin < other
+            return self.ref.begin < other
 
-    def split(self, original_index):
-        o1, o2 = self.original.split(original_index)
-        difference = original_index - self.original.begin
-        g1, g2 = self.gapped.begin + difference  # convert to gapped coordinates first
-        return AlignedSpan(o1.begin, o1.end, g1.begin, g1.end), AlignedSpan(o2.begin, o2.end, g2.begin, g2.end)
+    # def split(self, original_index):
+    #     o1, o2 = self.ref_span.split(original_index)
+    #     difference = original_index - self.ref_span.begin
+    #     g1, g2 = self.query_span.begin + difference  # convert to gapped coordinates first
+    #     first = AlignedSpan(self.ref_contig, o1.begin, o1.end)
+    #     second = AlignedSpan(self.ref_contig, o2.begin, o2.end)
+    #     return first, second
 
 
 
@@ -67,8 +93,8 @@ def remove_from_range(original, remove_this):
     if not original.overlaps(remove_this):
         raise IndexError("Remove_this doesn't overlap original at all %s %s" % (str(remove_this), str(original)))
 
-    first = Span(original.begin, remove_this.begin)
-    second = Span(remove_this.end, original.end)
+    first = Span(original.begin, remove_this.begin, original.contig_name, original.strand)
+    second = Span(remove_this.end, original.end, original.contig_name, original.strand)
 
     if remove_this.begin <= original.begin and remove_this.end >= original.end:  # delete the whole thing
         return None, None
