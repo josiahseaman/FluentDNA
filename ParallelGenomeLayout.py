@@ -38,7 +38,7 @@ class ParallelLayout(TileLayout):
     def process_file(self, output_folder, output_file_name, fasta_files=list()):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
-        self.image_length = max(*[os.path.getsize(file) for file in fasta_files])
+        self.image_length = self.read_contigs(fasta_files[0])
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
@@ -46,8 +46,9 @@ class ParallelLayout(TileLayout):
 
         try:
             # Do inner work for two other files
-            for filename in fasta_files:
-                self.read_contigs(filename)
+            for index, filename in enumerate(fasta_files):
+                if index != 0:
+                    self.read_contigs(filename)
                 if self.using_background_colors:
                     self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()
@@ -113,3 +114,24 @@ class ParallelLayout(TileLayout):
 
         background = hex_to_rgb(self.column_colors[genome_processed])
         self.palette['X'] = background
+
+
+    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+        """Parallel Layouts have a special title which describes the first (main) alignment.
+        So padding for their title does not need to be included."""
+        # Get original values and level
+        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
+        # Remove first title
+        if total_progress == 0:
+            title_padding = 0
+            i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
+            total_padding = total_progress + title_padding + reset_padding + next_segment_length
+            tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
+
+        return reset_padding, title_padding, tail
+
+
+    def draw_title(self, total_progress, contig):
+        if total_progress != 0:
+            super(ParallelLayout, self).draw_title(total_progress, contig)
+

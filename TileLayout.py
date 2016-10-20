@@ -164,6 +164,8 @@ class TileLayout:
                     reset_level = self.levels[i - 1]
                 # fill out the remainder so we can start at the beginning
                 reset_padding = reset_level.chunk_size - total_progress % reset_level.chunk_size
+                if total_progress == 0:  # nothing to reset from
+                    reset_padding = 0
                 total_padding = total_progress + title_padding + reset_padding + next_segment_length
                 tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
 
