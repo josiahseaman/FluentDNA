@@ -62,6 +62,7 @@ class ParallelLayout(TileLayout):
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
+
     def position_on_screen(self, index):
         """ In ParallelLayout, each genome is given a constant x offset in order to interleave the results of each
         genome as it is processed separately.
@@ -88,6 +89,7 @@ class ParallelLayout(TileLayout):
                 self.draw.rectangle([left, top, right, bottom], fill=color)
         self.genome_processed = 0
 
+
     def draw_the_viz_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
@@ -106,6 +108,7 @@ class ParallelLayout(TileLayout):
                 self.draw.rectangle([left_start, 6, right, bottom], fill=color)
             self.draw.text((left_start, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
             left_start += font.getsize(title + '      ')[0]
+
 
     def change_background_color(self, genome_processed):
         def hex_to_rgb(h):

@@ -9,7 +9,8 @@ original and gapped sequence as gaps are added."""
 class Span:
     """ Span can have sections in the middle removed, creating two or less new Spans.
     This is used by UniqueOnlyChainParser to track which parts of the file are untouched."""
-    def __init__(self, begin, end, contig_name=None, strand='+'):
+    def __init__(self, begin, end, contig_name=None, strand='+', zero_ok=True):
+        assert zero_ok or begin != end, "%s %s are the same means zero length" % (begin, end)
         self.begin = begin
         self.end = end
         self.contig_name = contig_name
@@ -77,6 +78,10 @@ class Span:
             return first, None
 
         return first, second  # happy path
+
+
+    def sample(self, sequence):
+        return sequence[self.begin: self.end]
 
 
 

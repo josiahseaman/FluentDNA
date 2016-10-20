@@ -141,16 +141,17 @@ def pluck_contig(chromosome_name, genome_source):
     seq_collection = []
     printing = False
     with open(genome_source, 'r') as genome:
-        for line in genome.readlines():
-            line = line.rstrip()
+        for line in genome:
             if line.startswith('>'):
                 # headers.append(line)
+                line = line.rstrip()
                 if line == chromosome_name:
                     printing = True
                     print("Found", line)
                 elif printing:
                     break  # we've collected all sequence and reached the beginning of the next contig
             elif printing:  # This MUST come after the check for a '>'
+                line = line.rstrip()
                 seq_collection.append(line.upper())  # always upper case so equality checks work
     if not len(seq_collection):
         raise FileNotFoundError("Contig not found." + chromosome_name + "   inside " + genome_source)  # File contained these contigs:\n" + '\n'.join(headers)

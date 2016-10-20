@@ -59,7 +59,7 @@ class ChainParser:
 
         # Pre-read generates an array of contigs with labels and sequences
         with open(input_file_path, 'r') as streamFASTAFile:
-            for read in streamFASTAFile.read().splitlines():
+            for read in streamFASTAFile:
                 if read == "":
                     continue
                 if read[0] == ">":
@@ -71,7 +71,7 @@ class ChainParser:
                     current_name = read[1:].strip()  # remove >
                 else:
                     # collects the sequence to be stored in the contig, constant time performance don't concat strings!
-                    seq_collection.append(read.upper())
+                    seq_collection.append(read.upper().rstrip())
 
         # add the last contig to the list
         sequence = "".join(seq_collection)
@@ -151,9 +151,10 @@ class ChainParser:
         assert len(chain.entries), "Chain has no data"
         for entry_index, entry in enumerate(chain.entries):  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
-
+            if not size:
+                continue  # entries with 0 size don't count
             # Debugging code
-            if is_master_alignment and self.trial_run and len(self.ref_seq_gapped) > 1000000:  # 9500000  is_master_alignment and
+            if is_master_alignment and self.trial_run and len(self.alignment) > 1000:  # 9500000  is_master_alignment and
                 break
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
@@ -175,28 +176,32 @@ class ChainParser:
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
 
             # TODO handle interlacing
-            return ref_pointer, query_pointer
+        return ref_pointer, query_pointer
 
 
-    def create_fasta_from_composite_alignment(self):
+    def create_fasta_from_composite_alignment(self, translocations_only=False):
         """self.alignment is a data structure representing the composites of all the relevant
         chain data.  This method turns that data construct into a gapped FASTA file by reading the original
         FASTA files."""
         previous_chr = None
+        master = (self.alignment[0].query.contig_name, '+')
         for pair in self.alignment:
-            if pair.query is not None and previous_chr != (pair.query.contig_name, pair.query.strand):
+            if previous_chr != (pair.query.contig_name, pair.query.strand):
                 if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
-                    continue  # We'll have to skip this alignment because we don't have the FASTA for it
-                previous_chr = (pair.query.contig_name, pair.query.strand)
-            if pair.query is None:  # whenever there is no alignable sequence, it's filled with N's
-                query_snippet = 'X' * pair.ref.size()
-            else:
-                query_snippet = self.query_sequence[pair.query.begin: pair.query.end]
+                    raise FileNotFoundError("Could not switch to " + pair.query.contig_name)  # We'll have to skip this alignment because we don't have the FASTA for it
+            previous_chr = (pair.query.contig_name, pair.query.strand)
+
+            query_snippet = pair.query.sample(self.query_sequence)
+            query_snippet += pair.query_unique_span().sample(self.query_sequence)
+            query_snippet += 'X' * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
+
+            ref_snippet = pair.ref.sample(self.ref_sequence)
+            ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
+            ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
+            if translocations_only and previous_chr == master:  # main chain
+                ref_snippet = 'X' * len(ref_snippet)
+                query_snippet = 'X' * len(query_snippet)
             self.query_seq_gapped.extend(query_snippet)
-            if pair.ref is None:
-                ref_snippet = 'X' * pair.query.size()
-            else:
-                ref_snippet = self.ref_sequence[pair.ref.begin: pair.ref.end]
             self.ref_seq_gapped.extend(ref_snippet)
 
 

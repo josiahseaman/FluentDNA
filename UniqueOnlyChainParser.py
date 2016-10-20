@@ -29,7 +29,7 @@ class UniqueOnlyChainParser(ChainParser):
                     continue  # this lands entirely between entries and shouldn't be processed
                 old = self.uncovered_areas.pop(scrutiny_index)
                 try:
-                    first, second = remove_from_range(old, new_removal)
+                    first, second = old.remove_from_range(new_removal)
                 except IndexError as e:
                     print([str(x) for x in [self.uncovered_areas[scrutiny_index], new_removal, self.uncovered_areas[scrutiny_index + 1]]])
                     raise e
@@ -46,7 +46,7 @@ class UniqueOnlyChainParser(ChainParser):
                         pass  # if both are None, then we've just deleted the uncovered entry
                     # check again on the next one
                     if new_removal.end > self.uncovered_areas[scrutiny_index].begin:
-                        first, second = remove_from_range(self.uncovered_areas.pop(scrutiny_index), new_removal)
+                        first, second = self.uncovered_areas.pop(scrutiny_index).remove_from_range(new_removal)
                     else:
                         first, second = None, None  # don't do anything: done processing this removal
                         break
