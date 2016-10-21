@@ -30,7 +30,7 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 
 import shutil
 import argparse
@@ -303,8 +303,8 @@ if __name__ == "__main__":
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
     if args.layout_type == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")
-    if args.show_translocations_only and args.skip_translocations:
-        parser.error("It just doesn't make sense to ask to show only translocations while skipping translocations.  You've got to pick one or the other.")
+    if args.show_translocations_only and args.separate_translocations:
+        parser.error("It just doesn't make sense to ask to show translocations in context while separating them.  You've got to pick one or the other.")
 
     # Set post error checking defaults
     if not args.image and not args.layout_type and args.fasta:

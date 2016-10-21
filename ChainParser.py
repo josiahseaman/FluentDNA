@@ -158,9 +158,12 @@ class ChainParser:
             # Debugging code
             if is_master_alignment and self.trial_run and len(self.alignment) > 1000:  # 9500000  is_master_alignment and
                 break
-            if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # skip the unaligned middle of translocation chains
-                gap_ref, gap_query = 0, 0  # This is caused by overzealous netting
-                first_in_chain = True
+            if not is_master_alignment:  # skip the unaligned middle of translocation chains
+                if self.separate_translocations and max(gap_query, gap_ref) > 2600:
+                    first_in_chain = True
+                    gap_ref, gap_query = 0, 0  # This is caused by overzealous netting
+                elif not self.separate_translocations:
+                    gap_ref, gap_query = 0, 0  # placed translocations don't need gaps
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
