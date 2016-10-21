@@ -86,13 +86,16 @@ class Span:
 
 
 class AlignedSpans:
-    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size):
+    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False):
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
         self.ref = ref_span
         self.query = query_span
         self.ref_tail_size = ref_tail_size
         self.query_tail_size = query_tail_size
+        self.is_master_chain = is_master_chain
+        self.is_first_entry = is_first_entry
+
 
     def ref_unique_span(self):
         return Span(self.ref.end, self.ref.end + self.ref_tail_size, self.ref.contig_name, self.ref.strand)
@@ -116,21 +119,25 @@ class AlignedSpans:
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         my_tail, your_tail = self.ref_unique_span().remove_from_range(new_alignment.ref)
         size = my_tail.size() if my_tail is not None else 0
-        new_me = AlignedSpans(self.ref, self.query, query_tail_size=self.query_tail_size, ref_tail_size=size)
+        new_me = AlignedSpans(self.ref, self.query, query_tail_size=self.query_tail_size, ref_tail_size=size,
+                              is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
         your_tail_size = your_tail.size() if your_tail is not None else 0
         you = AlignedSpans(new_alignment.ref, new_alignment.query,
                            query_tail_size=new_alignment.query_tail_size,
-                           ref_tail_size=new_alignment.ref_tail_size + your_tail_size)
+                           ref_tail_size=new_alignment.ref_tail_size + your_tail_size,
+                           is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
         return new_me, you
 
 
     def align_query_unique(self, new_alignment):
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         my_tail, your_tail = self.query_unique_span().remove_from_range(new_alignment.query)
-        new_me = AlignedSpans(self.ref, self.query, query_tail_size=my_tail.size(), ref_tail_size=self.ref_tail_size)
+        new_me = AlignedSpans(self.ref, self.query, query_tail_size=my_tail.size(), ref_tail_size=self.ref_tail_size,
+                              is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
         you = AlignedSpans(new_alignment.ref, new_alignment.query,
                            query_tail_size=new_alignment.query_tail_size + your_tail.size(),
-                           ref_tail_size=new_alignment.ref_tail_size)
+                           ref_tail_size=new_alignment.ref_tail_size,
+                           is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
         return new_me, you
 
 

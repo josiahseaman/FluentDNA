@@ -3,6 +3,7 @@ www-data/to_process
 www-data/dnadata
 build.bat
 release.bat
+scraps/
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Windows template

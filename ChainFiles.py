@@ -2,6 +2,10 @@ class ChainEntry:
     def __init__(self, size, gap_query, gap_ref):
         self.size, self.gap_query, self.gap_ref = size, gap_query, gap_ref
 
+    def __repr__(self):
+        return "(Size: %i gap_query:%i gap_ref:%i)" % (self.size, self.gap_query, self.gap_ref)
+
+
 
 class Chain:
     def __init__(self, line):

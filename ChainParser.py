@@ -25,7 +25,7 @@ def scan_past_header(seq, index):
 
 class ChainParser:
     def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
-                 swap_columns=False, include_translocations=True, squish_gaps=False):
+                 swap_columns=False, include_translocations=True, squish_gaps=False, show_translocations_only=False):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -34,6 +34,7 @@ class ChainParser:
         self.trial_run = trial_run
         self.swap_columns = swap_columns
         self.include_translocations = include_translocations
+        self.show_translocations_only = show_translocations_only
         self.squish_gaps = squish_gaps
         self.query_sequence = ''
         self.ref_sequence = ''
@@ -122,7 +123,7 @@ class ChainParser:
             query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
             self.alignment.append(AlignedSpans(ref_end, query_end,
                                                len(self.query_sequence) - query_pointer,
-                                               len(self.ref_sequence) - ref_pointer))
+                                               len(self.ref_sequence) - ref_pointer),)
 
 
     def alignment_chopping_index(self, aligned_section):
@@ -152,14 +153,17 @@ class ChainParser:
         for entry_index, entry in enumerate(chain.entries):  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
             if not size:
+                print("Skipping", entry)
                 continue  # entries with 0 size don't count
             # Debugging code
             if is_master_alignment and self.trial_run and len(self.alignment) > 1000:  # 9500000  is_master_alignment and
                 break
+            if not is_master_alignment and max(gap_query, gap_ref) > 500:  # skip the unaligned middle of translocation chains
+                gap_ref, gap_query = 0, 0  # This is caused by overzealous netting
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query)
+            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, entry_index == 0)
 
             if is_master_alignment:
                 self.alignment.append(aligned_section)
@@ -179,12 +183,11 @@ class ChainParser:
         return ref_pointer, query_pointer
 
 
-    def create_fasta_from_composite_alignment(self, translocations_only=False):
+    def create_fasta_from_composite_alignment(self):
         """self.alignment is a data structure representing the composites of all the relevant
         chain data.  This method turns that data construct into a gapped FASTA file by reading the original
         FASTA files."""
         previous_chr = None
-        master = (self.alignment[0].query.contig_name, '+')
         for pair in self.alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
                 if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
@@ -198,7 +201,7 @@ class ChainParser:
             ref_snippet = pair.ref.sample(self.ref_sequence)
             ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
             ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
-            if translocations_only and previous_chr == master:  # main chain
+            if self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = 'X' * len(ref_snippet)
                 query_snippet = 'X' * len(query_snippet)
             self.query_seq_gapped.extend(query_snippet)
@@ -324,7 +327,9 @@ class ChainParser:
 
 
     def setup_for_reference_chromosome(self, ref_chr):
-        ending = ref_chr + '__squished' * self.squish_gaps + '__no_translocations' * (not self.include_translocations)
+        ending = ref_chr + '__squished' * self.squish_gaps + \
+            '__no_translocations' * (not self.include_translocations) + \
+            '__translocations' * self.show_translocations_only
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)

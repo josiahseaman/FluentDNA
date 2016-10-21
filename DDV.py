@@ -132,7 +132,8 @@ def ddv(args):
                                        trial_run=args.trial_run,
                                        swap_columns=False,
                                        include_translocations=not args.skip_translocations,
-                                       squish_gaps=args.squish_gaps)
+                                       squish_gaps=args.squish_gaps,
+                                       show_translocations_only=args.show_translocations_only)
             print("Creating Gapped and Unique Fastas from Chain File...")
             batches = chain_parser.parse_chain(args.chromosomes)
             del chain_parser
@@ -258,7 +259,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
                         dest="trial_run")
-
+    parser.add_argument("-k", "--show_translocations_only",
+                        action='store_true',
+                        help="Used to highlight the locations of translocations (temporary)",
+                        dest='show_translocations_only')
     args = parser.parse_args()
 
     # Respond to an updater query
@@ -294,6 +298,8 @@ if __name__ == "__main__":
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
     if args.layout_type == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")
+    if args.show_translocations_only and args.skip_translocations:
+        parser.error("It just doesn't make sense to ask to show only translocations while skipping translocations.  You've got to pick one or the other.")
 
     # Set post error checking defaults
     if not args.image and not args.layout_type and args.fasta:
