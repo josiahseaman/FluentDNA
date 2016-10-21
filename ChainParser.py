@@ -1,6 +1,5 @@
 import os
 from array import array
-from bisect import bisect_left
 from datetime import datetime
 import _io
 from blist import blist
@@ -25,7 +24,8 @@ def scan_past_header(seq, index):
 
 class ChainParser:
     def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
-                 swap_columns=False, separate_translocations=False, squish_gaps=False, show_translocations_only=False):
+                 swap_columns=False, separate_translocations=False, squish_gaps=False,
+                 show_translocations_only=False, aligned_only=False):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -36,6 +36,7 @@ class ChainParser:
         self.separate_translocations = separate_translocations
         self.show_translocations_only = show_translocations_only
         self.squish_gaps = squish_gaps
+        self.aligned_only = aligned_only
         self.query_sequence = ''
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
@@ -195,12 +196,14 @@ class ChainParser:
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
             query_snippet = pair.query.sample(self.query_sequence)
-            query_snippet += pair.query_unique_span().sample(self.query_sequence)
-            query_snippet += 'X' * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
+            if not self.aligned_only:
+                query_snippet += pair.query_unique_span().sample(self.query_sequence)
+                query_snippet += 'X' * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
 
             ref_snippet = pair.ref.sample(self.ref_sequence)
-            ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
-            ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
+            if not self.aligned_only:  # Algined_only simply skips over the unaligned tails
+                ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
+                ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
             if self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = 'X' * len(ref_snippet)
                 query_snippet = 'X' * len(query_snippet)
@@ -332,7 +335,8 @@ class ChainParser:
     def setup_for_reference_chromosome(self, ref_chr):
         ending = ref_chr + '__squished' * self.squish_gaps + \
             '__separate_translocations' * self.separate_translocations + \
-            '__translocations' * self.show_translocations_only
+            '__translocations' * self.show_translocations_only + \
+            '__aligned_only' * self.aligned_only
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)

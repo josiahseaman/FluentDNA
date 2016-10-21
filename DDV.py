@@ -133,7 +133,8 @@ def ddv(args):
                                        swap_columns=False,
                                        separate_translocations=args.separate_translocations,
                                        squish_gaps=args.squish_gaps,
-                                       show_translocations_only=args.show_translocations_only)
+                                       show_translocations_only=args.show_translocations_only,
+                                       aligned_only=args.aligned_only)
             print("Creating Gapped and Unique Fastas from Chain File...")
             batches = chain_parser.parse_chain(args.chromosomes)
             del chain_parser
@@ -263,6 +264,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Used to highlight the locations of translocations (temporary)",
                         dest='show_translocations_only')
+    parser.add_argument("-a", "--aligned_only",
+                        action='store_true',
+                        help="Don't show the unaligned pieces of ref or query sequences.",
+                        dest='aligned_only')
     args = parser.parse_args()
 
     # Respond to an updater query
