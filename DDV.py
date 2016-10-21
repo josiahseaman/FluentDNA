@@ -131,7 +131,7 @@ def ddv(args):
                                        output_prefix=base_path,
                                        trial_run=args.trial_run,
                                        swap_columns=False,
-                                       include_translocations=not args.skip_translocations,
+                                       separate_translocations=args.separate_translocations,
                                        squish_gaps=args.squish_gaps,
                                        show_translocations_only=args.show_translocations_only)
             print("Creating Gapped and Unique Fastas from Chain File...")
@@ -151,7 +151,7 @@ def ddv(args):
                                                     first_source=args.fasta,
                                                     output_prefix=base_path,
                                                     trial_run=args.trial_run,
-                                                    include_translocations=not args.skip_translocations)
+                                                    separate_translocations=args.separate_translocations)
         batches = unique_chain_parser.parse_chain(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
@@ -247,10 +247,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Run Web Server after computing.",
                         dest="run_server")
-    parser.add_argument("-t", "--skip_translocations",
+    parser.add_argument("-t", "--separate_translocations",
                         action='store_true',
-                        help="Don't include translocation in the alignment.",
-                        dest="skip_translocations")
+                        help="Don't edit in translocations, list them at the end.",
+                        dest="separate_translocations")
     parser.add_argument("-g", "--squish_gaps",
                         action='store_true',
                         help="If two gaps are approximately the same size, subtract the intersection.",

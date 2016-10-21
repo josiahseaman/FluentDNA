@@ -4,6 +4,7 @@ www-data/dnadata
 build.bat
 release.bat
 scraps/
+*.chain
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Windows template

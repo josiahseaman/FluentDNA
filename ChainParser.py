@@ -25,7 +25,7 @@ def scan_past_header(seq, index):
 
 class ChainParser:
     def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
-                 swap_columns=False, include_translocations=True, squish_gaps=False, show_translocations_only=False):
+                 swap_columns=False, separate_translocations=False, squish_gaps=False, show_translocations_only=False):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -33,7 +33,7 @@ class ChainParser:
         self.query_contigs = dict()
         self.trial_run = trial_run
         self.swap_columns = swap_columns
-        self.include_translocations = include_translocations
+        self.separate_translocations = separate_translocations
         self.show_translocations_only = show_translocations_only
         self.squish_gaps = squish_gaps
         self.query_sequence = ''
@@ -47,8 +47,7 @@ class ChainParser:
         self.gapped = '_gapped'
 
         self.chain_list = chain_file_to_list(chain_name)
-        if self.include_translocations:
-            self.read_query_contigs(self.query_source)
+        self.read_query_contigs(self.query_source)
 
 
     def read_query_contigs(self, input_file_path):
@@ -152,20 +151,21 @@ class ChainParser:
         assert len(chain.entries), "Chain has no data"
         for entry_index, entry in enumerate(chain.entries):  # ChainEntry
             size, gap_query, gap_ref = entry.size, entry.gap_query, entry.gap_ref
+            first_in_chain = entry_index == 0
             if not size:
-                print("Skipping", entry)
                 continue  # entries with 0 size don't count
             # Debugging code
             if is_master_alignment and self.trial_run and len(self.alignment) > 1000:  # 9500000  is_master_alignment and
                 break
-            if not is_master_alignment and max(gap_query, gap_ref) > 500:  # skip the unaligned middle of translocation chains
+            if not is_master_alignment and max(gap_query, gap_ref) > 2600:  # skip the unaligned middle of translocation chains
                 gap_ref, gap_query = 0, 0  # This is caused by overzealous netting
+                first_in_chain = True
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, entry_index == 0)
+            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
 
-            if is_master_alignment:
+            if is_master_alignment or self.separate_translocations:
                 self.alignment.append(aligned_section)
             else:
                 scrutiny_index = max(self.alignment_chopping_index(aligned_section) - 1, 0)  # Binary search
@@ -204,6 +204,8 @@ class ChainParser:
             if self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = 'X' * len(ref_snippet)
                 query_snippet = 'X' * len(query_snippet)
+            elif self.separate_translocations and pair.is_first_entry and not pair.is_master_chain:
+                self.add_translocation_header(pair)
             self.query_seq_gapped.extend(query_snippet)
             self.ref_seq_gapped.extend(ref_snippet)
 
@@ -241,9 +243,11 @@ class ChainParser:
         self.query_seq_gapped.extend('X' * len(self.query_seq_gapped) % 100)
 
 
-    def do_translocation_housework(self, chain, query_pointer, ref_pointer):
-        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.tName, chain.tStrand, ref_pointer))  # visual separators
-        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (chain.qName, chain.qStrand, query_pointer))
+    def add_translocation_header(self, alignment):
+        """ :param alignment: AlignedSpan
+        """
+        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.ref.contig_name, alignment.ref.strand, alignment.ref.begin))  # visual separators
+        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.query.contig_name, alignment.query.strand, alignment.query.begin))
 
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,
@@ -320,15 +324,14 @@ class ChainParser:
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None
-            if self.include_translocations or is_master_alignment:  # otherwise we'll only do the master alignment
-                self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
-                previous = chain
+            self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
+            previous = chain
         self.create_fasta_from_composite_alignment()
 
 
     def setup_for_reference_chromosome(self, ref_chr):
         ending = ref_chr + '__squished' * self.squish_gaps + \
-            '__no_translocations' * (not self.include_translocations) + \
+            '__separate_translocations' * self.separate_translocations + \
             '__translocations' * self.show_translocations_only
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
@@ -336,11 +339,7 @@ class ChainParser:
                  }  # for collecting all the files names in a modifiable way
         # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
         self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
-        if self.include_translocations and self.query_source:
-            query_chr = self.relevant_chains[0].qName
-            self.query_contigs[query_chr] = pluck_contig(query_chr, self.query_source)
-        else:  # read in all the contigs
-            pass  # already covered in __init__ query_contigs and do_all_relevant_chains setup
+
         return names, ref_chr
 
 
