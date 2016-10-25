@@ -30,10 +30,10 @@ class TileLayout:
 
         # noinspection PyListCreation
         self.levels = [
-            LayoutLevel("XInColumn", 100, 1),  # [0]
-            LayoutLevel("LineInColumn", 1000, 100)  # [1]
+            LayoutLevel("XInColumn", 100, 1, 0),  # [0]
+            LayoutLevel("LineInColumn", 1000, 100, 0)  # [1]
         ]
-        self.levels.append(LayoutLevel("ColumnInRow", 100, levels=self.levels))  # [2]
+        self.levels.append(LayoutLevel("ColumnInRow", 100, padding=6, levels=self.levels))  # [2]
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
         self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]

@@ -17,12 +17,10 @@ class ParallelLayout(TileLayout):
         self.levels = self.levels[:2]  # trim off the others
         self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
         self.levels[2].padding = new_width - (columns.thickness - columns.padding)
-        self.levels[2].thickness = new_width  # 100+6+100+6+100+18 = 330  #total row width of 10,560 vs original 10,600
         self.column_offset = columns.thickness  # steps inside a column bundle, not exactly the same as bundles steps
         # because of inter bundle padding of 18 pixels
-        self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
-        self.levels[-1].padding *= 5
+        self.levels.append(LayoutLevel("RowInTile", 10, padding=36, levels=self.levels))  # [3]  overwrite padding from previous layer
+        self.levels.append(LayoutLevel("TileColumn", 3, padding=36 * 3 * 5, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
 
         self.n_genomes = n_genomes

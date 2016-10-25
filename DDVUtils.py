@@ -12,7 +12,7 @@ Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 
 
 class LayoutLevel:
-    def __init__(self, name, modulo, chunk_size=None, padding=0, thickness=1, levels=None):
+    def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
         self.modulo = modulo
         if chunk_size is not None:
             self.chunk_size = chunk_size
@@ -21,7 +21,7 @@ class LayoutLevel:
         else:
             child = levels[-1]
             self.chunk_size = child.modulo * child.chunk_size
-            self._padding = 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
+            self._padding = padding or child.padding * 3  # 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
             last_parallel = levels[-2]
             self.thickness = last_parallel.modulo * last_parallel.thickness + self.padding
 
