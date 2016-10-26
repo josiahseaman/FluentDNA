@@ -46,6 +46,8 @@ class ChainParser:
         self.stored_rev_comps = {}
         self.output_fastas = []
         self.gapped = '_gapped'
+        self.translocation_searched = 0
+        self.translocation_deleted = 0
 
         self.chain_list = chain_file_to_list(chain_name)
         self.read_query_contigs(self.query_source)
@@ -126,7 +128,7 @@ class ChainParser:
                                                len(self.ref_sequence) - ref_pointer),)
 
 
-    def alignment_chopping_index(self, aligned_section):
+    def alignment_chopping_index(self, new_alignment):
         """Return the index where to insert item x in list a, assuming a is sorted.
 
         The return value i is such that all e in a[:i] have e < x, and all e in
@@ -141,11 +143,53 @@ class ChainParser:
 
         while lo < hi:
             mid = (lo + hi) // 2
-            if self.alignment[mid] < aligned_section:
+            if self.alignment[mid] < new_alignment:
                 lo = mid + 1
             else:
                 hi = mid
         return lo
+
+
+    def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
+        """Binary search over the _mostly_ sorted list of query indices.
+        Needs special casing to avoid looking at non-master chain entries."""
+        if depth > 20:
+            return False  # abandon hope
+        if hi is None:
+            self.translocation_searched += 1
+        hi = hi or len(self.alignment)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            # Special handling for accidentally landing on a translocation (not sorted)
+            if not self.alignment[mid].is_master_chain:  # recursively splits the binary search
+                mid_left, mid_right = mid, mid
+                # slide left
+                while not self.alignment[mid_left].is_master_chain:
+                    mid_left -= 1
+                if not self.find_old_query_location(new_alignment, lo=lo, hi=mid_left, depth=depth + 1):
+                    # slide right
+                    while not self.alignment[mid_right].is_master_chain:
+                        mid_right += 1
+                    return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
+                return True
+            if self.alignment[mid].query_less_than(new_alignment):
+                lo = mid + 1
+            else:
+                hi = mid
+
+        lo = max(lo - 1, 0)
+        final_possible = self.alignment[lo].query_unique_span()
+        while new_alignment.query.begin not in final_possible and new_alignment.query.end >= final_possible.end:# and lo < hi:
+            lo += 1
+            final_possible = self.alignment[lo].query_unique_span()
+        if new_alignment.query.begin not in final_possible or new_alignment.query.end not in final_possible:
+            return False  # the old query copy is being used in more than one alignment pair
+        #     # raise ValueError("%s   %s   %s" % tuple(str(self.alignment[x].query_unique_span()) for x in [lo-1, lo, lo+1]))
+        self.alignment[lo].remove_old_query_copy(new_alignment)
+        self.translocation_deleted += 1
+
+        print(int(self.translocation_deleted / self.translocation_searched * 100), "%", self.translocation_searched, self.translocation_deleted )
+        return True
 
 
     def process_chain_body(self, chain, ref_pointer, query_pointer, is_master_alignment):
@@ -167,16 +211,19 @@ class ChainParser:
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            aligned_section = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
+            new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
 
             if is_master_alignment or self.separate_translocations:
-                self.alignment.append(aligned_section)
+                self.alignment.append(new_alignment)
             else:
-                scrutiny_index = max(self.alignment_chopping_index(aligned_section) - 1, 0)  # Binary search
-                # if not self.alignment[scrutiny_index].ref.overlaps(aligned_section.ref):
-                #     scrutiny_index += 1
+                # Remove old unaligned query location
+                scrutiny_index = self.find_old_query_location(new_alignment)  # Binary search using query
+
+
+                # Add new_alignment at ref location
+                scrutiny_index = max(self.alignment_chopping_index(new_alignment) - 1, 0)  # Binary search
                 old = self.alignment.pop(scrutiny_index)
-                first, second = old.align_ref_unique(aligned_section)
+                first, second = old.align_ref_unique(new_alignment)
                 self.alignment.insert(scrutiny_index, first)
                 self.alignment.insert(scrutiny_index + 1, second)
 

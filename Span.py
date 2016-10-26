@@ -22,6 +22,8 @@ class Span:
 
 
     def __contains__(self, index):
+        if isinstance(index, Span):
+            return self.overlaps(index)
         return self.begin <= index < self.end
 
 
@@ -103,12 +105,17 @@ class AlignedSpans:
     def query_unique_span(self):
         return Span(self.query.end, self.query.end + self.query_tail_size, self.query.contig_name, self.query.strand)
 
+
     def __lt__(self, other):
         """Useful for putting Spans in a sorted list"""
         if isinstance(other, AlignedSpans):  # TODO: more cases for None
             return self.ref.begin < other.ref.begin
         else:
             return self.ref.begin < other
+
+    def query_less_than(self, other):
+        """Same as __lt__ but for query sequence search"""
+        return self.query.begin < other.query.begin
 
 
     def __repr__(self):
@@ -140,6 +147,21 @@ class AlignedSpans:
                            is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
         return new_me, you
 
+
+    def remove_old_query_copy(self, new_alignment):
+        """Each AlignedSpan also contains the record of the unaligned region following it.  In the case where
+        a match has been found elsewhere in the reference, the visual representation of the sequence is moved
+        to that new location based on the reference location.  That leaves behind an old, obsolete record of
+        and "unalignable" region that needs to be deleted.  This function removes the old unaligned record
+        without updating the query start position of the next AlignedSpan.  The end result is that the query
+        sequence will be skipped over in its "native" position and must be represented in its new aligned
+        location elsewhere."""
+        assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
+        if new_alignment.query.begin in self.query_unique_span():
+            self.query_tail_size -= new_alignment.query.size()  # TODO: I could measure the overlap of spans
+            return self
+        else:
+            raise IndexError(str(new_alignment.query) + " not in " + str(self.query_unique_span()))
 
     # def split(self, original_index):
     #     o1, o2 = self.ref_span.split(original_index)
