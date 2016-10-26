@@ -1,7 +1,7 @@
 from bisect import bisect_left
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser
-from DDVUtils import pluck_contig, Batch
+from DDVUtils import pluck_contig, Batch, write_complete_fasta
 from Span import Span
 
 
@@ -66,7 +66,7 @@ class UniqueOnlyChainParser(ChainParser):
         for region in self.uncovered_areas:
             uniq_collection.append(self.ref_sequence[region.begin: region.end].replace('N', ''))
 
-        self.write_complete_fasta(ref_unique_name, uniq_collection)
+        write_complete_fasta(ref_unique_name, uniq_collection)
         return ref_unique_name
 
 

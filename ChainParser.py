@@ -1,11 +1,10 @@
 import os
 from array import array
 from datetime import datetime
-import _io
 from blist import blist
 
 from ChainFiles import chain_file_to_list
-from DDVUtils import just_the_name, chunks, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement
+from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta
 from Span import AlignedSpans, Span
 
 
@@ -80,34 +79,6 @@ class ChainParser:
         sequence = "".join(seq_collection)
         self.query_contigs[current_name] = sequence
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
-
-
-
-    def _write_fasta_lines(self, filestream, seq):
-        assert isinstance(filestream, _io.TextIOWrapper)  # I'm actually given a file name and have to open it myself
-        contigs = seq.split('\n')
-        index = 0
-        while index < len(contigs):
-            if contigs[index].startswith('>'):
-                header, contents = contigs[index], contigs[index + 1]
-                index += 2
-            else:
-                header, contents = None, contigs[index]
-                index += 1
-            self.__do_write(filestream, contents, header)
-
-
-    def __do_write(self, filestream, seq, header=None):
-        """Specialized function for writing sets of headers and sequence in FASTA.
-        It chunks the file up into 70 character lines, but leaves headers alone"""
-        if header is not None:
-            filestream.write(header + '\n')  # double check newlines
-        try:
-            for line in chunks(seq, 70):
-                filestream.write(line + '\n')
-        except Exception as e:
-            print(e)
-
 
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
@@ -320,24 +291,9 @@ class ChainParser:
     def write_gapped_fasta(self, query, reference):
         query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + self.gapped + '.fa')
         ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + self.gapped + '.fa')
-        self.write_complete_fasta(query_gap_name, self.query_seq_gapped)
-        self.write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
+        write_complete_fasta(query_gap_name, self.query_seq_gapped)
+        write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
         return query_gap_name, ref_gap_name
-
-
-    def write_complete_fasta(self, file_path, seq_content_array):
-        """This function ensures that all FASTA files start with a >header\n line"""
-        with open(file_path, 'w') as filestream:
-            if seq_content_array[0] != '>':  # start with a header
-                temp_content = seq_content_array
-                header = '>%s\n' % just_the_name(file_path)
-                if isinstance(temp_content, list):
-                    seq_content_array = [header]
-                else:
-                    seq_content_array = array('u', header)
-                seq_content_array.extend(temp_content)
-            self._write_fasta_lines(filestream, ''.join(seq_content_array))
-
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
         query_uniq_array = array('u', self.query_seq_gapped)
@@ -363,8 +319,8 @@ class ChainParser:
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
         query_unique_name = os.path.join(self.output_folder, query_gapped_name.replace(self.gapped, '_unique'))
         ref_unique_name = os.path.join(self.output_folder, ref_gapped_name.replace(self.gapped, '_unique'))
-        self.write_complete_fasta(query_unique_name, query_uniq_array)
-        self.write_complete_fasta(ref_unique_name, ref_uniq_array)
+        write_complete_fasta(query_unique_name, query_uniq_array)
+        write_complete_fasta(ref_unique_name, ref_uniq_array)
 
         return query_unique_name, ref_unique_name
 

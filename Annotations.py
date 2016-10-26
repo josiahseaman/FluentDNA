@@ -1,5 +1,5 @@
 import os
-import sys
+from array import array
 
 
 class GFF(object):
@@ -46,6 +46,8 @@ class GFF(object):
 
                 if chromosome not in annotations:
                     annotations[chromosome] = []
+                    if len(annotations) < 40:
+                        print(chromosome)
 
                 ID = counter
                 source = elements[1]
@@ -81,8 +83,8 @@ class GFF(object):
 
                 annotations[chromosome].append(annotation)
 
-                if counter % 10000 == 0:
-                    sys.stdout.write('.')
+                # if counter % 10000 == 0:
+                #     sys.stdout.write('.')
 
         open_annotation_file.close()
 
@@ -112,4 +114,32 @@ class GFF(object):
             self.frame = frame
             self.attribute = attribute
 
-gff = GFF('Animalia_Mammalia_Pan_Troglodytes_refseq2.1.4.gtf')
+
+def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_length):
+    from DDVUtils import write_complete_fasta
+    gff = GFF(gff_filename)
+    filler = 'N'
+    seq = array('u', filler * chromosome_length)
+    print("Done", gff.file_name)
+    for chromosome in gff.annotations.keys():
+        if chromosome == target_chromosome or chromosome == target_chromosome.replace('chr', ''):  # only one
+            for entry in gff.annotations[chromosome]:
+                assert isinstance(entry, GFF.Annotation), "I'm confused"
+                if entry.feature == 'exon':
+                    for i in range(entry.start, entry.end + 1):
+                        seq[i] = 'A'
+                if entry.feature == 'gene':
+                    for i in range(entry.start, entry.end + 1):
+                        if seq[i] == filler or seq[i] == 'T':
+                            seq[i] = 'G'
+                if entry.feature == 'transcript':
+                    for i in range(entry.start, entry.end + 1):
+                        if seq[i] == filler:
+                            seq[i] = 'T'
+
+    write_complete_fasta('Chimp_test_' + target_chromosome + '.fa', seq)
+
+
+
+if __name__ == '__main__':
+    create_fasta_from_annotation(r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf', 'chr22', 50 * 1000 * 1000)

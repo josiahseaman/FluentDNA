@@ -27,6 +27,7 @@ class TileLayout:
         self.palette['T'] = (250, 240, 114)
         self.palette['C'] = (0, 0, 255)
         self.palette['N'] = (30, 30, 30)
+        self.palette['X'] = (240, 240, 240)
 
         # noinspection PyListCreation
         self.levels = [
@@ -90,8 +91,8 @@ class TileLayout:
                 total_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
-                    if nuc != 'X':
-                        self.draw_pixel(nuc, x + i, y)
+                    # if nuc != 'X':
+                    self.draw_pixel(nuc, x + i, y)
                 if cx % 100000 == 0:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
                           end="")  # pseudo progress bar
