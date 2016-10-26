@@ -13186,7 +13186,7 @@ function configureFromObject( tileSource, configuration ){
             bigCanvas.width = currentWidth;
             bigCanvas.height = currentHeight;
             bigContext.imageSmoothingEnabled = true;
-            bigContext.webkitImageSmoothingEnabled = true;
+            bigContext.imageSmoothingEnabled = true;
             bigContext.mozImageSmoothingEnabled = true;
             bigContext.msImageSmoothingEnabled = true;
             bigContext.drawImage(this._image, 0, 0, currentWidth, currentHeight);
@@ -13212,7 +13212,7 @@ function configureFromObject( tileSource, configuration ){
                 smallCanvas.width = currentWidth;
                 smallCanvas.height = currentHeight;
                 smallContext.imageSmoothingEnabled = true;
-                smallContext.webkitImageSmoothingEnabled = true;
+                smallContext.imageSmoothingEnabled = true;
                 smallContext.mozImageSmoothingEnabled = true;
                 smallContext.msImageSmoothingEnabled = true;
                 smallContext.drawImage(bigCanvas, 0, 0, currentWidth, currentHeight);
@@ -15911,7 +15911,7 @@ $.Tile.prototype = {
         drawingHandler({context: context, tile: this, rendered: rendered});
 
         context.imageSmoothingEnabled = true;
-        context.webkitImageSmoothingEnabled = true;
+        context.imageSmoothingEnabled = true;
         context.mozImageSmoothingEnabled = true;
         context.msImageSmoothingEnabled = true;
         context.drawImage(
@@ -16897,7 +16897,7 @@ $.Drawer.prototype = {
         }
         if (bounds) {
             this.context.imageSmoothingEnabled = true;
-            this.context.webkitImageSmoothingEnabled = true;
+            this.context.imageSmoothingEnabled = true;
             this.context.mozImageSmoothingEnabled = true;
             this.context.msImageSmoothingEnabled = true;
             this.context.drawImage(
@@ -16926,7 +16926,7 @@ $.Drawer.prototype = {
                 heightExt = Math.round(heightDiff / 2);
             }
             this.context.imageSmoothingEnabled = false;
-            this.context.webkitImageSmoothingEnabled = false;
+            this.context.imageSmoothingEnabled = false;
             this.context.mozImageSmoothingEnabled = false;
             this.context.msImageSmoothingEnabled = false;
             this.context.drawImage(
@@ -20247,7 +20247,7 @@ ImageRecord.prototype = {
             canvas.height = this._image.height;
             this._renderedContext = canvas.getContext('2d');
             this._renderedContext.imageSmoothingEnabled = true;
-            this._renderedContext.webkitImageSmoothingEnabled = true;
+            this._renderedContext.imageSmoothingEnabled = true;
             this._renderedContext.mozImageSmoothingEnabled = true;
             this._renderedContext.msImageSmoothingEnabled = true;
             this._renderedContext.drawImage( this._image, 0, 0 );
