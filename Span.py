@@ -74,7 +74,7 @@ class Span:
 
         if remove_this.begin <= self.begin and remove_this.end >= self.end:  # delete the whole thing
             return None, None
-        if remove_this.begin <= self.begin < remove_this.end:  # overlaps start
+        if remove_this.begin < self.begin < remove_this.end:  # overlaps start
             return None, second
         if remove_this.end >= self.end > remove_this.begin:  # overlaps ending
             return first, None
@@ -97,6 +97,7 @@ class AlignedSpans:
         self.query_tail_size = query_tail_size
         self.is_master_chain = is_master_chain
         self.is_first_entry = is_first_entry
+        self.is_hidden = False
 
 
     def ref_unique_span(self):
@@ -148,7 +149,7 @@ class AlignedSpans:
         return new_me, you
 
 
-    def remove_old_query_copy(self, new_alignment):
+    def remove_old_query_copy(self, new_alignment) -> tuple:
         """Each AlignedSpan also contains the record of the unaligned region following it.  In the case where
         a match has been found elsewhere in the reference, the visual representation of the sequence is moved
         to that new location based on the reference location.  That leaves behind an old, obsolete record of
@@ -158,8 +159,22 @@ class AlignedSpans:
         location elsewhere."""
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         if new_alignment.query.begin in self.query_unique_span():
-            self.query_tail_size -= new_alignment.query.size()  # TODO: I could measure the overlap of spans
-            return self
+            my_tail, your_tail = self.query_unique_span().remove_from_range(new_alignment.query)
+            new_me = AlignedSpans(self.ref, self.query,
+                                  query_tail_size=my_tail.size(), ref_tail_size=0,
+                                  is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
+            progress = my_tail.size()
+            you = AlignedSpans(Span(self.ref.end, self.ref.end, self.ref.contig_name, self.ref.strand),
+                               Span(self.query.end + progress, self.query.end + progress, self.query.contig_name, self.query.strand),
+                               query_tail_size=new_alignment.query.size(),
+                               ref_tail_size=0)
+            you.is_hidden = True  # This will appear as white space in the alignment
+            progress += new_alignment.query.size()
+            visible_tail = AlignedSpans(Span(self.ref.end, self.ref.end, self.ref.contig_name, self.ref.strand),
+                                        Span(self.query.end + progress, self.query.end + progress, self.query.contig_name, self.query.strand),
+                                        query_tail_size=your_tail.size(),
+                                        ref_tail_size=self.ref_tail_size)
+            return new_me, you, visible_tail
         else:
             raise IndexError(str(new_alignment.query) + " not in " + str(self.query_unique_span()))
 

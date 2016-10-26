@@ -124,7 +124,7 @@ class ChainParser:
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
         Needs special casing to avoid looking at non-master chain entries."""
-        if depth > 20:
+        if depth > 30:
             return False  # abandon hope
         if hi is None:
             self.translocation_searched += 1
@@ -143,23 +143,26 @@ class ChainParser:
                         mid_right += 1
                     return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
                 return True
-            if self.alignment[mid].query_less_than(new_alignment):
-                lo = mid + 1
-            else:
+            # Actual Binary search is here:
+            if new_alignment.query_less_than(self.alignment[mid]):
                 hi = mid
+            else:
+                lo = mid + 1
 
+        # Binary search brings us to the right most position
         lo = max(lo - 1, 0)
         final_possible = self.alignment[lo].query_unique_span()
-        while new_alignment.query.begin not in final_possible and new_alignment.query.end >= final_possible.end:# and lo < hi:
-            lo += 1
-            final_possible = self.alignment[lo].query_unique_span()
+        # while new_alignment.query.begin not in final_possible and new_alignment.query.end >= final_possible.end:# and lo < hi:
+        #     lo += 1
+        #     final_possible = self.alignment[lo].query_unique_span()
         if new_alignment.query.begin not in final_possible or new_alignment.query.end not in final_possible:
             return False  # the old query copy is being used in more than one alignment pair
         #     # raise ValueError("%s   %s   %s" % tuple(str(self.alignment[x].query_unique_span()) for x in [lo-1, lo, lo+1]))
-        self.alignment[lo].remove_old_query_copy(new_alignment)
+        replacements = self.alignment.pop(lo).remove_old_query_copy(new_alignment)
+        [self.alignment.insert(lo, x) for x in reversed(replacements)]  # insert them into alignment in place, in order
         self.translocation_deleted += 1
 
-        print(int(self.translocation_deleted / self.translocation_searched * 100), "%", self.translocation_searched, self.translocation_deleted )
+        print(int(self.translocation_deleted / self.translocation_searched * 100), "%", self.translocation_searched, self.translocation_deleted)
         return True
 
 
@@ -188,8 +191,7 @@ class ChainParser:
                 self.alignment.append(new_alignment)
             else:
                 # Remove old unaligned query location
-                scrutiny_index = self.find_old_query_location(new_alignment)  # Binary search using query
-
+                # self.find_old_query_location(new_alignment)  # Binary search using query
 
                 # Add new_alignment at ref location
                 scrutiny_index = max(self.alignment_chopping_index(new_alignment) - 1, 0)  # Binary search
@@ -222,10 +224,10 @@ class ChainParser:
                 query_snippet += 'X' * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
 
             ref_snippet = pair.ref.sample(self.ref_sequence)
-            if not self.aligned_only:  # Algined_only simply skips over the unaligned tails
+            if not self.aligned_only:  # Aligned_only simply skips over the unaligned tails
                 ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
                 ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
-            if self.show_translocations_only and pair.is_master_chain:  # main chain
+            if pair.is_hidden or self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = 'X' * len(ref_snippet)
                 query_snippet = 'X' * len(query_snippet)
             elif self.separate_translocations and pair.is_first_entry and not pair.is_master_chain:
