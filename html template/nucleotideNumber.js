@@ -63,7 +63,14 @@ function init(container_id, source_folder) {
     });
 
     //TODO: Make an actual function to draw all the proper stuff
-    var d3Rect = d3.select(overlay.node()).append("rect").style('fill', '#f00').attr("x", 0.5).attr("width", 0.25).attr("y", 0.5).attr("height", 0.25);
+    var testSVG = document.createElementNS("http://www.w3.org/2000/svg", 'path');
+    testSVG.setAttribute("d","M 0 0 L 10 10"); //Set path's data
+    testSVG.style.stroke = "#000"; //Set stroke colour
+    testSVG.style.strokeWidth = "5px"; //Set stroke width
+    overlay.node().append(testSVG);
+    overlay.onClick(testSVG, function() {
+        testSVG.style.stroke = "#f00";
+    });
 
     //copy content of pointed at sequence fragment to result log
     $('body').keyup(function (event) {
