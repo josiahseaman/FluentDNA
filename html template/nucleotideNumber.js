@@ -57,6 +57,14 @@ function init(container_id, source_folder) {
 
     OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer)});
 
+    var overlay = viewer.svgOverlay();
+    $(window).resize(function() {
+        overlay.resize();
+    });
+
+    //TODO: Make an actual function to draw all the proper stuff
+    var d3Rect = d3.select(overlay.node()).append("rect").style('fill', '#f00').attr("x", 0.5).attr("width", 0.25).attr("y", 0.5).attr("height", 0.25);
+
     //copy content of pointed at sequence fragment to result log
     $('body').keyup(function (event) {
         if (theSequence) {
