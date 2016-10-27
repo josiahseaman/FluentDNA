@@ -115,7 +115,7 @@ class GFF(object):
             self.attribute = attribute
 
 
-def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_length):
+def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_length, out_name):
     from DDVUtils import write_complete_fasta
     gff = GFF(gff_filename)
     filler = 'X'
@@ -128,20 +128,17 @@ def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_len
                 if entry.feature == 'exon':
                     count += 1
                     for i in range(entry.start, entry.end + 1):
-                        seq[i] = 'A'
-                # if entry.feature == 'transcript':
-                #     for i in range(entry.start, entry.end + 1):
-                #         if seq[i] == filler or seq[i] == 'T':
-                #             seq[i] = 'G'
+                        seq[i] = 'G'
                 if entry.feature == 'gene':
                     for i in range(entry.start, entry.end + 1):
                         if seq[i] == filler:
                             seq[i] = 'T'
 
-    write_complete_fasta('Chimp_test_' + target_chromosome + '.fa', seq)
+    write_complete_fasta(out_name, seq)
     print("Done", gff.file_name)
     print("Found %i exons" % count)
 
 
 if __name__ == '__main__':
-    create_fasta_from_annotation(r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf', 'chr20', 63 * 1000 * 1000)
+    target_chromosome = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
+    create_fasta_from_annotation(target_chromosome, 'chr20', 63 * 1000 * 1000, 'Chimp_test_' + target_chromosome + '.fa')
