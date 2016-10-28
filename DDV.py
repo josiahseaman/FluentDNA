@@ -11,6 +11,8 @@ import multiprocessing
 import os
 import sys
 
+from AnnotatedAlignment import AnnotatedAlignment
+
 print("Setting up Python...")
 
 if getattr(sys, 'frozen', False):
@@ -105,6 +107,26 @@ def ddv(args):
         sys.exit(0)
 
     base_path = os.path.join(SERVER_HOME, args.output_name)
+    if args.ref_annotation:  # parse chain files, possibly in batch
+        anno_align = AnnotatedAlignment(chain_name=args.chain_file,
+                                        first_source=args.fasta,
+                                        first_annotation=args.ref_annotation,
+                                        second_source=args.extra_fastas[0],
+                                        second_annotation=args.query_annotation,
+                                        output_prefix=base_path,
+                                        trial_run=args.trial_run,
+                                        separate_translocations=args.separate_translocations,
+                                        squish_gaps=args.squish_gaps,
+                                        show_translocations_only=args.show_translocations_only,
+                                        aligned_only=args.aligned_only)
+        print("Creating Aligned Annotations using Chain File...")
+        batches = anno_align.parse_chain(args.chromosomes)
+        del anno_align
+        print("Done creating Gapped Annotations.")
+        for batch in batches:  # multiple chromosomes, multiple views
+            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, batch.fastas)
+        sys.exit(0)
+
     if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
         output_dir = make_output_dir_with_suffix(base_path, '')
         print("Creating Deep Zoom Structure for Existing Image...")
@@ -241,7 +263,7 @@ if __name__ == "__main__":
     parser.add_argument("-ch", "--chromosomes",
                         nargs='+',
                         type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chrY' for testing.",
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
                         dest="chromosomes")
     parser.add_argument("-s", "--runserver",
                         action='store_true',
@@ -267,6 +289,14 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Don't show the unaligned pieces of ref or query sequences.",
                         dest='aligned_only')
+    parser.add_argument("-ra", "--ref_annotation",
+                        type=str,
+                        help="Path to Annotation File for Reference Genome (first).",
+                        dest="ref_annotation")
+    parser.add_argument("-qa", "--query_annotation",
+                        type=str,
+                        help="Path to Annotation File for Query Genome (second).",
+                        dest="query_annotation")
     args = parser.parse_args()
 
     # Respond to an updater query
@@ -312,7 +342,7 @@ if __name__ == "__main__":
         args.layout_type = "NONE"
 
     if args.chain_file and not args.chromosomes:
-        args.chromosomes = ['chrY']
+        args.chromosomes = ['chr21']
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore

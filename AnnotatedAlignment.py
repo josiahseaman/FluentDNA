@@ -103,11 +103,12 @@ class AnnotatedAlignment(ChainParser):
         print("Differences in annotations are marked in red.")
         total_transcribed = human_unique + chimp_unique + shared_transcription
         total_exons = human_exons + chimp_exons + shared_exons
-        print("Reference: %.2f percent transcriptional overlap" % ((human_unique + shared_transcription) / total_transcribed))
-        print("Query:     %.2f percent transcriptional overlap" % ((chimp_unique + shared_transcription) / total_transcribed))
-        print("Reference: %.2f percent exon bp overlap" % ((human_exons + shared_exons) / total_exons))
-        print("Query:     %.2f percent exon bp overlap" % ((chimp_exons + shared_exons) / total_exons))
-        with open(os.path.join(self.output_folder, 'stats.txt'), '+') as stats:
+        print("Of all transcription area: %.1f%% is uniquely chimp, %.1f%% is uniquely human, %.1f%% is shared" %
+              (chimp_unique / total_transcribed * 100, human_unique / total_transcribed * 100, shared_transcription / total_transcribed * 100))
+        print("Of all Exons bp: %.1f%% is uniquely chimp, %.1f%% is uniquely human %.1f%% is shared" %
+              (chimp_exons / total_exons * 100, human_exons / total_exons * 100, shared_exons / total_exons * 100))
+
+        with open(os.path.join(self.output_folder, 'stats.txt'), 'w+') as stats:
             values = 'human_unique chimp_unique shared_transcription human_exons chimp_exons shared_exons'.split()
             for val in values:
                 stats.write('%s\t%i\n' % (val, locals()[val]))
@@ -116,10 +117,11 @@ class AnnotatedAlignment(ChainParser):
 if __name__ == '__main__':
     output_name = 'hg38_panTro4_annotated_'
     base_path = os.path.join('.', 'www-data', 'dnadata', output_name)
-
     chimp_annotation = r'HongKong\PanTro_refseq2.1.4_genes.gtf'
     human_anno = r'HongKong\Hg38_genes.gtf'
-    # aligner = AnnotatedAlignment('hg38ToPanTro4.over.chain', 'panTro4.fa', 'hg38.fa', 'hg38_panTro4_annotated_')
     aligner = AnnotatedAlignment('hg38ToPanTro4.over.chain', 'hg38.fa', human_anno, 'panTro4.fa', chimp_annotation, base_path)
     aligner.parse_chain(['chr20'])
-    # Force stop after gapped fasta file is written
+
+    #### ==== Command Line Configuration === ####
+    # DDV.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
+    # --query_annotation=HongKong\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_
