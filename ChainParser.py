@@ -228,6 +228,7 @@ class ChainParser:
                 self.add_translocation_header(pair)
             self.query_seq_gapped.extend(query_snippet)
             self.ref_seq_gapped.extend(ref_snippet)
+        print("Done gapping sequence")
 
 
     def switch_sequences(self, query_name, query_strand):
@@ -284,11 +285,15 @@ class ChainParser:
         pass
 
 
-    def write_gapped_fasta(self, reference, query):
-        query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + self.gapped + '.fa')
-        ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + self.gapped + '.fa')
+    def write_gapped_fasta(self, reference, query, prepend_output_folder=True):
+        query_gap_name = os.path.splitext(query)[0] + self.gapped + '.fa'
+        ref_gap_name = os.path.splitext(reference)[0] + self.gapped + '.fa'
+        if prepend_output_folder:
+            query_gap_name = os.path.join(self.output_folder, query_gap_name)
+            ref_gap_name = os.path.join(self.output_folder, ref_gap_name)
         write_complete_fasta(query_gap_name, self.query_seq_gapped)
         write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
+        print("Finished creating gapped fasta files", ref_gap_name, query_gap_name)
         return query_gap_name, ref_gap_name
 
 
@@ -322,11 +327,12 @@ class ChainParser:
         return query_unique_name, ref_unique_name
 
 
-    def create_alignment_from_relevant_chains(self, ref_chr):
+    def create_alignment_from_relevant_chains(self, ref_chr, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
         # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
-        relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
+        if relevant_chains is None:
+            relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None

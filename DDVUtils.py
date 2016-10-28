@@ -200,12 +200,13 @@ def _write_fasta_lines(filestream, seq):
         __do_write(filestream, contents, header)
 
 
-def write_complete_fasta(file_path, seq_content_array):
+def write_complete_fasta(file_path, seq_content_array, header=None):
     """This function ensures that all FASTA files start with a >header\n line"""
     with open(file_path, 'w') as filestream:
         if seq_content_array[0] != '>':  # start with a header
             temp_content = seq_content_array
-            header = '>%s\n' % just_the_name(file_path)
+            if header is None:
+                header = '>%s\n' % just_the_name(file_path)
             if isinstance(temp_content, list):
                 seq_content_array = [header]
             else:
