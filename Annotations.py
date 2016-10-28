@@ -115,7 +115,7 @@ class GFF(object):
             self.attribute = attribute
 
 
-def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_length, out_name):
+def create_fasta_from_annotation(gff_filename, target_chromosome, out_name, chromosome_length):
     from DDVUtils import write_complete_fasta
     gff = GFF(gff_filename)
     filler = 'X'
@@ -142,4 +142,4 @@ def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_len
 
 if __name__ == '__main__':
     target_chromosome = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
-    create_fasta_from_annotation(target_chromosome, 'chr20', 63 * 1000 * 1000, 'Chimp_test_' + target_chromosome + '.fa')
+    create_fasta_from_annotation(target_chromosome, 'chr20', 'Chimp_test_' + target_chromosome + '.fa', 63 * 1000 * 1000)

@@ -40,7 +40,6 @@ class ChainParser:
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
         self.alignment = blist()  # optimized for inserts in the middle
-        self.relevant_chains = []  # list of contigs that contribute to ref_chr in chain entries
         self.stored_rev_comps = {}
         self.output_fastas = []
         self.gapped = '_gapped'
@@ -81,11 +80,7 @@ class ChainParser:
 
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
-
-        # if not is_master_alignment:
-        #     self.do_translocation_housework(chain, query_pointer, ref_pointer)
         ref_pointer, query_pointer = self.process_chain_body(chain, ref_pointer, query_pointer, is_master_alignment)
-
         self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer, is_master_alignment)
 
 
@@ -327,11 +322,11 @@ class ChainParser:
         return query_unique_name, ref_unique_name
 
 
-    def create_alignment_from_relevant_chains(self, relevant_chains=None):
+    def create_alignment_from_relevant_chains(self, ref_chr):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
-        if relevant_chains is None:
-            relevant_chains = self.relevant_chains
+        # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
+        relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None
@@ -348,8 +343,6 @@ class ChainParser:
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
-        # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
-        self.relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
 
         return names, ref_chr
 
@@ -359,7 +352,7 @@ class ChainParser:
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
-        self.create_alignment_from_relevant_chains()
+        self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()
 
         names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
