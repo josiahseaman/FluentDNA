@@ -56,7 +56,7 @@ class AnnotatedAlignment(ChainParser):
         self.ref_sequence = pluck_contig(ref_chr, ref_annotation_fasta)
         self.query_sequence = pluck_contig(ref_chr, query_annotation_fasta)
         self.create_fasta_from_composite_alignment()
-        # self.markup_annotation_differences()
+        self.markup_annotation_differences()
         # TODO: self.gap_annotation_metadata()
         names['r_anno_gap'], names['q_anno_gap'] = self.write_gapped_fasta(ref_annotation_fasta, query_annotation_fasta, False)
 
@@ -73,6 +73,16 @@ class AnnotatedAlignment(ChainParser):
         self.output_folder = None  # clear the previous value
         return batch
 
+
+    def markup_annotation_differences(self):
+        # TODO: are there any headers or comments to scan past?
+        shared_length = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
+        for i in range(shared_length):
+            if self.ref_seq_gapped[i] == 'G' and self.query_seq_gapped[i] != 'G':
+                self.query_seq_gapped[i] = 'C'
+            elif self.query_seq_gapped[i] == 'G' and self.ref_seq_gapped[i] != 'G':
+                self.ref_seq_gapped[i] = 'A'
+        print("Differences in annotations are marked in red.")
 
 if __name__ == '__main__':
     output_name = 'hg38_panTro4_annotated_'
