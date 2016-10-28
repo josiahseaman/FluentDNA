@@ -77,12 +77,41 @@ class AnnotatedAlignment(ChainParser):
     def markup_annotation_differences(self):
         # TODO: are there any headers or comments to scan past?
         shared_length = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
+        human_unique, chimp_unique, shared_transcription = 0, 0, 0
+        human_exons, chimp_exons, shared_exons = 0, 0, 0
         for i in range(shared_length):
-            if self.ref_seq_gapped[i] == 'G' and self.query_seq_gapped[i] != 'G':
-                self.query_seq_gapped[i] = 'C'
-            elif self.query_seq_gapped[i] == 'G' and self.ref_seq_gapped[i] != 'G':
-                self.ref_seq_gapped[i] = 'A'
+            R = self.ref_seq_gapped[i]
+            Q = self.query_seq_gapped[i]
+            if R == 'G':  # Set of conditions where either exons or genes disagree
+                if Q != 'G':
+                    self.query_seq_gapped[i] = 'C'  # mark query deficiencies in blue
+                    human_exons += 1
+                else:
+                    shared_exons += 1
+            elif Q == 'G':
+                self.ref_seq_gapped[i] = 'A'  # mark query deficiencies in red
+                chimp_exons += 1
+
+            if R == 'T':
+                if Q != 'T':
+                    human_unique += 1
+                else:
+                    shared_transcription += 1
+            elif Q == 'T':
+                chimp_unique += 1
+
         print("Differences in annotations are marked in red.")
+        total_transcribed = human_unique + chimp_unique + shared_transcription
+        total_exons = human_exons + chimp_exons + shared_exons
+        print("Reference: %.2f percent transcriptional overlap" % ((human_unique + shared_transcription) / total_transcribed))
+        print("Query:     %.2f percent transcriptional overlap" % ((chimp_unique + shared_transcription) / total_transcribed))
+        print("Reference: %.2f percent exon bp overlap" % ((human_exons + shared_exons) / total_exons))
+        print("Query:     %.2f percent exon bp overlap" % ((chimp_exons + shared_exons) / total_exons))
+        with open(os.path.join(self.output_folder, 'stats.txt'), '+') as stats:
+            values = 'human_unique chimp_unique shared_transcription human_exons chimp_exons shared_exons'.split()
+            for val in values:
+                stats.write('%s\t%i\n' % (val, locals()[val]))
+
 
 if __name__ == '__main__':
     output_name = 'hg38_panTro4_annotated_'
