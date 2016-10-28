@@ -124,10 +124,11 @@ class ParallelLayout(TileLayout):
         reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
         # Remove first title
         if total_progress == 0:
+            tail += title_padding
             title_padding = 0
-            i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
-            total_padding = total_progress + title_padding + reset_padding + next_segment_length
-            tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
+            # i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
+            # total_padding = total_progress + title_padding + reset_padding + next_segment_length
+            # tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
 
         return reset_padding, title_padding, tail
 

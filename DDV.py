@@ -126,11 +126,10 @@ def ddv(args):
             sys.exit(0)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
-                                       second_source=args.extra_fastas[0],
                                        first_source=args.fasta,
+                                       second_source=args.extra_fastas[0],
                                        output_prefix=base_path,
                                        trial_run=args.trial_run,
-                                       swap_columns=False,
                                        separate_translocations=args.separate_translocations,
                                        squish_gaps=args.squish_gaps,
                                        show_translocations_only=args.show_translocations_only,
@@ -148,8 +147,8 @@ def ddv(args):
                                second_source='',
                                output_folder_prefix='Hg38_unique_vs_panTro4_')"""
         unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
-                                                    second_source=args.fasta,
                                                     first_source=args.fasta,
+                                                    second_source=args.fasta,
                                                     output_prefix=base_path,
                                                     trial_run=args.trial_run,
                                                     separate_translocations=args.separate_translocations)

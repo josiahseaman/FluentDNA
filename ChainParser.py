@@ -22,8 +22,8 @@ def scan_past_header(seq, index):
 
 
 class ChainParser:
-    def __init__(self, chain_name, second_source, first_source, output_prefix, trial_run=False,
-                 swap_columns=False, separate_translocations=False, squish_gaps=False,
+    def __init__(self, chain_name, first_source, second_source, output_prefix,
+                 trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
@@ -31,7 +31,6 @@ class ChainParser:
         self.output_folder = None
         self.query_contigs = dict()
         self.trial_run = trial_run
-        self.swap_columns = swap_columns
         self.separate_translocations = separate_translocations
         self.show_translocations_only = show_translocations_only
         self.squish_gaps = squish_gaps
@@ -290,12 +289,13 @@ class ChainParser:
         pass
 
 
-    def write_gapped_fasta(self, query, reference):
+    def write_gapped_fasta(self, reference, query):
         query_gap_name = os.path.join(self.output_folder, os.path.splitext(query)[0] + self.gapped + '.fa')
         ref_gap_name = os.path.join(self.output_folder, os.path.splitext(reference)[0] + self.gapped + '.fa')
         write_complete_fasta(query_gap_name, self.query_seq_gapped)
         write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
         return query_gap_name, ref_gap_name
+
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
         query_uniq_array = array('u', self.query_seq_gapped)
@@ -327,7 +327,7 @@ class ChainParser:
         return query_unique_name, ref_unique_name
 
 
-    def do_all_relevant_chains(self, relevant_chains=None):
+    def create_alignment_from_relevant_chains(self, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
         if relevant_chains is None:
@@ -337,7 +337,6 @@ class ChainParser:
             is_master_alignment = previous is None
             self.mash_fasta_and_chain_together(chain, is_master_alignment)  # first chain is the master alignment
             previous = chain
-        self.create_fasta_from_composite_alignment()
 
 
     def setup_for_reference_chromosome(self, ref_chr):
@@ -360,17 +359,17 @@ class ChainParser:
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
-        self.do_all_relevant_chains()
+        self.create_alignment_from_relevant_chains()
+        self.create_fasta_from_composite_alignment()
 
-        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['query'], names['ref'])
+        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        # sys.exit(0)
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['ref_gapped'])
         self.output_fastas.append(names['ref_unique'])
         self.output_fastas.append(names['query_unique'])
         self.output_fastas.append(names['query_gapped'])
-        if self.swap_columns:
-            self.output_fastas = self.output_fastas.reverse()
         print("Finished creating gapped fasta files", names['ref'], names['query'])
 
         if True:  #self.trial_run:  # these files are never used in the viz

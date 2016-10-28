@@ -130,6 +130,7 @@ def create_fasta_from_annotation(gff_filename, target_chromosome, chromosome_len
                     for i in range(entry.start, entry.end + 1):
                         seq[i] = 'G'
                 if entry.feature == 'gene':
+                    # TODO: output header JSON every time we find a gene
                     for i in range(entry.start, entry.end + 1):
                         if seq[i] == filler:
                             seq[i] = 'T'
