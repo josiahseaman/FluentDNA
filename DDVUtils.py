@@ -191,6 +191,8 @@ def _write_fasta_lines(filestream, seq):
     contigs = seq.split('\n')
     index = 0
     while index < len(contigs):
+        if len(contigs) > index + 1 and contigs[index].startswith('>') and contigs[index+1].startswith('>'):
+            print("Warning: Orphaned header:", contigs[index])
         if contigs[index].startswith('>'):
             header, contents = contigs[index], contigs[index + 1]
             index += 2
@@ -213,3 +215,14 @@ def write_complete_fasta(file_path, seq_content_array, header=None):
                 seq_content_array = array('u', header)
             seq_content_array.extend(temp_content)
         _write_fasta_lines(filestream, ''.join(seq_content_array))
+
+
+class BlankIterator:
+    def __init__(self, filler):
+        self.filler = filler
+
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return self.filler * (index.stop - index.start)
+        else:
+            return self.filler

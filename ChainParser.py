@@ -8,14 +8,16 @@ from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output
 from Span import AlignedSpans, Span
 
 
-def scan_past_header(seq, index):
+def scan_past_header(seq, index, take_shortcuts=False):
     """Moves the pointer past any headers or comments and places index on the next valid sequence character.
     Doesn't increment at all if it is called in a place that is not the start of a header."""
+    if take_shortcuts:
+        return index + 1
     if seq[index] == '\n':  # skip newline marking the end of a contig
         index += 1
-    scanning_past_header = seq[index] in '>;'  # ; is for comments
-    while scanning_past_header:
-        scanning_past_header = seq[index] != '\n'
+    if seq[index] not in '>;':  # ; is for comments
+        return index
+    while seq[index] != '\n':
         index += 1  # skip this character
 
     return index
@@ -78,6 +80,7 @@ class ChainParser:
         self.query_contigs[current_name] = sequence
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
+
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
         ref_pointer, query_pointer = self.process_chain_body(chain, ref_pointer, query_pointer, is_master_alignment)
@@ -85,12 +88,15 @@ class ChainParser:
 
 
     def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
-        if is_master_alignment and not self.trial_run:  # include unaligned ends
-            ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
-            query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
-            self.alignment.append(AlignedSpans(ref_end, query_end,
-                                               len(self.query_sequence) - query_pointer,
-                                               len(self.ref_sequence) - ref_pointer),)
+        if is_master_alignment:
+            if not self.query_sequence:
+                self.switch_sequences(chain.qName, chain.qStrand)
+            if not self.trial_run and self.query_sequence and self.ref_sequence:  # include unaligned ends
+                ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
+                query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
+                self.alignment.append(AlignedSpans(ref_end, query_end,
+                                                   len(self.query_sequence) - query_pointer,
+                                                   len(self.ref_sequence) - ref_pointer),)
 
 
     def alignment_chopping_index(self, new_alignment):
@@ -231,7 +237,7 @@ class ChainParser:
         print("Done gapping sequence")
 
 
-    def switch_sequences(self, query_name, query_strand):
+    def switch_sequences(self, query_name, query_strand, use_blanks=False):
         # TODO: self.ref_sequence = self.ref_contigs[ref_name]
         if query_name in self.query_contigs:
             if query_strand == '-':  # need to load rev_comp
@@ -294,7 +300,7 @@ class ChainParser:
         write_complete_fasta(query_gap_name, self.query_seq_gapped)
         write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
         print("Finished creating gapped fasta files", ref_gap_name, query_gap_name)
-        return query_gap_name, ref_gap_name
+        return ref_gap_name, query_gap_name
 
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
@@ -324,7 +330,7 @@ class ChainParser:
         write_complete_fasta(query_unique_name, query_uniq_array)
         write_complete_fasta(ref_unique_name, ref_uniq_array)
 
-        return query_unique_name, ref_unique_name
+        return ref_unique_name, query_unique_name
 
 
     def create_alignment_from_relevant_chains(self, ref_chr, relevant_chains=None):
@@ -349,20 +355,18 @@ class ChainParser:
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
+        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
         return names, ref_chr
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-
-        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
-
         self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()
 
-        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
-        names['query_unique'], names['ref_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
+        names['ref_unique'], names['query_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
         # sys.exit(0)
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['ref_gapped'])

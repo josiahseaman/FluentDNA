@@ -91,6 +91,7 @@ class AlignedSpans:
     def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False):
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
+        assert query_tail_size >= 0 and ref_tail_size >= 0, "Bad tail sizes %i and %i" % (ref_tail_size, query_tail_size)
         self.ref = ref_span
         self.query = query_span
         self.ref_tail_size = ref_tail_size

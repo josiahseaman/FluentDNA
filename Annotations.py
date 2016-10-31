@@ -36,7 +36,7 @@ class GFF(object):
                     date = line.split(' ')[1]
             else:
                 if counter == 0:
-                    print("Beginning reading of version 2 file...")
+                    print("Beginning reading of version 2 file:", annotation_file)
 
                 counter += 1
 

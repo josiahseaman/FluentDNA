@@ -1,8 +1,8 @@
 import os
 from array import array
 from Annotations import create_fasta_from_annotation
-from ChainParser import ChainParser
-from DDVUtils import Batch, pluck_contig, write_complete_fasta, first_word
+from ChainParser import ChainParser, scan_past_header
+from DDVUtils import Batch, pluck_contig, write_complete_fasta, first_word, BlankIterator
 
 
 class AnnotatedAlignment(ChainParser):
@@ -29,20 +29,22 @@ class AnnotatedAlignment(ChainParser):
             pass
 
 
-    def switch_sequences(self, query_name, query_strand):
-        # TODO: something
+    def switch_sequences(self, query_name, query_strand, use_blanks=False):
+        if use_blanks and query_name not in self.query_contigs:
+            self.query_sequence = BlankIterator('N')
+        else:
+            return super(AnnotatedAlignment, self).switch_sequences(query_name, query_strand, use_blanks)
         return True
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-        master_chain = [chain for chain in self.chain_list if chain.tName == ref_chr and chain.qName == ref_chr and chain.qStrand == '+']  # TODO: remove this line
-        self.create_alignment_from_relevant_chains(ref_chr, relevant_chains=master_chain)
+        self.create_alignment_from_relevant_chains(ref_chr)
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.query_sequence = self.query_contigs[ref_chr]  # TODO: remove this line
         self.create_fasta_from_composite_alignment()
-        names['query_gapped'], names['ref_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
+        names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
         # At this point we have created two gapped sequence fastas
@@ -75,21 +77,25 @@ class AnnotatedAlignment(ChainParser):
 
 
     def markup_annotation_differences(self):
-        # TODO: are there any headers or comments to scan past?
+        print("Marking annotation differences...")
         shared_length = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
         human_unique, chimp_unique, shared_transcription = 0, 0, 0
         human_exons, chimp_exons, shared_exons = 0, 0, 0
-        for i in range(shared_length):
-            R = self.ref_seq_gapped[i]
-            Q = self.query_seq_gapped[i]
+        r, q = 0, 0  # indices
+        while q < len(self.query_seq_gapped) and r < len(self.ref_seq_gapped):
+            # query_uniq_array is already initialized to contain header characters if separating translocations
+            r = scan_past_header(self.ref_seq_gapped, r, take_shortcuts=not self.separate_translocations)
+            q = scan_past_header(self.query_seq_gapped, q, take_shortcuts=not self.separate_translocations)
+            R = self.ref_seq_gapped[r]
+            Q = self.query_seq_gapped[q]
             if R == 'G':  # Set of conditions where either exons or genes disagree
                 if Q != 'G':
-                    self.query_seq_gapped[i] = 'C'  # mark query deficiencies in blue
+                    self.query_seq_gapped[q] = 'C'  # mark query deficiencies in blue
                     human_exons += 1
                 else:
                     shared_exons += 1
             elif Q == 'G':
-                self.ref_seq_gapped[i] = 'A'  # mark query deficiencies in red
+                self.ref_seq_gapped[r] = 'A'  # mark query deficiencies in red
                 chimp_exons += 1
 
             if R == 'T':
