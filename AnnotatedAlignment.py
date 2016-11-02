@@ -29,14 +29,6 @@ class AnnotatedAlignment(ChainParser):
             pass
 
 
-    def switch_sequences(self, query_name, query_strand, use_blanks=False):
-        if use_blanks and query_name not in self.query_contigs:
-            self.query_sequence = BlankIterator('N')
-        else:
-            return super(AnnotatedAlignment, self).switch_sequences(query_name, query_strand, use_blanks)
-        return True
-
-
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
@@ -45,23 +37,29 @@ class AnnotatedAlignment(ChainParser):
         self.query_sequence = self.query_contigs[ref_chr]  # TODO: remove this line
         self.create_fasta_from_composite_alignment()
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
+        query_chr_length = len(self.query_contigs[ref_chr])
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
+        self.query_contigs = {}
         # At this point we have created two gapped sequence fastas
 
         # Now create two annotation fastas so that we can gap them
         ref_annotation_fasta = os.path.join(self.output_folder, first_word(self.ref_source) + '_annotation_' + ref_chr + '.fa')
         create_fasta_from_annotation(self.ref_annotation_source, ref_chr, ref_annotation_fasta, len(self.ref_sequence))
         query_annotation_fasta = os.path.join(self.output_folder, first_word(self.query_source) + '_annotation_' + ref_chr + '.fa')
-        create_fasta_from_annotation(self.query_annotation_source, ref_chr, query_annotation_fasta, len(self.query_contigs[ref_chr]))
+        create_fasta_from_annotation(self.query_annotation_source, ref_chr, query_annotation_fasta, query_chr_length)
 
+        # TODO: these four lines are place holders for tracking real annotation ref and query contigs
         self.ref_sequence = pluck_contig(ref_chr, ref_annotation_fasta)
         self.query_sequence = pluck_contig(ref_chr, query_annotation_fasta)
-        self.create_fasta_from_composite_alignment()
+        self.query_contigs = {ref_chr: self.query_sequence}
+        self.stored_rev_comps = {ref_chr: reversed(self.query_sequence)}
+
+        self.create_fasta_from_composite_alignment(previous_chr=(ref_chr, '+'))
         self.markup_annotation_differences()
         # TODO: self.gap_annotation_metadata()
         names['r_anno_gap'], names['q_anno_gap'] = self.write_gapped_fasta(ref_annotation_fasta, query_annotation_fasta, False)
-
+        self.write_stats_file()
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['r_anno_gap'])
         self.output_fastas.append(names['q_anno_gap'])
@@ -78,46 +76,54 @@ class AnnotatedAlignment(ChainParser):
 
     def markup_annotation_differences(self):
         print("Marking annotation differences...")
-        shared_length = min(len(self.ref_seq_gapped), len(self.query_seq_gapped))
-        human_unique, chimp_unique, shared_transcription = 0, 0, 0
-        human_exons, chimp_exons, shared_exons = 0, 0, 0
-        r, q = 0, 0  # indices
+        r = scan_past_header(self.ref_seq_gapped, 0)
+        q = scan_past_header(self.query_seq_gapped, 0)
         while q < len(self.query_seq_gapped) and r < len(self.ref_seq_gapped):
             # query_uniq_array is already initialized to contain header characters if separating translocations
-            r = scan_past_header(self.ref_seq_gapped, r, take_shortcuts=not self.separate_translocations)
-            q = scan_past_header(self.query_seq_gapped, q, take_shortcuts=not self.separate_translocations)
+            r = scan_past_header(self.ref_seq_gapped, r, )  # take_shortcuts=not self.separate_translocations)
+            q = scan_past_header(self.query_seq_gapped, q, )  # take_shortcuts=not self.separate_translocations)
             R = self.ref_seq_gapped[r]
             Q = self.query_seq_gapped[q]
             if R == 'G':  # Set of conditions where either exons or genes disagree
                 if Q != 'G':
                     self.query_seq_gapped[q] = 'C'  # mark query deficiencies in blue
-                    human_exons += 1
+                    self.stats['human_exons_bp'] += 1
                 else:
-                    shared_exons += 1
+                    self.stats['shared_exons_bp'] += 1
             elif Q == 'G':
                 self.ref_seq_gapped[r] = 'A'  # mark query deficiencies in red
-                chimp_exons += 1
+                self.stats['chimp_exons_bp'] += 1
 
             if R == 'T':
                 if Q != 'T':
-                    human_unique += 1
+                    self.stats['human_unique_transcription_bp'] += 1
                 else:
-                    shared_transcription += 1
+                    self.stats['shared_transcription_bp'] += 1
             elif Q == 'T':
-                chimp_unique += 1
+                self.stats['chimp_unique_transcription_bp'] += 1
+            q += 1
+            r += 1
 
         print("Differences in annotations are marked in red.")
-        total_transcribed = human_unique + chimp_unique + shared_transcription
-        total_exons = human_exons + chimp_exons + shared_exons
+        self.stats['total_bp_transcribed'] = self.stats['human_unique_transcription_bp'] + self.stats['chimp_unique_transcription_bp'] + self.stats['shared_transcription_bp']
+        self.stats['total_exons_bp'] = self.stats['human_exons_bp'] + self.stats['chimp_exons_bp'] + self.stats['shared_exons_bp']
         print("Of all transcription area: %.1f%% is uniquely chimp, %.1f%% is uniquely human, %.1f%% is shared" %
-              (chimp_unique / total_transcribed * 100, human_unique / total_transcribed * 100, shared_transcription / total_transcribed * 100))
+              (self.stats['chimp_unique_transcription_bp'] / self.stats['total_bp_transcribed'] * 100,
+               self.stats['human_unique_transcription_bp'] / self.stats['total_bp_transcribed'] * 100,
+               self.stats['shared_transcription_bp'] / self.stats['total_bp_transcribed'] * 100))
         print("Of all Exons bp: %.1f%% is uniquely chimp, %.1f%% is uniquely human %.1f%% is shared" %
-              (chimp_exons / total_exons * 100, human_exons / total_exons * 100, shared_exons / total_exons * 100))
+              (self.stats['chimp_exons_bp'] / self.stats['total_exons_bp'] * 100,
+               self.stats['human_exons_bp'] / self.stats['total_exons_bp'] * 100,
+               self.stats['shared_exons_bp'] / self.stats['total_exons_bp'] * 100))
 
+
+    def write_stats_file(self):
         with open(os.path.join(self.output_folder, 'stats.txt'), 'w+') as stats:
-            values = 'human_unique chimp_unique shared_transcription human_exons chimp_exons shared_exons'.split()
-            for val in values:
-                stats.write('%s\t%i\n' % (val, locals()[val]))
+            stats.write('\n=====Annotated Alignment Stats======\n')
+            for key in self.stats:
+                stats.write('%s\t%i\n' % (key, self.stats[key]))
+            stats.write('\n====================================\n')
+
 
 
 if __name__ == '__main__':

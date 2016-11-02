@@ -4,15 +4,17 @@ from datetime import datetime
 from blist import blist
 
 from ChainFiles import chain_file_to_list
-from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta
+from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
+from DefaultOrderedDict import DefaultOrderedDict
 from Span import AlignedSpans, Span
 
 
 def scan_past_header(seq, index, take_shortcuts=False):
     """Moves the pointer past any headers or comments and places index on the next valid sequence character.
-    Doesn't increment at all if it is called in a place that is not the start of a header."""
+    Doesn't increment at all if it is called in a place that is not the start of a header.
+    NOTE: this will crash with IndexError if there's a header at the end of the file with no body."""
     if take_shortcuts:
-        return index + 1
+        return index
     if seq[index] == '\n':  # skip newline marking the end of a contig
         index += 1
     if seq[index] not in '>;':  # ; is for comments
@@ -45,8 +47,7 @@ class ChainParser:
         self.stored_rev_comps = {}
         self.output_fastas = []
         self.gapped = '_gapped'
-        self.translocation_searched = 0
-        self.translocation_deleted = 0
+        self.stats = DefaultOrderedDict(lambda: 0)
 
         self.chain_list = chain_file_to_list(chain_name)
         self.read_query_contigs(self.query_source)
@@ -127,7 +128,7 @@ class ChainParser:
         if depth > 30:
             return False  # abandon hope
         if hi is None:
-            self.translocation_searched += 1
+            self.stats['translocation_searched'] += 1
         hi = hi or len(self.alignment)
         while lo < hi:
             mid = (lo + hi) // 2
@@ -160,9 +161,10 @@ class ChainParser:
         #     # raise ValueError("%s   %s   %s" % tuple(str(self.alignment[x].query_unique_span()) for x in [lo-1, lo, lo+1]))
         replacements = self.alignment.pop(lo).remove_old_query_copy(new_alignment)
         [self.alignment.insert(lo, x) for x in reversed(replacements)]  # insert them into alignment in place, in order
-        self.translocation_deleted += 1
+        self.stats['translocation_deleted'] += 1
 
-        print(int(self.translocation_deleted / self.translocation_searched * 100), "%", self.translocation_searched, self.translocation_deleted)
+        print(int(self.stats['translocation_deleted'] / self.stats['translocation_searched'] * 100),
+              "%", self.stats['translocation_searched'], self.stats['translocation_deleted'])
         return True
 
 
@@ -207,15 +209,14 @@ class ChainParser:
         return ref_pointer, query_pointer
 
 
-    def create_fasta_from_composite_alignment(self):
+    def create_fasta_from_composite_alignment(self, previous_chr=None):
         """self.alignment is a data structure representing the composites of all the relevant
         chain data.  This method turns that data construct into a gapped FASTA file by reading the original
         FASTA files."""
-        previous_chr = None
+
         for pair in self.alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
-                if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
-                    raise FileNotFoundError("Could not switch to " + pair.query.contig_name)  # We'll have to skip this alignment because we don't have the FASTA for it
+                self.switch_sequences(pair.query.contig_name, pair.query.strand)  # pair.ref.contig_name could be None
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
             query_snippet = pair.query.sample(self.query_sequence)
@@ -237,7 +238,7 @@ class ChainParser:
         print("Done gapping sequence")
 
 
-    def switch_sequences(self, query_name, query_strand, use_blanks=False):
+    def switch_sequences(self, query_name, query_strand):
         # TODO: self.ref_sequence = self.ref_contigs[ref_name]
         if query_name in self.query_contigs:
             if query_strand == '-':  # need to load rev_comp
@@ -248,6 +249,7 @@ class ChainParser:
                 self.query_sequence = self.query_contigs[query_name]
         else:
             print("ERROR: No fasta source for", query_name)
+            self.query_sequence = BlankIterator('N')
             return False
         return True
 
@@ -307,7 +309,9 @@ class ChainParser:
         query_uniq_array = array('u', self.query_seq_gapped)
         ref_uniq_array = array('u', self.ref_seq_gapped)
         print("Done allocating unique array")
-        r, q = 0, 0  # indices
+        # query_uniq_array is already initialized to contain header characters
+        q = scan_past_header(self.query_seq_gapped, 0)
+        r = scan_past_header(self.ref_seq_gapped, 0)
         while q < len(self.query_seq_gapped) and r < len(self.ref_seq_gapped):
             q = scan_past_header(self.query_seq_gapped, q)  # query_uniq_array is already initialized to contain header characters
             r = scan_past_header(self.ref_seq_gapped, r)

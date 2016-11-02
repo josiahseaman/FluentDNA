@@ -155,7 +155,8 @@ def pluck_contig(chromosome_name, genome_source):
                 line = line.rstrip()
                 seq_collection.append(line.upper())  # always upper case so equality checks work
     if not len(seq_collection):
-        raise FileNotFoundError("Contig not found." + chromosome_name + "   inside " + genome_source)  # File contained these contigs:\n" + '\n'.join(headers)
+        # File contained these contigs:\n" + '\n'.join(headers)
+        raise FileNotFoundError("Contig not found." + chromosome_name + "   inside " + genome_source)
     return ''.join(seq_collection)
 
 
