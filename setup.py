@@ -40,7 +40,7 @@ build_exe_options = {
         # CHANGE ME for any python packages in your project that you want excluded
     ],
     'includes': [
-
+        'blist',
     ],
     'packages': [
         # Known missing Python imports.

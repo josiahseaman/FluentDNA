@@ -1,7 +1,6 @@
 import os
 from array import array
 from datetime import datetime
-from blist import blist
 
 from ChainFiles import chain_file_to_list
 from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
@@ -29,6 +28,8 @@ class ChainParser:
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False):
+        import blist
+
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -43,7 +44,7 @@ class ChainParser:
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
-        self.alignment = blist()  # optimized for inserts in the middle
+        self.alignment = blist.blist()  # optimized for inserts in the middle
         self.stored_rev_comps = {}
         self.output_fastas = []
         self.gapped = '_gapped'
@@ -243,15 +244,23 @@ class ChainParser:
         if query_name in self.query_contigs:
             if query_strand == '-':  # need to load rev_comp
                 if query_name not in self.stored_rev_comps:
-                    self.stored_rev_comps[query_name] = ReverseComplement(self.query_contigs[query_name])  # caching for performance
+                    self.stored_rev_comps[query_name] = self.rev_comp_contig(query_name)  # caching for performance
                 self.query_sequence = self.stored_rev_comps[query_name]
             else:
                 self.query_sequence = self.query_contigs[query_name]
         else:
-            print("ERROR: No fasta source for", query_name)
-            self.query_sequence = BlankIterator('N')
-            return False
+            return self.missing_query_sequence(query_name)
         return True
+
+
+    def missing_query_sequence(self, query_name):
+        print("ERROR: No fasta source for", query_name)
+        self.query_sequence = BlankIterator('N')
+        return False
+
+
+    def rev_comp_contig(self, query_name):
+        return ReverseComplement(self.query_contigs[query_name])
 
 
     def setup_chain_start(self, chain, is_master_alignment):

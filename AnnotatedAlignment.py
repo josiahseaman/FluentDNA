@@ -1,8 +1,8 @@
 import os
 from array import array
-from Annotations import create_fasta_from_annotation
+from Annotations import create_fasta_from_annotation, GFF
 from ChainParser import ChainParser, scan_past_header
-from DDVUtils import Batch, pluck_contig, write_complete_fasta, first_word, BlankIterator
+from DDVUtils import Batch, pluck_contig, first_word, ReverseComplement
 
 
 class AnnotatedAlignment(ChainParser):
@@ -20,6 +20,8 @@ class AnnotatedAlignment(ChainParser):
                                                  aligned_only=aligned_only)
         self.ref_annotation_source = first_annotation
         self.query_annotation_source = second_annotation
+        self.annotation_phase = False
+        self.query_GFF = GFF(self.query_annotation_source)
 
 
     def gap_annotation_metadata(self):
@@ -27,6 +29,19 @@ class AnnotatedAlignment(ChainParser):
         for pair in self.alignment:
             # TODO: output headers JSON again, but with indices compensated for gaps
             pass
+
+
+    def missing_query_sequence(self, query_name):
+        annotation_fasta = create_fasta_from_annotation(self.query_GFF, query_name, None)
+        if annotation_fasta:  # content
+            self.query_contigs[query_name] = annotation_fasta
+            self.query_sequence = annotation_fasta
+            return True
+        return super(AnnotatedAlignment, self).missing_query_sequence(query_name)
+
+
+    def rev_comp_contig(self, query_name):
+        return ReverseComplement(self.query_contigs[query_name], annotation=self.annotation_phase)
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
@@ -37,23 +52,15 @@ class AnnotatedAlignment(ChainParser):
         self.query_sequence = self.query_contigs[ref_chr]  # TODO: remove this line
         self.create_fasta_from_composite_alignment()
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
-        query_chr_length = len(self.query_contigs[ref_chr])
+
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
         self.query_contigs = {}
+        self.stored_rev_comps = {}
+        self.annotation_phase = True
         # At this point we have created two gapped sequence fastas
 
-        # Now create two annotation fastas so that we can gap them
-        ref_annotation_fasta = os.path.join(self.output_folder, first_word(self.ref_source) + '_annotation_' + ref_chr + '.fa')
-        create_fasta_from_annotation(self.ref_annotation_source, ref_chr, ref_annotation_fasta, len(self.ref_sequence))
-        query_annotation_fasta = os.path.join(self.output_folder, first_word(self.query_source) + '_annotation_' + ref_chr + '.fa')
-        create_fasta_from_annotation(self.query_annotation_source, ref_chr, query_annotation_fasta, query_chr_length)
-
-        # TODO: these four lines are place holders for tracking real annotation ref and query contigs
-        self.ref_sequence = pluck_contig(ref_chr, ref_annotation_fasta)
-        self.query_sequence = pluck_contig(ref_chr, query_annotation_fasta)
-        self.query_contigs = {ref_chr: self.query_sequence}
-        self.stored_rev_comps = {ref_chr: reversed(self.query_sequence)}
+        query_annotation_fasta, ref_annotation_fasta = self.load_annotation_fastas(ref_chr)
 
         self.create_fasta_from_composite_alignment(previous_chr=(ref_chr, '+'))
         self.markup_annotation_differences()
@@ -72,6 +79,21 @@ class AnnotatedAlignment(ChainParser):
         batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
         self.output_folder = None  # clear the previous value
         return batch
+
+
+    def load_annotation_fastas(self, ref_chr):
+        # Now create two annotation fastas so that we can gap them
+        self.ref_sequence = create_fasta_from_annotation(self.ref_annotation_source, ref_chr, None)
+        self.query_contigs[ref_chr] = create_fasta_from_annotation(self.query_GFF, ref_chr, None)
+
+        # TODO: these four lines are place holders for tracking real annotation ref and query contigs
+        # self.ref_sequence = pluck_contig(ref_chr, ref_annotation_fasta)
+        # self.query_sequence = pluck_contig(ref_chr, query_annotation_fasta)
+        self.query_sequence = self.query_contigs[ref_chr]
+
+        ref_annotation_fasta = os.path.join(self.output_folder, first_word(self.ref_source) + '_annotation_' + ref_chr + '.fa')
+        query_annotation_fasta = os.path.join(self.output_folder, first_word(self.query_source) + '_annotation_' + ref_chr + '.fa')
+        return query_annotation_fasta, ref_annotation_fasta
 
 
     def markup_annotation_differences(self):

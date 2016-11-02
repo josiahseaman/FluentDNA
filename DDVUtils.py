@@ -58,12 +58,13 @@ def rev_comp(plus_strand):
     return ''.join([comp[a] for a in reversed(plus_strand)])
 
 
+
 class ReverseComplement:
-    def __init__(self, seq):
+    def __init__(self, seq, annotation=False):
         """Lazy generator for being able to pull out small reverse complement sections out of large chromosomes"""
         self.seq = seq
         self.length = len(seq)
-
+        self.annotation = annotation
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -72,9 +73,9 @@ class ReverseComplement:
             if end < 0 or begin < 0 or end > self.length:
                 raise IndexError("%i %i vs. length %i" % (end, begin, self.length))
             piece = self.seq[begin: end]
-            return rev_comp(piece)
-        return complement(self.seq[self.length - key - 1])
-
+            return rev_comp(piece) if not self.annotation else ''.join(reversed(piece))
+        letter = self.seq[self.length - key - 1]
+        return complement(letter) if not self.annotation else letter
 
 
 def multi_line_height(font, multi_line_title, txt):

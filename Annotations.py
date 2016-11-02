@@ -6,7 +6,7 @@ class GFF(object):
     def __init__(self, annotation_file):
         self.specimen, self.gff_version, \
         self.genome_version, self.date, \
-        self.file_name, self.annotations \
+        self.file_name, self.annotations, self.chromosome_lengths \
             = self._import_gff(annotation_file)
 
     def _import_gff(self, annotation_file):
@@ -18,6 +18,7 @@ class GFF(object):
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
         annotations = {}
+        chromosome_lengths = {}
 
         open_annotation_file = open(annotation_file, 'r')
         counter = 0
@@ -46,6 +47,7 @@ class GFF(object):
 
                 if chromosome not in annotations:
                     annotations[chromosome] = []
+                    chromosome_lengths[chromosome] = 0
                     if len(annotations) < 10:
                         print(chromosome, end=", ")
                     elif len(annotations) == 10:
@@ -84,13 +86,11 @@ class GFF(object):
                                              frame, attribute, line)
 
                 annotations[chromosome].append(annotation)
-
-                # if counter % 10000 == 0:
-                #     sys.stdout.write('.')
+                chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
 
         open_annotation_file.close()
 
-        return specimen, gff_version, genome_version, date, file_name, annotations
+        return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
 
     class Annotation(object):
         def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attribute, line):
@@ -118,29 +118,34 @@ class GFF(object):
             self.line = line
 
 
-def create_fasta_from_annotation(gff_filename, target_chromosome, out_name, chromosome_length):
+def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
     from DDVUtils import write_complete_fasta
-    gff = GFF(gff_filename)
+    if isinstance(gff, str):
+        gff = GFF(gff)  # gff parameter was a filename
     filler = 'X'
     count = 0
-    seq = array('u', filler * chromosome_length)
+    seq_array = ''
     for chromosome in gff.annotations.keys():
-        if chromosome == target_chromosome or chromosome == target_chromosome.replace('chr', ''):  # only one
+        if chromosome.lower() == target_chromosome.lower() or \
+                chromosome.lower() == target_chromosome.lower().replace('chr', ''):  # only one
+            seq_array = array('u', filler * (gff.chromosome_lengths[chromosome] + 1))
             for entry in gff.annotations[chromosome]:
                 assert isinstance(entry, GFF.Annotation), "I'm confused"
                 if entry.feature == 'exon':
                     count += 1
                     for i in range(entry.start, entry.end + 1):
-                        seq[i] = 'G'
+                        seq_array[i] = 'G'
                 if entry.feature == 'gene':
                     # TODO: output header JSON every time we find a gene
                     for i in range(entry.start, entry.end + 1):
-                        if seq[i] == filler:
-                            seq[i] = 'T'
-
-    write_complete_fasta(out_name, seq, header='>%s\n' % target_chromosome)
-    print("Done", gff.file_name)
-    print("Found %i exons" % count)
+                        if seq_array[i] == filler:
+                            seq_array[i] = 'T'
+    print("Done", gff.file_name, target_chromosome, "Found %i exons" % count)
+    if out_name is not None:
+        write_complete_fasta(out_name, seq_array, header='>%s\n' % target_chromosome)
+        return ''
+    else:
+        return ''.join(seq_array)
 
 
 def purge_annotation(gff_filename):
@@ -172,7 +177,7 @@ def purge_annotation(gff_filename):
 if __name__ == '__main__':
     # annotation = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
     # target_chromosome = 'chr20'
-    # create_fasta_from_annotation(annotation, target_chromosome, 'Chimp_test_' + target_chromosome + '.fa', 63 * 1000 * 1000)
+    # create_fasta_from_annotation(annotation, target_chromosome, 'Chimp_test_' + target_chromosome + '.fa')
 
     # annotation = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
     annotation = r'HongKong\Homo_Sapiens_GRCH38_trimmed.gtf'
