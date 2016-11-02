@@ -11,7 +11,6 @@ import multiprocessing
 import os
 import sys
 
-from AnnotatedAlignment import AnnotatedAlignment
 
 print("Setting up Python...")
 
@@ -44,6 +43,7 @@ from TileLayout import TileLayout
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
 from UniqueOnlyChainParser import UniqueOnlyChainParser
+from AnnotatedAlignment import AnnotatedAlignment
 
 
 if sys.platform == 'win32':
