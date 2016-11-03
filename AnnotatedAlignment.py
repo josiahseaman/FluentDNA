@@ -31,13 +31,13 @@ class AnnotatedAlignment(ChainParser):
             pass
 
 
-    def missing_query_sequence(self, query_name):
-        annotation_fasta = create_fasta_from_annotation(self.query_GFF, query_name, None)
-        if annotation_fasta:  # content
-            self.query_contigs[query_name] = annotation_fasta
-            self.query_sequence = annotation_fasta
-            return True
-        return super(AnnotatedAlignment, self).missing_query_sequence(query_name)
+    # def missing_query_sequence(self, query_name):
+    #     annotation_fasta = create_fasta_from_annotation(self.query_GFF, query_name, None)
+    #     if annotation_fasta:  # content
+    #         self.query_contigs[query_name] = annotation_fasta
+    #         self.query_sequence = annotation_fasta
+    #         return True
+    #     return super(AnnotatedAlignment, self).missing_query_sequence(query_name)
 
 
     def rev_comp_contig(self, query_name):
