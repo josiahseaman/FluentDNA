@@ -77,6 +77,9 @@ class ReverseComplement:
         letter = self.seq[self.length - key - 1]
         return complement(letter) if not self.annotation else letter
 
+    def __len__(self):
+        return 0
+
 
 def multi_line_height(font, multi_line_title, txt):
     sum_line_spacing = ImageDraw.Draw(txt).multiline_textsize(multi_line_title, font)[1]
@@ -147,7 +150,7 @@ def pluck_contig(chromosome_name, genome_source):
             if line.startswith('>'):
                 # headers.append(line)
                 line = line.rstrip()
-                if line == chromosome_name:
+                if line.upper() == chromosome_name.upper():
                     printing = True
                     print("Found", line)
                 elif printing:

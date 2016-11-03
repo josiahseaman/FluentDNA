@@ -77,4 +77,4 @@ def match(target, current):
     """Returns true if current satisfies the target requirements"""
     if target is None:
         return True
-    return target == current
+    return target.upper() == current.upper()

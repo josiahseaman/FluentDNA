@@ -1,8 +1,9 @@
 import os
 from array import array
 from datetime import datetime
+import blist
 
-from ChainFiles import chain_file_to_list
+from ChainFiles import chain_file_to_list, match
 from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
 from DefaultOrderedDict import DefaultOrderedDict
 from Span import AlignedSpans, Span
@@ -28,7 +29,6 @@ class ChainParser:
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False):
-        import blist
 
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
@@ -44,14 +44,14 @@ class ChainParser:
         self.ref_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
+        self.output_fastas = []
         self.alignment = blist.blist()  # optimized for inserts in the middle
         self.stored_rev_comps = {}
-        self.output_fastas = []
         self.gapped = '_gapped'
         self.stats = DefaultOrderedDict(lambda: 0)
 
-        self.chain_list = chain_file_to_list(chain_name)
         self.read_query_contigs(self.query_source)
+        self.chain_list = chain_file_to_list(chain_name)
 
 
     def read_query_contigs(self, input_file_path):
@@ -198,10 +198,13 @@ class ChainParser:
 
                 # Add new_alignment at ref location
                 scrutiny_index = max(self.alignment_chopping_index(new_alignment) - 1, 0)  # Binary search
-                old = self.alignment.pop(scrutiny_index)
-                first, second = old.align_ref_unique(new_alignment)
-                self.alignment.insert(scrutiny_index, first)
-                self.alignment.insert(scrutiny_index + 1, second)
+                try:
+                    old = self.alignment.pop(scrutiny_index)
+                    first, second = old.align_ref_unique(new_alignment)
+                    self.alignment.insert(scrutiny_index, first)
+                    self.alignment.insert(scrutiny_index + 1, second)
+                except IndexError as e:
+                    print(e)
 
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
@@ -241,7 +244,7 @@ class ChainParser:
 
     def switch_sequences(self, query_name, query_strand):
         # TODO: self.ref_sequence = self.ref_contigs[ref_name]
-        if query_name in self.query_contigs:
+        if query_name in self.query_contigs:  # TODO: capitalization!!!!
             if query_strand == '-':  # need to load rev_comp
                 if query_name not in self.stored_rev_comps:
                     self.stored_rev_comps[query_name] = self.rev_comp_contig(query_name)  # caching for performance
@@ -351,7 +354,7 @@ class ChainParser:
         I think it's a rule that you always flip the query strand instead."""
         # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
         if relevant_chains is None:
-            relevant_chains = [chain for chain in self.chain_list if chain.tName == ref_chr]
+            relevant_chains = [chain for chain in self.chain_list if match(chain.tName, ref_chr)]
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None
@@ -368,12 +371,19 @@ class ChainParser:
         names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
+        # Reset values from previous iteration
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
+        self.query_sequence = ''
+        self.query_seq_gapped = array('u', '')
+        self.ref_seq_gapped = array('u', '')
+        self.output_fastas = []
+        self.alignment = blist.blist()  # Alignment is specific to the chromosome
 
         return names, ref_chr
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+        print("=== Begin ChainParser Unique Alignment ===")
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()

@@ -69,7 +69,10 @@ class Span:
 
         # doesn't even overlap
         if not self.overlaps(remove_this):
-            raise IndexError("Remove_this doesn't overlap self at all %s %s" % (str(remove_this), str(self)))
+            if not remove_this.size():
+                return None, self
+            if self.size():
+                raise IndexError("Remove_this doesn't overlap self at all %s %s" % (str(remove_this), str(self)))
 
         first = Span(self.begin, remove_this.begin, self.contig_name, self.strand)
         second = Span(remove_this.end, self.end, self.contig_name, self.strand)

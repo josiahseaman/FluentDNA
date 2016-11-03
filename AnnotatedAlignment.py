@@ -24,6 +24,7 @@ class AnnotatedAlignment(ChainParser):
         self.query_GFF = GFF(self.query_annotation_source)
 
 
+
     def gap_annotation_metadata(self):
         """Modifies the annotation meta data file to compensate for coordinate shifts"""
         for pair in self.alignment:
@@ -45,6 +46,7 @@ class AnnotatedAlignment(ChainParser):
 
 
     def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+        print("=== Begin Annotated Alignment ===")
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
 
