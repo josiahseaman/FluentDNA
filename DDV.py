@@ -120,7 +120,7 @@ def ddv(args):
                                         show_translocations_only=args.show_translocations_only,
                                         aligned_only=args.aligned_only)
         print("Creating Aligned Annotations using Chain File...")
-        batches = anno_align.parse_chain(args.chromosomes)
+        batches = anno_align.do_chromosome_jobs(args.chromosomes)
         del anno_align
         print("Done creating Gapped Annotations.")
         for batch in batches:  # multiple chromosomes, multiple views
@@ -157,7 +157,7 @@ def ddv(args):
                                        show_translocations_only=args.show_translocations_only,
                                        aligned_only=args.aligned_only)
             print("Creating Gapped and Unique Fastas from Chain File...")
-            batches = chain_parser.parse_chain(args.chromosomes)
+            batches = chain_parser.do_chromosome_jobs(args.chromosomes)
             del chain_parser
             print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple chromosomes, multiple views
@@ -174,7 +174,7 @@ def ddv(args):
                                                     output_prefix=base_path,
                                                     trial_run=args.trial_run,
                                                     separate_translocations=args.separate_translocations)
-        batches = unique_chain_parser.parse_chain(args.chromosomes)
+        batches = unique_chain_parser.do_chromosome_jobs(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
         for batch in batches:

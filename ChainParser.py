@@ -6,6 +6,7 @@ from ChainFiles import chain_file_to_list
 from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
 from DefaultOrderedDict import DefaultOrderedDict
 from Span import AlignedSpans, Span
+import ChromosomeGallery
 
 
 def scan_past_header(seq, index, take_shortcuts=False):
@@ -24,16 +25,14 @@ def scan_past_header(seq, index, take_shortcuts=False):
     return index
 
 
-class ChainParser:
+class ChainParser(ChromosomeGallery.ChromosomeGallery):
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False):
         import blist
-
+        super(ChainParser, self).__init__(output_prefix)
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
-        self.output_prefix = output_prefix
-        self.output_folder = None
         self.query_contigs = dict()
         self.trial_run = trial_run
         self.separate_translocations = separate_translocations
@@ -48,7 +47,7 @@ class ChainParser:
         self.stored_rev_comps = {}
         self.output_fastas = []
         self.gapped = '_gapped'
-        self.stats = DefaultOrderedDict(lambda: 0)
+        self.stats = DefaultOrderedDict(lambda: 0)  # TODO: should this be moved to a StatsGatherer class?
 
         self.chain_list = chain_file_to_list(chain_name)
         self.read_query_contigs(self.query_source)
@@ -401,8 +400,11 @@ class ChainParser:
 
         batches = []
         for chromosome in chromosomes:
-            batches.append(self._parse_chromosome_in_chain(chromosome))
+            batches.append(self.process_chromosome(chromosome))
         return batches
         # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
         # workers.map(self._parse_chromosome_in_chain, chromosomes)
 
+
+    def process_chromosome(self, chromosome):
+        return self._parse_chromosome_in_chain(chromosome)
