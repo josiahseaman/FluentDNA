@@ -11,6 +11,8 @@ class Span:
     This is used by UniqueOnlyChainParser to track which parts of the file are untouched."""
     def __init__(self, begin, end, contig_name=None, strand='+', zero_ok=True):
         assert zero_ok or begin != end, "%s %s are the same means zero length" % (begin, end)
+        if not (begin >= 0 and end >= 0):
+            raise ValueError("No negative indices! %i to %i" % (begin, end))
         self.begin = begin
         self.end = end
         self.contig_name = contig_name
@@ -92,6 +94,8 @@ class AlignedSpans:
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
         assert query_tail_size >= 0 and ref_tail_size >= 0, "Bad tail sizes %i and %i" % (ref_tail_size, query_tail_size)
+        if not (query_span.begin >= 0 and query_span.end >= 0):
+            raise ValueError("No negative indices! %i to %i" % (query_span.begin, query_span.end))
         self.ref = ref_span
         self.query = query_span
         self.ref_tail_size = ref_tail_size

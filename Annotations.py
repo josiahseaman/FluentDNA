@@ -140,7 +140,8 @@ def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
                     for i in range(entry.start, entry.end + 1):
                         if seq_array[i] == filler:
                             seq_array[i] = 'T'
-    print("Done", gff.file_name, target_chromosome, "Found %i exons" % count)
+    if seq_array:
+        print("Done", gff.file_name, target_chromosome, "Found %i exons" % count)
     if out_name is not None:
         write_complete_fasta(out_name, seq_array, header='>%s\n' % target_chromosome)
         return ''
