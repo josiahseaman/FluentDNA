@@ -141,13 +141,6 @@ class AnnotatedAlignment(ChainParser):
                self.stats['shared_exons_bp'] / self.stats['total_exons_bp'] * 100))
 
 
-    def write_stats_file(self):
-        with open(os.path.join(self.output_folder, 'stats.txt'), 'w+') as stats:
-            stats.write('\n=====Annotated Alignment Stats======\n')
-            for key in self.stats:
-                stats.write('%s\t%i\n' % (key, self.stats[key]))
-            stats.write('\n====================================\n')
-
 
 
 if __name__ == '__main__':

@@ -29,7 +29,6 @@ class ChainParser:
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False):
-
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -52,6 +51,14 @@ class ChainParser:
 
         self.read_query_contigs(self.query_source)
         self.chain_list = chain_file_to_list(chain_name)
+
+
+    def write_stats_file(self):
+        with open(os.path.join(self.output_folder, 'stats.txt'), 'w+') as stats:
+            stats.write('\n===== Alignment Stats ======\n')
+            for key in self.stats:
+                stats.write('%s\t%i\n' % (key, self.stats[key]))
+            stats.write('\n====================================\n')
 
 
     def read_query_contigs(self, input_file_path):
@@ -206,6 +213,15 @@ class ChainParser:
                 except IndexError as e:
                     print(e)
 
+            if entry.gap_query > 0: self.stats['Query Number of Gaps (all)'] += 1
+            if entry.gap_query > 10: self.stats['Query Gaps larger than 10bp'] += 1
+            if entry.gap_query > 100: self.stats['Query Gaps larger than 100bp'] += 1
+            if entry.gap_query > 1000: self.stats['Query Gaps larger than 1000bp'] += 1
+
+            if entry.gap_ref > 0: self.stats['Ref Number of Gaps (all)'] += 1
+            if entry.gap_ref > 10: self.stats['Ref Gaps larger than 10bp'] += 1
+            if entry.gap_ref > 100: self.stats['Ref Gaps larger than 100bp'] += 1
+            if entry.gap_ref > 1000: self.stats['Ref Gaps larger than 1000bp'] += 1
             query_pointer += size + entry.gap_ref  # alignable and unalignable block concatenated together
             ref_pointer += size + entry.gap_query  # two blocks of sequence separated by gap
 
@@ -329,14 +345,26 @@ class ChainParser:
             r = scan_past_header(self.ref_seq_gapped, r)
 
             # only overlapping section
-            if self.query_seq_gapped[q] == self.ref_seq_gapped[r]:
+            q_letter = self.query_seq_gapped[q]
+            r_letter = self.ref_seq_gapped[r]
+            if q_letter == r_letter:
                 query_uniq_array[q] = 'X'
                 ref_uniq_array[r] = 'X'
+                self.stats['Shared seq bp'] += 1
             else:  # Not equal
-                if self.query_seq_gapped[q] == 'N':
+                if q_letter == 'N':
                     query_uniq_array[q] = 'X'
-                if self.ref_seq_gapped[r] == 'N':
+                    self.stats['Query N to ref in bp'] += 1
+                elif r_letter == 'N':
                     ref_uniq_array[r] = 'X'
+                    self.stats['Ref N to query bp'] += 1
+                else:  # No N's involved
+                    if q_letter == 'X':
+                        self.stats['Ref unique bp'] += 1
+                    elif r_letter == 'X':
+                        self.stats['Query unique bp'] += 1
+                    else:
+                        self.stats['Aligned Variance in bp'] += 1
             q += 1
             r += 1
 
@@ -378,6 +406,7 @@ class ChainParser:
         self.ref_seq_gapped = array('u', '')
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
+        self.stats = DefaultOrderedDict(lambda: 0)
 
         return names, ref_chr
 
@@ -402,6 +431,7 @@ class ChainParser:
             del names['ref']
             del names['query']
         batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
+        self.write_stats_file()
         self.output_folder = None  # clear the previous value
         return batch
 

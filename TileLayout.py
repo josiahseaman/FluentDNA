@@ -27,7 +27,7 @@ class TileLayout:
         self.palette['T'] = (250, 240, 114)
         self.palette['C'] = (0, 0, 255)
         self.palette['N'] = (30, 30, 30)
-        self.palette['X'] = (240, 240, 240)
+        self.palette['X'] = (247, 247, 247)
 
         # noinspection PyListCreation
         self.levels = [
