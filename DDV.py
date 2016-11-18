@@ -342,7 +342,7 @@ if __name__ == "__main__":
         args.layout_type = "NONE"
 
     if args.chain_file and not args.chromosomes:
-        args.chromosomes = ['chr21']
+        args.chromosomes = []
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore

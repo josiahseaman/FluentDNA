@@ -70,7 +70,7 @@ class UniqueOnlyChainParser(ChainParser):
         return ref_unique_name
 
 
-    def read_query_contigs(self, fasta_file):
+    def read_all_contigs(self, fasta_file):
         pass  # don't read the query contigs, we don't need them
 
 
