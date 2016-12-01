@@ -45,9 +45,9 @@ class AnnotatedAlignment(ChainParser):
         return ReverseComplement(self.query_contigs[query_name], annotation=self.annotation_phase)
 
 
-    def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+    def _parse_chromosome_in_chain(self, ref_chr) -> Batch:
         print("=== Begin Annotated Alignment ===")
-        names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
+        names, ref_chr = self.setup_for_reference_chromosome(ref_chr)
         self.create_alignment_from_relevant_chains(ref_chr)
 
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
@@ -78,7 +78,7 @@ class AnnotatedAlignment(ChainParser):
         if True:  # self.trial_run:  # these files are never used in the viz
             del names['ref']
             del names['query']
-        batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
+        batch = Batch(ref_chr, self.output_fastas, self.output_folder)
         self.output_folder = None  # clear the previous value
         return batch
 

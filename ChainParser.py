@@ -88,8 +88,8 @@ class ChainParser:
         # add the last contig to the list
         sequence = "".join(seq_collection)
         contigs[current_name] = sequence
-        sorted_by_length = OrderedDict(sorted(contigs.items(), key=lambda kv: len(kv[1])))
         print("Read %i FASTA Contigs in:" % len(contigs), datetime.now() - start_time)
+        sorted_by_length = OrderedDict(sorted(contigs.items(), key=lambda kv: -len(kv[1])))  # biggest first
         return sorted_by_length
 
 
@@ -402,10 +402,6 @@ class ChainParser:
                  'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
                  }  # for collecting all the files names in a modifiable way
         # Reset values from previous iteration
-        if ref_chr in self.ref_contigs:
-            self.ref_sequence = self.ref_contigs[ref_chr]
-        else:
-            self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.query_sequence = ''
         self.query_seq_gapped = array('u', '')
         self.ref_seq_gapped = array('u', '')
@@ -416,30 +412,35 @@ class ChainParser:
         return names, ref_chr
 
 
-    def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+    def _parse_chromosome_in_chain(self, ref_chr, append_previous=False) -> Batch:
         print("=== Begin ChainParser Unique Alignment ===")
-        names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
+        self.switch_ref(ref_chr)
         self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()
 
-        names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
-        names['ref_unique'], names['query_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
-        # sys.exit(0)
-        # NOTE: Order of these appends DOES matter!
-        self.output_fastas.append(names['ref_gapped'])
-        self.output_fastas.append(names['ref_unique'])
-        self.output_fastas.append(names['query_unique'])
-        self.output_fastas.append(names['query_gapped'])
-        print("Finished creating gapped fasta files", names['ref'], names['query'])
+        if not append_previous:
+            names, ignored = self.setup_for_reference_chromosome(ref_chr)
+            names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
+            names['ref_unique'], names['query_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+            # sys.exit(0)
+            # NOTE: Order of these appends DOES matter!
+            self.output_fastas.append(names['ref_gapped'])
+            self.output_fastas.append(names['ref_unique'])
+            self.output_fastas.append(names['query_unique'])
+            self.output_fastas.append(names['query_gapped'])
+            print("Finished creating gapped fasta files", names['ref'], names['query'])
 
-        if True:  #self.trial_run:  # these files are never used in the viz
-            del names['ref']
-            del names['query']
-        batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
-        self.write_stats_file()
-        self.output_folder = None  # clear the previous value
-        return batch
+            batch = Batch(ref_chr, self.output_fastas, self.output_folder)
+            self.write_stats_file()
+            self.output_folder = None  # clear the previous value
+            return batch
+        return None
 
+    def switch_ref(self, ref_chr):
+        if ref_chr in self.ref_contigs:
+            self.ref_sequence = self.ref_contigs[ref_chr]
+        else:
+            self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
 
     def parse_chain(self, chromosomes) -> list:
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
@@ -451,8 +452,12 @@ class ChainParser:
         else:
             self.ref_contigs = self.read_all_contigs(self.ref_source)
             for contig_name in self.ref_contigs:
-                # includes clumping small sequences to one filename
-                batches.append(self._parse_chromosome_in_chain(contig_name))
+                # clump small sequences into one filename
+                current_is_too_small = len(self.ref_seq_gapped) + len(self.ref_contigs[contig_name]) < 4e7
+                alignment = self._parse_chromosome_in_chain(contig_name, append_previous=current_is_too_small)
+                # TODO: logic!
+                if not current_is_too_small:
+                    batches.append(alignment)
         return batches
         # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
         # workers.map(self._parse_chromosome_in_chain, chromosomes)
