@@ -5,7 +5,6 @@ import textwrap
 from collections import namedtuple
 from array import array
 
-import deepzoom
 
 from PIL import ImageDraw
 
@@ -116,6 +115,7 @@ def copytree(src, dst, symlinks=False, ignore=None):
 
 
 def create_deepzoom_stack(input_image, output_dzi):
+    import deepzoom
     dz_params = {'tile_size': 256,
                  'tile_overlap': 1,
                  'tile_format': "png",

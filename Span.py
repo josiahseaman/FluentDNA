@@ -28,6 +28,8 @@ class Span:
             return self.overlaps(index)
         return self.begin <= index < self.end
 
+    #def __eq__(self, other):
+    #    return self.begin == other.begin and self.end == other.end and self.contig_name == other.contig_name and self.strand == other.strand
 
     def __repr__(self):
         return ">%s:%s-%s" % (self.contig_name, '{:,}'.format(self.begin), '{:,}'.format(self.end))
