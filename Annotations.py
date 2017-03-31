@@ -149,15 +149,14 @@ def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
         return ''.join(seq_array)
 
 
-def purge_annotation(gff_filename):
-    features_of_interest = ['exon', 'gene']
+def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
     gff = GFF(gff_filename)
     total = 0
     kept = 0
     survivors = []
     for chromosome in gff.annotations.keys():
         for entry in gff.annotations[chromosome]:
-            assert isinstance(entry, GFF.Annotation), "I'm confused"
+            assert isinstance(entry, GFF.Annotation), "This isn't a GFF annotation."
             total += 1
             if entry.feature in features_of_interest:
                 if survivors:
