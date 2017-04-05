@@ -9,7 +9,7 @@ from DefaultOrderedDict import DefaultOrderedDict
 from Span import AlignedSpans, Span
 
 
-def scan_past_header(seq, index, take_shortcuts=False):
+def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
     """Moves the pointer past any headers or comments and places index on the next valid sequence character.
     Doesn't increment at all if it is called in a place that is not the start of a header.
     NOTE: this will crash with IndexError if there's a header at the end of the file with no body."""
@@ -21,6 +21,8 @@ def scan_past_header(seq, index, take_shortcuts=False):
         return index
     while seq[index] != '\n':
         index += 1  # skip this character
+    if seq[index] == '\n' and skip_newline:  # skip newline marking the end of a header
+        index += 1
 
     return index
 
