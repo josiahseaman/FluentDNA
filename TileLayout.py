@@ -1,4 +1,6 @@
 import os
+import traceback
+
 import math
 
 from datetime import datetime
@@ -64,18 +66,21 @@ class TileLayout:
             self.draw_nucleotides()
             print("\nDrew Nucleotides:", datetime.now() - start_time)
         except Exception as e:
-            print('Encountered exception while drawing nucleotides:', '\n', str(e))
+            print('Encountered exception while drawing nucleotides:', '\n')
+            traceback.print_exc()
         try:
             if len(self.contigs) > 1:
                 print("Drawing %i titles" % len(self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
         except BaseException as e:
-            print('Encountered exception while drawing titles:', '\n', str(e))
+            print('Encountered exception while drawing titles:', '\n')
+            traceback.print_exc()
         try:
             self.generate_html(input_file_path, output_folder, output_file_name)
         except Exception as e:
-            print('While generating HTML:', '\n', str(e))
+            print('While generating HTML:', '\n')
+            traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 

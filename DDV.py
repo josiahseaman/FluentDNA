@@ -11,6 +11,7 @@ import multiprocessing
 import os
 import sys
 
+from TileLayout import TileLayout
 
 print("Setting up Python...")
 
@@ -38,8 +39,7 @@ import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack, just_the_name, make_output_dir_with_suffix
-from TileLayout import TileLayout
+from DDVUtils import create_deepzoom_stack, just_the_name, make_output_dir_with_suffix, base_directories
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
 from UniqueOnlyChainParser import UniqueOnlyChainParser
@@ -96,17 +96,12 @@ def run_server(home_directory):
 
 
 def ddv(args):
-    if getattr(sys, 'frozen', False):
-        BASE_DIR = os.path.dirname(sys.executable)
-    else:
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
+    SERVER_HOME, base_path = base_directories(args)
 
     if not args.layout_type and args.run_server:
         run_server(SERVER_HOME)
         sys.exit(0)
 
-    base_path = os.path.join(SERVER_HOME, args.output_name)
     if args.ref_annotation:  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
@@ -138,6 +133,8 @@ def ddv(args):
         # TODO: allow batch of tiling layout by chromosome
         output_dir = make_output_dir_with_suffix(base_path, '')
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir)
+        if args.run_server:
+            run_server(output_dir)
         sys.exit(0)
     # views that support batches of chromosomes
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -207,9 +204,10 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
         run_server(output_dir)
 
 
-def create_tile_layout_viz_from_fasta(args, fasta, output_dir):
+def create_tile_layout_viz_from_fasta(args, fasta, output_dir, layout=None):
     print("Creating Large Image from Input Fasta...")
-    layout = TileLayout()
+    if layout is None:
+        layout = TileLayout()
     layout.process_file(fasta, output_dir, just_the_name(output_dir))
     layout_final_output_location = layout.final_output_location
     del layout
@@ -221,8 +219,6 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir):
     print("Creating Deep Zoom Structure from Generated Image...")
     create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
     print("Done creating Deep Zoom Structure.")
-    if args.run_server:
-        run_server(output_dir)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 import os
-import shutil
 import re as regex
+import shutil
+import sys
 import textwrap
 from collections import namedtuple
-from array import array
-
 
 from PIL import ImageDraw
+from array import array
 
 Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 
@@ -231,3 +231,13 @@ class BlankIterator:
             return self.filler * (index.stop - index.start)
         else:
             return self.filler
+
+
+def base_directories(args):
+    if getattr(sys, 'frozen', False):
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
+    base_path = os.path.join(SERVER_HOME, args.output_name) if args.output_name else SERVER_HOME
+    return SERVER_HOME, base_path
