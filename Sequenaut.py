@@ -41,16 +41,69 @@ def countNucleotides(seq, oligomerSize):
     return counts
 
 
+def get_line(start, end):
+    """Bresenham's Line Algorithm
+    Produces a list of tuples from start and end
+    Copied from http://www.roguebasin.com/index.php?title=Bresenham%27s_Line_Algorithm#Python
+    """
+    # Setup initial conditions
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Determine how steep the line is
+    is_steep = abs(dy) > abs(dx)
+
+    # Rotate line
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+
+    # Swap start and end points if necessary and store swap state
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+
+    # Recalculate differentials
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate error
+    error = int(dx / 2.0)
+    ystep = 1 if y1 < y2 else -1
+
+    # Iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = (y, x) if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+
+    # Reverse the list if the coordinates were swapped
+    if swapped:
+        points.reverse()
+    return points
+
+
 class Sequenaut(TileLayout):  # TODO: make an abstract class parent
-    def __init__(self, oligomer_size=100, peak=10.0, baseline=1.0):
+    def __init__(self, layout='triangle_slide', oligomer_size=100, peak=10.0, baseline=1.0, log_scale=True):
         super(Sequenaut, self).__init__()
         self.oligomer_size = oligomer_size
+        self.layout = layout
         self.peak = peak
         self.baseline = baseline
         midpoint = self.oligomer_size // 2
-        self.weight_matrix = list(linspace(1.0, self.peak, midpoint)) + list(linspace(self.peak, 1.0, self.oligomer_size - midpoint))
+        self.weight_matrix = list(linspace(baseline, self.peak, midpoint)) + list(linspace(self.peak, baseline, self.oligomer_size - midpoint))
         self.image_length = self.max_dimensions(oligomer_size, verbose=True)[0]
         self.hits = [[0] * self.image_length for i in range(self.image_length)]
+        self.log_scale = log_scale
 
     @staticmethod
     def coordinate(olig, weight_matrix):
@@ -83,10 +136,26 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
             self.hits[point[1]][point[0]] += count
 
 
+    def connected_sequenaut(self, seq):
+        prev_coord = self.coordinate(seq[: self.oligomer_size], self.weight_matrix)
+        for i in range(len(seq) - self.oligomer_size + 1):
+            olig = seq[i: i + self.oligomer_size]
+            point = self.coordinate(olig, self.weight_matrix)
+            line = get_line(prev_coord, point)
+            for x, y in line:
+                self.hits[y][x] += 1
+            prev_coord = point
+
+
     def draw_nucleotides(self):
         for contig in self.contigs:
-            self.weighted_sequenaut(contig.seq)
-        leader = math.log(max([max(column) for column in self.hits]))
+            if self.layout == 'connected':
+                self.connected_sequenaut(contig.seq)
+            else:
+                self.weighted_sequenaut(contig.seq)
+        leader = max([max(column) for column in self.hits])
+        if self.log_scale:
+            leader = math.log(leader)
         try:
             middle = self.max_dimensions(self.oligomer_size)[0] // 2
             print("Leader", leader, int(math.log(self.hits[middle][middle]) / leader * 235 + 20))
@@ -95,9 +164,9 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
         for y in range(len(self.hits)):
             for x in range(len(self.hits[y])):
                 if self.hits[y][x]:
-                    grey = 255 - int(math.log(self.hits[y][x]) / leader * 235 + 20)
+                    val = math.log(self.hits[y][x]) if self.log_scale else self.hits[y][x]
+                    grey = 255 - int(val / leader * 235 + 20)
                     self.pixels[x, y] = (grey, grey, grey)
-
 
     def draw_titles(self):
         pass  # There are no titles in Sequenaut
@@ -110,12 +179,11 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
 
 def run_sequenaut(args):
     SERVER_HOME, base_path = base_directories(args)
-    if args.layout_type == "triangle_slide":  # Typical Use Case
-        # TODO: allow batch of tiling layout by chromosome
-        output_dir = make_output_dir_with_suffix(base_path, '')
-        renderer = Sequenaut(oligomer_size=args.oligomer_size, peak=args.peak, baseline=args.baseline)
-        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, renderer)
-        sys.exit(0)
+    # TODO: allow batch of tiling layout by chromosome
+    output_dir = make_output_dir_with_suffix(base_path, '')
+    renderer = Sequenaut(layout=args.layout, oligomer_size=args.oligomer_size, peak=args.peak, baseline=args.baseline, log_scale=not args.linear_scale)
+    create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, renderer)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -136,18 +204,15 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The layout algorithm.",
-                        choices=["triangle_slide", ],
-                        dest="layout_type")
-    parser.add_argument('--oligomer_size', type=int, default=100, help='Size of the sliding window in nucleotides.',
-                        dest="oligomer_size")
-    parser.add_argument('--peak', type=float, default=3.0, help='Highest scaling factor for the triangular weight matrix.',
-                        dest="peak")
-    parser.add_argument('--baseline', type=float, default=1.0, help='Lowest scaling factor for the triangular weight matrix.',
-                        dest="baseline")
+                        choices=["triangle_slide", "connected"],)
+    parser.add_argument('--linear_scale', action='store_true', help='Use linear color scaling (defaults to logarithmic).',)
+    parser.add_argument('--oligomer_size', type=int, default=100, help='Size of the sliding window in nucleotides.',)
+    parser.add_argument('--peak', type=float, default=3.0, help='Highest scaling factor for the triangular weight matrix.',)
+    parser.add_argument('--baseline', type=float, default=1.0, help='Lowest scaling factor for the triangular weight matrix.',)
     args = parser.parse_args()
 
-    if not args.layout_type:
-        args.layout_type = "triangle_slide"  # default
+    if not args.layout:
+        args.layout = "triangle_slide"  # default
     args.output_name = '_'.join([args.output_name, str(args.oligomer_size), str(int(args.peak)), str(int(args.baseline))])
 
     run_sequenaut(args)
