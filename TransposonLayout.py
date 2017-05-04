@@ -43,6 +43,6 @@ class TransposonLayout(TileLayout):
         current_line = 0
         repeat_name = "L2"
         for line in self.repeat_entries:  # sorted by chromosome position
-            local_point = [(line['repStart']), current_line]
-            sequence = self.contigs[0][line['genoStart']: line['genoEnd']]
+            local_point = [(line['rep_start']), current_line]
+            sequence = self.contigs[0][line['geno_start']: line['geno_end']]
             self.draw_sequence_line(local_point, self.origin, sequence)
