@@ -64,7 +64,7 @@ def read_repeatmasker_csv(annotation_filename, white_list=None):
         for row in csvfile:
             entry = RepeatAnnotation(*row.split('\t'))
             if white_list:
-                if entry.rep_name in white_list:
+                if entry.rep_family in white_list:
                     entries.append(entry)
             else:
                 entries.append(entry)
@@ -96,7 +96,7 @@ def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
     consensus_width = max(max([e.rep_end for e in anno_entries]),
                           max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
     print("Consensus width!", consensus_width)
-    with open(out_filename, 'w') as out:
+    with open(out_filename[:-3] + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         display_lines = condense_fragments_to_lines(anno_entries, consensus_width)
         for text_line in display_lines:
@@ -114,6 +114,30 @@ def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
     # chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
 
 
+def write_consensus_sandpile(anno_entries, out_filename, seq):
+    consensus_width = max(max([e.rep_end for e in anno_entries]),
+                          max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
+    print("Consensus width!", consensus_width)
+    with open(out_filename[:-3] + '_%i_sandpile.fa' % consensus_width, 'w') as out:
+        out.write('>' + just_the_name(out_filename) + '\n')
+        depth_graph = [0 for i in range(consensus_width)]
+        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        for fragment in anno_entries:
+            nucleotides = fragment.genome_span().sample(seq)
+            if fragment.strand == '-':
+                nucleotides = rev_comp(nucleotides)
+            nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
+            if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
+                nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
+            for x_start, c in enumerate(nucleotides):
+                x = x_start + (fragment.rep_end - len(nucleotides))
+                image[depth_graph[x]][x] = c
+                depth_graph[x] += 1
+        greatest_depth = max(depth_graph)
+        for line in image[:greatest_depth]:
+            out.write(''.join(line))
+
+
 def test_reader():
     # Test Reader
     entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['L3'])
@@ -123,12 +147,13 @@ def test_reader():
 
 if __name__ == '__main__':
     annotation = r'data\RepeatMasker_chr20_alignment.csv'
-    white_list = ['HAL1', 'HAL1b']
+    white_list = ['ERVL-MaLR'] # 'ERVK', 'ERV1', 'L1'
     entries = read_repeatmasker_csv(annotation, white_list)
     print("Found %i entries under %s" % (len(entries), str(white_list)))
     # Test Writer
     seq = pluck_contig('chr20', 'data/hg38_chr20.fa')
-    write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
+    write_consensus_sandpile(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
+    # write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
     print('Done')
 
     test_reader()
