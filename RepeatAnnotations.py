@@ -8,6 +8,7 @@ input and output is significantly different."""
 
 from DDVUtils import pluck_contig, just_the_name, rev_comp
 from Span import Span
+from array import array
 
 
 class RepeatAnnotation(object):
@@ -22,6 +23,11 @@ class RepeatAnnotation(object):
         self.rep_family = repFamily
         self.rep_start = int(repStart)
         self.rep_end = int(repEnd)
+        if self.rep_end == self.rep_start:
+            if self.strand == '+':
+                self.rep_end += 1
+            else:
+                self.rep_start += 1
 
     def __repr__(self):
         return ' '.join([str(x) for x in (self.geno_name, self.geno_start, self.geno_end, self.geno_left, self.strand,
@@ -29,6 +35,9 @@ class RepeatAnnotation(object):
 
     def __len__(self):
         return self.geno_end - self.geno_start
+
+    def consensus_span(self):
+        return Span(self.rep_start, self.rep_end, self.rep_name, '+', zero_ok=False)  # always on + strand
 
     def genome_span(self):
         return Span(self.geno_start, self.geno_end, self.geno_name, self.strand, zero_ok=False)
@@ -55,29 +64,58 @@ def read_repeatmasker_csv(annotation_filename, white_list=None):
         return entries
 
 
+def condense_fragments_to_lines(anno_entries, consensus_width):
+    lines = [[]]
+    for entry in anno_entries:  # type = RepeatAnnotation
+        for row, candidate_line in enumerate(lines):
+            if all([not entry.consensus_span().overlaps(x.consensus_span()) for x in candidate_line]):
+                candidate_line.append(entry)
+                break
+            elif row == len(lines) - 1:
+                lines.append([entry])  # add a new line with this entry in it
+                break
+
+    return lines
+
+
 def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
     consensus_width = max(max([e.rep_end for e in anno_entries]),
                           max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
     print("Consensus width!", consensus_width)
     with open(out_filename, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        for fragment in anno_entries:
-            nucleotides = fragment.genome_span().sample(seq)
-            if fragment.strand == '-':
-                nucleotides = rev_comp(nucleotides)
-            line = 'A' * (fragment.rep_end - len(nucleotides)) + nucleotides
-            line += 'A' * (consensus_width - len(line)) + '\n'
-            assert len(line) == consensus_width + 1, len(line)
-            out.write(line)
+        display_lines = condense_fragments_to_lines(anno_entries, consensus_width)
+        for text_line in display_lines:
+            line = array('u', ('A' * consensus_width) + '\n')
+            for fragment in text_line:
+                if str(fragment) == 'chr20 197571 197817 64246350 + L1PA12_3end LINE L1 1 237':
+                    print(fragment)
+                nucleotides = fragment.genome_span().sample(seq)
+                if fragment.strand == '-':
+                    nucleotides = rev_comp(nucleotides)
+                nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
+                if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
+                    nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
+                line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
+            assert len(line) == consensus_width + 1, display_lines.index(text_line)  # len(line)
+            out.write(''.join(line))
     # chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
 
 
-if __name__ == '__main__':
+def test_reader():
     # Test Reader
-    annotation = r'data\RepeatMasker_chr20_alignment.csv'
-    entries = read_repeatmasker_csv(annotation, {'L3'})
+    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['L3'])
     assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RepeatMasker_chr12_alignment.csv?"
+
+
+if __name__ == '__main__':
+    annotation = r'data\RepeatMasker_chr20_alignment.csv'
+    white_list = ['L1PA12_3end']
+    entries = read_repeatmasker_csv(annotation, white_list)
 
     # Test Writer
     seq = pluck_contig('chr20', 'data/hg38_chr20.fa')
-    write_aligned_repeat_consensus(entries, 'data/hg38_chr20_L3.fa', seq)
+    write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) +'.fa', seq)
+    print('Done')
+
+    test_reader()
