@@ -28,6 +28,9 @@ class RepeatAnnotation(object):
                 self.rep_end += 1
             else:
                 self.rep_start += 1
+        self.__consensus_span = None
+        self.__genome_span = None
+
 
     def __repr__(self):
         return ' '.join([str(x) for x in (self.geno_name, self.geno_start, self.geno_end, self.geno_left, self.strand,
@@ -37,10 +40,14 @@ class RepeatAnnotation(object):
         return self.geno_end - self.geno_start
 
     def consensus_span(self):
-        return Span(self.rep_start, self.rep_end, self.rep_name, '+', zero_ok=False)  # always on + strand
+        if self.__consensus_span is None:  # cache object
+            self.__consensus_span = Span(self.rep_start, self.rep_end, self.rep_name, '+', zero_ok=False)  # always on + strand
+        return self.__consensus_span
 
     def genome_span(self):
-        return Span(self.geno_start, self.geno_end, self.geno_name, self.strand, zero_ok=False)
+        if self.__genome_span is None:  # cache object
+            self.__genome_span = Span(self.geno_start, self.geno_end, self.geno_name, self.strand, zero_ok=False)
+        return self.__genome_span
 
     def check_length(self):
         geno_size = self.geno_end - self.geno_start
@@ -61,14 +68,21 @@ def read_repeatmasker_csv(annotation_filename, white_list=None):
                     entries.append(entry)
             else:
                 entries.append(entry)
+        assert len(entries), "No matches found for " + str(white_list)
         return entries
 
 
-def condense_fragments_to_lines(anno_entries, consensus_width):
+def condense_fragments_to_lines(anno_entries, consensus_width, crowded_count=10):
+    """
+    :param anno_entries: list of RepeatAnnotation objects
+    :param consensus_width:
+    :param crowded_count:  point at which you should give up trying to cram more into this line
+    :return: list of lists of RepeatAnnotation objects that can fit on one line without overlapping
+    """
     lines = [[]]
     for entry in anno_entries:  # type = RepeatAnnotation
         for row, candidate_line in enumerate(lines):
-            if all([not entry.consensus_span().overlaps(x.consensus_span()) for x in candidate_line]):
+            if len(candidate_line) < crowded_count and all([not entry.consensus_span().overlaps(x.consensus_span()) for x in candidate_line]):
                 candidate_line.append(entry)
                 break
             elif row == len(lines) - 1:
@@ -88,8 +102,6 @@ def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
         for text_line in display_lines:
             line = array('u', ('A' * consensus_width) + '\n')
             for fragment in text_line:
-                if str(fragment) == 'chr20 197571 197817 64246350 + L1PA12_3end LINE L1 1 237':
-                    print(fragment)
                 nucleotides = fragment.genome_span().sample(seq)
                 if fragment.strand == '-':
                     nucleotides = rev_comp(nucleotides)
@@ -105,17 +117,18 @@ def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
 def test_reader():
     # Test Reader
     entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['L3'])
-    assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RepeatMasker_chr12_alignment.csv?"
+    # print(str(entries))
+    assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
 
 
 if __name__ == '__main__':
     annotation = r'data\RepeatMasker_chr20_alignment.csv'
-    white_list = ['L1PA12_3end']
+    white_list = ['HAL1', 'HAL1b']
     entries = read_repeatmasker_csv(annotation, white_list)
-
+    print("Found %i entries under %s" % (len(entries), str(white_list)))
     # Test Writer
     seq = pluck_contig('chr20', 'data/hg38_chr20.fa')
-    write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) +'.fa', seq)
+    write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
     print('Done')
 
     test_reader()
