@@ -9,6 +9,11 @@ input and output is significantly different."""
 from DDVUtils import pluck_contig, just_the_name, rev_comp
 from Span import Span
 from array import array
+import math
+
+
+def int_log(num):
+    return int(math.log(num + 1, 1.1))
 
 
 class RepeatAnnotation(object):
@@ -115,8 +120,7 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
 
 
 def write_consensus_sandpile(anno_entries, out_filename, seq):
-    consensus_width = max(max([e.rep_end for e in anno_entries]),
-                          max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
+    consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         depth_graph = [0 for i in range(consensus_width)]
@@ -132,6 +136,33 @@ def write_consensus_sandpile(anno_entries, out_filename, seq):
                 x = x_start + (fragment.rep_end - len(nucleotides))
                 image[depth_graph[x]][x] = c
                 depth_graph[x] += 1
+        greatest_depth = max(depth_graph)
+        for line in image[:greatest_depth]:
+            out.write(''.join(line))
+
+
+def max_consensus_width(anno_entries):
+    consensus_width = max(max([e.rep_end for e in anno_entries]),
+                          max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
+    consensus_width = (consensus_width + (12 - consensus_width % 12))  # make it a multiple of 12
+    return consensus_width
+
+
+def histogram_of_breakpoints(anno_entries, out_filename):
+    consensus_width = max_consensus_width(anno_entries)
+    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
+        out.write('>' + just_the_name(out_filename) + '\n')
+        depth_graph = [0 for i in range(consensus_width)]
+        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        for fragment in anno_entries:
+            x = fragment.rep_start
+            image[depth_graph[x]][x] = 'G'
+            depth_graph[x] += 1
+
+            x = fragment.rep_end
+            image[depth_graph[x]][x] = 'C'
+            depth_graph[x] += 1
+
         greatest_depth = max(depth_graph)
         for line in image[:greatest_depth]:
             out.write(''.join(line))
@@ -154,7 +185,8 @@ def layout_repeats(anno_entries, filename, seq, key='condense'):
     elif key == 'sandpile':
         ranked_entries = [a for a in sorted(anno_entries, key=lambda x: -len(x))]
         write_consensus_sandpile(ranked_entries, filename, seq)
-        return
+    elif key == 'breaks':
+        histogram_of_breakpoints(anno_entries, filename)
 
 
 def test_reader():
@@ -165,14 +197,15 @@ def test_reader():
 
 
 if __name__ == '__main__':
-    annotation = r'data\RepeatMasker_chr20_alignment.csv'
-    white_list = ['TcMar-Tigger']  # ''TcMar-Mariner']  # 'ERVK', 'ERV1', 'L1', 'Alu', MIR
+    annotation = r'data\RepeatMasker_all_alignment.csv'
+    white_list = ['L1']  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     rep_entries = read_repeatmasker_csv(annotation, white_list)
     print("Found %i entries under %s" % (len(rep_entries), str(white_list)))
 
     # Test Writer
-    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa')
-    layout_repeats(rep_entries, 'data/hg38_chr20_' + '_'.join(white_list), sequence, 'sandpile')
+    mode = 'breaks'
+    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa') if mode != 'breaks' else ''
+    layout_repeats(rep_entries, 'data/hg38_' + '_'.join(white_list), sequence, mode)
     print('Done')
 
     test_reader()
