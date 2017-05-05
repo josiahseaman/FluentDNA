@@ -57,6 +57,7 @@ class RepeatAnnotation(object):
 
 
 def read_repeatmasker_csv(annotation_filename, white_list=None):
+    # example: chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
     with open(annotation_filename) as csvfile:
         headers = csvfile.readline()  # ensure the header is what I am expecting and matches RepeatAnnotation definition
         assert headers == '#genoName	genoStart	genoEnd	genoLeft	strand	repName	repClass	repFamily	repStart	repEnd\n', headers
@@ -72,13 +73,15 @@ def read_repeatmasker_csv(annotation_filename, white_list=None):
         return entries
 
 
-def condense_fragments_to_lines(anno_entries, consensus_width, crowded_count=10):
+def condense_fragments_to_lines(anno_entries, crowded_count=10):
     """
     :param anno_entries: list of RepeatAnnotation objects
-    :param consensus_width:
     :param crowded_count:  point at which you should give up trying to cram more into this line
     :return: list of lists of RepeatAnnotation objects that can fit on one line without overlapping
     """
+    if crowded_count < 2:
+        return [[entry] for entry in anno_entries]
+
     lines = [[]]
     for entry in anno_entries:  # type = RepeatAnnotation
         for row, candidate_line in enumerate(lines):
@@ -92,13 +95,11 @@ def condense_fragments_to_lines(anno_entries, consensus_width, crowded_count=10)
     return lines
 
 
-def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
-    consensus_width = max(max([e.rep_end for e in anno_entries]),
-                          max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
-    print("Consensus width!", consensus_width)
-    with open(out_filename[:-3] + '_%i.fa' % consensus_width, 'w') as out:
+def write_aligned_repeat_consensus(display_lines, out_filename, seq):
+    consensus_width = max(max([e.rep_end for line in display_lines for e in line]),
+                          max([e.rep_start + len(e) for line in display_lines for e in line]))  # two different ways of finding the end
+    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        display_lines = condense_fragments_to_lines(anno_entries, consensus_width)
         for text_line in display_lines:
             line = array('u', ('A' * consensus_width) + '\n')
             for fragment in text_line:
@@ -111,14 +112,12 @@ def write_aligned_repeat_consensus(anno_entries, out_filename, seq):
                 line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
             assert len(line) == consensus_width + 1, display_lines.index(text_line)  # len(line)
             out.write(''.join(line))
-    # chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
 
 
 def write_consensus_sandpile(anno_entries, out_filename, seq):
     consensus_width = max(max([e.rep_end for e in anno_entries]),
                           max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
-    print("Consensus width!", consensus_width)
-    with open(out_filename[:-3] + '_%i_sandpile.fa' % consensus_width, 'w') as out:
+    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         depth_graph = [0 for i in range(consensus_width)]
         image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
@@ -138,22 +137,42 @@ def write_consensus_sandpile(anno_entries, out_filename, seq):
             out.write(''.join(line))
 
 
+def layout_repeats(anno_entries, filename, seq, key='condense'):
+    filename = filename + '_' + key
+    if key == 'condense':
+        display_lines = condense_fragments_to_lines(anno_entries, crowded_count=10)
+        write_aligned_repeat_consensus(display_lines, filename, seq)
+    elif key == 'repStart':
+        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: x.rep_start)]
+        write_aligned_repeat_consensus(display_lines, filename, seq)
+    elif key == 'repEnd':
+        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: -x.rep_end)]
+        write_aligned_repeat_consensus(display_lines, filename, seq)
+    elif key == 'rank':
+        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: -len(x))]
+        write_aligned_repeat_consensus(display_lines, filename, seq)
+    elif key == 'sandpile':
+        ranked_entries = [a for a in sorted(anno_entries, key=lambda x: -len(x))]
+        write_consensus_sandpile(ranked_entries, filename, seq)
+        return
+
+
 def test_reader():
     # Test Reader
-    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['L3'])
+    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['CR1'])
     # print(str(entries))
     assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
 
 
 if __name__ == '__main__':
     annotation = r'data\RepeatMasker_chr20_alignment.csv'
-    white_list = ['ERVL-MaLR'] # 'ERVK', 'ERV1', 'L1'
-    entries = read_repeatmasker_csv(annotation, white_list)
-    print("Found %i entries under %s" % (len(entries), str(white_list)))
+    white_list = ['TcMar-Tigger']  # ''TcMar-Mariner']  # 'ERVK', 'ERV1', 'L1', 'Alu', MIR
+    rep_entries = read_repeatmasker_csv(annotation, white_list)
+    print("Found %i entries under %s" % (len(rep_entries), str(white_list)))
+
     # Test Writer
-    seq = pluck_contig('chr20', 'data/hg38_chr20.fa')
-    write_consensus_sandpile(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
-    # write_aligned_repeat_consensus(entries, 'data/hg38_chr20_' + '_'.join(white_list) + '.fa', seq)
+    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa')
+    layout_repeats(rep_entries, 'data/hg38_chr20_' + '_'.join(white_list), sequence, 'sandpile')
     print('Done')
 
     test_reader()
