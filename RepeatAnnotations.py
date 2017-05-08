@@ -61,19 +61,22 @@ class RepeatAnnotation(object):
             print(geno_size, rep_size, geno_size - rep_size)
 
 
-def read_repeatmasker_csv(annotation_filename, white_list=None):
+def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_value=None):
     # example: chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
     with open(annotation_filename) as csvfile:
         headers = csvfile.readline()  # ensure the header is what I am expecting and matches RepeatAnnotation definition
         assert headers == '#genoName	genoStart	genoEnd	genoLeft	strand	repName	repClass	repFamily	repStart	repEnd\n', headers
+        if white_list_key:
+            headers = headers[1:-1].split('\t')  # remove '#' and \n
+            white_list_key = headers.index(white_list_key)  # column index matching the filter criteria
         entries = []
         for row in csvfile:
-            entry = RepeatAnnotation(*row.split('\t'))
-            if white_list:
-                if entry.rep_family in white_list:
-                    entries.append(entry)
+            columns = row.split('\t')
+            if white_list_key:
+                if columns[white_list_key] == white_list_value:  # [7] = rep_family
+                    entries.append(RepeatAnnotation(*columns))
             else:
-                entries.append(entry)
+                entries.append(RepeatAnnotation(*columns))
         assert len(entries), "No matches found for " + str(white_list)
         return entries
 
@@ -152,19 +155,33 @@ def histogram_of_breakpoints(anno_entries, out_filename):
     consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        depth_graph = [0 for i in range(consensus_width)]
-        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        breakpoints = [0 for i in range(consensus_width)]
+        coverage = [0 for i in range(consensus_width)]
         for fragment in anno_entries:
+            for x in range(fragment.rep_start, fragment.rep_end + 1):
+                coverage[x] += 1  # used for normalization
             x = fragment.rep_start
-            image[depth_graph[x]][x] = 'G'
-            depth_graph[x] += 1
+            # image[depth(breakpoints, x)][x] = 'G'
+            breakpoints[x] += 1
 
             x = fragment.rep_end
-            image[depth_graph[x]][x] = 'C'
-            depth_graph[x] += 1
+            # image[depth(breakpoints, x)][x] = 'C'
+            breakpoints[x] += 1
 
-        greatest_depth = max(depth_graph)
-        for line in image[:greatest_depth]:
+        coverage_to_break_ratio = sum(coverage) / sum(breakpoints)
+        # expected = coverage[x] / sum(coverage) * sum(breakpoints)
+        expected_breaks = [coverage[x] / coverage_to_break_ratio for x in range(consensus_width)]
+
+        normalized_break_counts = []
+        for x in range(consensus_width):
+            normalized_break_counts.append(breakpoints[x] / max(1, expected_breaks[x]))  # 566 copies is a good cutoff for L1
+        int_break_counts = [min(1000, int(normalized_break_counts[x] * 20.0)) for x in range(consensus_width)]
+        greatest_depth = max(int_break_counts) + 1
+        image = [array('u', ('A' * consensus_width) + '\n') for i in range(greatest_depth)]
+        for line_number, line in enumerate(image[:greatest_depth]):
+            for x in range(consensus_width):
+                if int_break_counts[x] >= line_number:
+                    image[line_number][x] = 'G'
             out.write(''.join(line))
 
 
@@ -191,15 +208,15 @@ def layout_repeats(anno_entries, filename, seq, key='condense'):
 
 def test_reader():
     # Test Reader
-    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', ['CR1'])
+    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', 'repFamily', 'CR1')
     # print(str(entries))
     assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
 
 
 if __name__ == '__main__':
     annotation = r'data\RepeatMasker_all_alignment.csv'
-    white_list = ['L1']  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
-    rep_entries = read_repeatmasker_csv(annotation, white_list)
+    white_list = ('repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    rep_entries = read_repeatmasker_csv(annotation, *white_list)
     print("Found %i entries under %s" % (len(rep_entries), str(white_list)))
 
     # Test Writer
@@ -208,4 +225,4 @@ if __name__ == '__main__':
     layout_repeats(rep_entries, 'data/hg38_' + '_'.join(white_list), sequence, mode)
     print('Done')
 
-    test_reader()
+    # test_reader()
