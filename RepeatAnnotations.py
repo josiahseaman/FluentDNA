@@ -36,7 +36,6 @@ class RepeatAnnotation(object):
         self.__consensus_span = None
         self.__genome_span = None
 
-
     def __repr__(self):
         return ' '.join([str(x) for x in (self.geno_name, self.geno_start, self.geno_end, self.geno_left, self.strand,
                                           self.rep_name, self.rep_class, self.rep_family, self.rep_start, self.rep_end)])
@@ -73,11 +72,11 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
         for row in csvfile:
             columns = row.split('\t')
             if white_list_key:
-                if columns[white_list_key] == white_list_value:  # [7] = rep_family
+                if white_list_value == columns[white_list_key]:  # [7] = rep_family, [5] = repName
                     entries.append(RepeatAnnotation(*columns))
             else:
                 entries.append(RepeatAnnotation(*columns))
-        assert len(entries), "No matches found for " + str(white_list)
+        assert len(entries), "No matches found for " + str(white_list_value)
         return entries
 
 
@@ -151,7 +150,27 @@ def max_consensus_width(anno_entries):
     return consensus_width
 
 
-def histogram_of_breakpoints(anno_entries, out_filename):
+def unnormalized_histogram_of_breakpoints(anno_entries, out_filename):
+    consensus_width = max_consensus_width(anno_entries)
+    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
+        out.write('>' + just_the_name(out_filename) + '\n')
+        depth_graph = [0 for i in range(consensus_width)]
+        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        for fragment in anno_entries:
+            x = fragment.rep_start
+            image[depth_graph[x]][x] = 'G'
+            depth_graph[x] += 1
+
+            x = fragment.rep_end
+            image[depth_graph[x]][x] = 'C'
+            depth_graph[x] += 1
+
+        greatest_depth = max(depth_graph)
+        for line in image[:greatest_depth]:
+            out.write(''.join(line))
+
+
+def histogram_of_breakpoints(anno_entries, out_filename, reference_points=None):
     consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
@@ -180,12 +199,54 @@ def histogram_of_breakpoints(anno_entries, out_filename):
         image = [array('u', ('A' * consensus_width) + '\n') for i in range(greatest_depth)]
         for line_number, line in enumerate(image[:greatest_depth]):
             for x in range(consensus_width):
+                if reference_points is not None and x in reference_points:
+                    image[line_number][x] = 'T'  # can be overwritten by 'G'
                 if int_break_counts[x] >= line_number:
                     image[line_number][x] = 'G'
             out.write(''.join(line))
 
 
-def layout_repeats(anno_entries, filename, seq, key='condense'):
+def lengths_by_repeat_name(anno_entries):
+    endings = {}
+    for entry in anno_entries:
+        current = endings[entry.rep_name] if entry.rep_name in endings else 0
+        endings[entry.rep_name] = max(current, entry.rep_end)
+    return endings
+
+
+def output_transposon_fasta(ano_entries, out_filename, seq):
+    genome, chromosome, family, mode = just_the_name(out_filename).split('_')
+    # sort first by repName then by start position inside the same repName
+    sorted_entries = [a for a in sorted(ano_entries, key=lambda x: x.rep_name + '{:010d}'.format(x.rep_start))]
+    with open(out_filename + '.fa', 'w') as out:
+        for fragment in sorted_entries:
+            info = "__".join([fragment.rep_name, family, genome, chromosome, str(fragment.geno_start), str(fragment.geno_end), fragment.strand])
+            out.write('>' + info + '\n')
+            nucleotides = fragment.genome_span().sample(seq)
+            if fragment.strand == '-':
+                nucleotides = rev_comp(nucleotides)
+            out.write(nucleotides + '\n')  # we're currently not dividing long lines (not FASTA standard)
+
+
+def output_archetypes_fasta(ano_entries, out_filename, seq):
+    genome, chromosome, family, mode = just_the_name(out_filename).split('_')
+    sorted_entries = [a for a in sorted(ano_entries, key=lambda x: -len(x))]
+    archetypes = {}
+    for entry in sorted_entries:  # only the first of each rep_name will make it into archetypes
+        if entry.rep_name not in archetypes:
+            archetypes[entry.rep_name] = entry
+
+    with open(out_filename + '.fa', 'w') as out:
+        for fragment in archetypes.values():
+            info = "__".join([fragment.rep_name, family, genome, chromosome, str(fragment.geno_start), str(fragment.geno_end), fragment.strand])
+            out.write('>' + info + '\n')
+            nucleotides = fragment.genome_span().sample(seq)
+            if fragment.strand == '-':
+                nucleotides = rev_comp(nucleotides)
+            out.write(nucleotides + '\n')  # we're currently not dividing long lines (not FASTA standard)
+
+
+def layout_repeats(anno_entries, filename, seq, key='condense', kwargs=None):
     filename = filename + '_' + key
     if key == 'condense':
         display_lines = condense_fragments_to_lines(anno_entries, crowded_count=10)
@@ -203,7 +264,16 @@ def layout_repeats(anno_entries, filename, seq, key='condense'):
         ranked_entries = [a for a in sorted(anno_entries, key=lambda x: -len(x))]
         write_consensus_sandpile(ranked_entries, filename, seq)
     elif key == 'breaks':
-        histogram_of_breakpoints(anno_entries, filename)
+        ending_points = lengths_by_repeat_name(anno_entries)
+        print(ending_points)
+        histogram_of_breakpoints(anno_entries, filename, reference_points=set(ending_points.values()))
+    elif key == 'raw_breaks':
+        unnormalized_histogram_of_breakpoints(anno_entries, filename)
+    elif key == 'fasta':
+        output_transposon_fasta(anno_entries, filename, seq)
+    elif key == 'archetypes':
+        output_archetypes_fasta(anno_entries, filename, seq)
+
 
 
 def test_reader():
@@ -214,15 +284,14 @@ def test_reader():
 
 
 if __name__ == '__main__':
-    annotation = r'data\RepeatMasker_all_alignment.csv'
-    white_list = ('repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
-    rep_entries = read_repeatmasker_csv(annotation, *white_list)
-    print("Found %i entries under %s" % (len(rep_entries), str(white_list)))
+    test_reader()
+    annotation = r'data\RepeatMasker_chr20_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
+    column, rep_name = 'repFamily', 'L1'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
+    print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    # Test Writer
-    mode = 'breaks'
-    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa') if mode != 'breaks' else ''
-    layout_repeats(rep_entries, 'data/hg38_' + '_'.join(white_list), sequence, mode)
+    mode = 'archetypes'  # 'breaks' raw_breaks
+    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa') if 'breaks' not in mode else ''
+    layout_repeats(rep_entries, 'data/hg38_chr20_' + rep_name, sequence, mode)
     print('Done')
 
-    # test_reader()
