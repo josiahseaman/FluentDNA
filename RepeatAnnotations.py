@@ -72,7 +72,7 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
         for row in csvfile:
             columns = row.split('\t')
             if white_list_key:
-                if white_list_value == columns[white_list_key]:  # [7] = rep_family, [5] = repName
+                if white_list_value in columns[white_list_key]:  # [7] = rep_family, [5] = repName
                     entries.append(RepeatAnnotation(*columns))
             else:
                 entries.append(RepeatAnnotation(*columns))
@@ -284,14 +284,15 @@ def test_reader():
 
 
 if __name__ == '__main__':
-    test_reader()
-    annotation = r'data\RepeatMasker_chr20_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
-    column, rep_name = 'repFamily', 'L1'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    # test_reader()
+    annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
+    column, rep_name = 'repName', 'L1HS'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
+    rep_entries = [x for x in rep_entries if x.geno_name == 'chr1' and len(x) < 1500]
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    mode = 'archetypes'  # 'breaks' raw_breaks
-    sequence = pluck_contig('chr20', 'data/hg38_chr20.fa') if 'breaks' not in mode else ''
-    layout_repeats(rep_entries, 'data/hg38_chr20_' + rep_name, sequence, mode)
+    mode = 'fasta'  # 'breaks' raw_breaks
+    sequence = pluck_contig('chr1', 'data/hg38.fa') if 'breaks' not in mode else ''
+    layout_repeats(rep_entries, 'data/hg38_chr1-short_' + rep_name.replace('_',''), sequence, mode)
     print('Done')
 
