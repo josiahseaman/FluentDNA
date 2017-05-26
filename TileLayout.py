@@ -143,8 +143,12 @@ class TileLayout:
         return total_progress + reset + title + tail + len(sequence)
 
 
-    def prepare_image(self, image_length):
-        width, height = self.max_dimensions(image_length)
+    def prepare_image(self, image_length, width=None, height=None):
+        if width is None or height is None:
+            width, height = self.max_dimensions(image_length)
+        else:
+            width += self.origin[0]
+            height += self.origin[1]
         self.image = Image.new('RGB', (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()

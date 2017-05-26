@@ -112,7 +112,7 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         for text_line in display_lines:
-            line = blank_line_array(consensus_width)
+            line = blank_line_array(consensus_width, 'A')
             for fragment in text_line:
                 nucleotides = fragment.genome_span().sample(seq)
                 if fragment.strand == '-':
@@ -125,8 +125,8 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
             out.write(''.join(line))
 
 
-def blank_line_array(consensus_width):
-    return array('u', ('A' * consensus_width) + '\n')
+def blank_line_array(consensus_width, filler, newline=True):
+    return array('u', (filler * consensus_width) + '\n' if newline else '')
 
 
 def write_consensus_sandpile(anno_entries, out_filename, seq):
@@ -134,7 +134,7 @@ def write_consensus_sandpile(anno_entries, out_filename, seq):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         depth_graph = [0] * consensus_width
-        image = [blank_line_array(consensus_width) for _ in range(len(anno_entries))]
+        image = [blank_line_array(consensus_width, 'A') for _ in range(len(anno_entries))]
         for fragment in anno_entries:
             nucleotides = fragment.genome_span().sample(seq)
             if fragment.strand == '-':
@@ -297,10 +297,11 @@ if __name__ == '__main__':
     column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     mode = 'condense'  # 'breaks' raw_breaks
     rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
-    rep_entries = [x for x in rep_entries if x.geno_name == 'chr1' and len(x) < 1500]
+    chromosome = 'chr1'
+    rep_entries = [x for x in rep_entries if x.geno_name == chromosome]
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    sequence = pluck_contig('chr1', 'data/hg38.fa') if 'breaks' not in mode else ''
+    sequence = pluck_contig(chromosome, 'data/hg38.fa') if 'breaks' not in mode else ''
     layout_repeats(rep_entries, 'data/hg38_chr1-short_' + rep_name.replace('_',''), sequence, mode)
     print('Done')
 
