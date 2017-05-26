@@ -126,7 +126,7 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
 
 
 def blank_line_array(consensus_width, filler, newline=True):
-    return array('u', (filler * consensus_width) + '\n' if newline else '')
+    return array('u', (filler * consensus_width) + ('\n' if newline else ''))
 
 
 def write_consensus_sandpile(anno_entries, out_filename, seq):

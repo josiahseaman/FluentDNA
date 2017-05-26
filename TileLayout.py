@@ -90,9 +90,10 @@ class TileLayout:
         for contig in self.contigs:
             total_progress += contig.reset_padding + contig.title_padding
             seq_length = len(contig.seq)
-            for cx in range(0, seq_length, 100):
+            line_width = self.levels[0].modulo
+            for cx in range(0, seq_length, line_width):
                 x, y = self.position_on_screen(total_progress)
-                remaining = min(100, seq_length - cx)
+                remaining = min(line_width, seq_length - cx)
                 total_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]

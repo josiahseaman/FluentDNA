@@ -43,7 +43,7 @@ class Contig:
         self.reset_padding = reset_padding
         self.title_padding = title_padding
         self.tail_padding = tail_padding
-        self.nuc_title_start = title_index
+        self.nuc_title_start = title_index  # These two are used to track mouse position on the web UI
         self.nuc_seq_start = title_index + title_length
 
 

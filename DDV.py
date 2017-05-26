@@ -12,6 +12,7 @@ import os
 import sys
 
 from TileLayout import TileLayout
+from TransposonLayout import TransposonLayout
 
 print("Setting up Python...")
 
@@ -102,7 +103,7 @@ def ddv(args):
         run_server(SERVER_HOME)
         sys.exit(0)
 
-    if args.ref_annotation:  # parse chain files, possibly in batch
+    if args.ref_annotation and args.layout_type != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
                                         first_annotation=args.ref_annotation,
@@ -136,7 +137,15 @@ def ddv(args):
         if args.run_server:
             run_server(output_dir)
         sys.exit(0)
+
     # views that support batches of chromosomes
+
+    if args.layout_type == 'transposon':
+        layout = TransposonLayout()
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout.process_file(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation)
+        print("Done with Transposons")
+        sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
@@ -244,8 +253,9 @@ if __name__ == "__main__":
                         dest="output_name")
     parser.add_argument("-l", "--layout",
                         type=str,
-                        help="The type of layout to perform. Will autodetect between Tiled and Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["original", "tiled", "parallel", "unique"],
+                        help="The type of layout to perform. Will autodetect between Tiled and "
+                        "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
+                        choices=["original", "tiled", "parallel", "unique", "transposon"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',

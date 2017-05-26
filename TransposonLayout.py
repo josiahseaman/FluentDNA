@@ -2,7 +2,7 @@ import traceback
 from datetime import datetime
 from array import array
 
-from DDVUtils import LayoutLevel, rev_comp, Contig
+from DDVUtils import LayoutLevel, rev_comp, Contig, pluck_contig
 from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
 
@@ -11,21 +11,25 @@ class TransposonLayout(TileLayout):
     def __init__(self):
         super().__init__()
         self.repeat_entries = None
+        self.current_chromosome = 'chr1'
+        self.seq = ''
 
 
-    def process_file(self, input_file_path, output_folder, output_file_name, repeat_annotation_filename=None):
+    def process_file(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename=None):
         start_time = datetime.now()
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
-        self.current_chromosome = 'chr1'
+        self.current_chromosome = 'chr20'
         column, rep_name = 'repName', 'L1PA3'
         self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, rep_name)
         self.repeat_entries = [x for x in self.repeat_entries if x.geno_name == self.current_chromosome]
+        self.repeat_entries.sort(key=lambda x: -len(x))  # longest first
         print("Found %i entries under %s" % (len(self.repeat_entries), str(rep_name)))
 
         self.layout_based_on_repeat_size()
 
-        self.read_contigs(input_file_path)
+        self.seq = pluck_contig(self.current_chromosome, ref_fasta)  # TODO: multiple chromosomes
+        # self.read_contigs(ref_fasta)
         width, height = max_consensus_width(self.repeat_entries), len(self.repeat_entries)
         self.image_length = width * height
         print("Read contigs :", datetime.now() - start_time)
@@ -49,25 +53,23 @@ class TransposonLayout(TileLayout):
         ]
 
     def draw_nucleotides(self):
-        current_line = 0
         consensus_width = max_consensus_width(self.repeat_entries)
-        seq = [contig for contig in self.contigs if contig.name == self.current_chromosome][0]
+        # matches = [contig for contig in self.contigs if contig.name == self.current_chromosome]
         display_lines = []
-        for line in self.repeat_entries:  # sorted by chromosome position
-            local_point = [(line['rep_start']), current_line]
-            nucleotides = seq[line['geno_start']: line['geno_end']]
-            self.draw_sequence_line(local_point, self.origin, nucleotides)
 
         for fragment in self.repeat_entries:
             line = blank_line_array(consensus_width, 'X', newline=False)
-            nucleotides = fragment.genome_span().sample(seq)
+            nucleotides = fragment.genome_span().sample(self.seq)
             if fragment.strand == '-':
                 nucleotides = rev_comp(nucleotides)
             if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
                 nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
             line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
-            assert len(line) == consensus_width, self.repeat_entries.index(fragment)  # len(line)
+            assert len(line) == consensus_width, "%i, %i, %i" % (len(line), consensus_width, self.repeat_entries.index(fragment))  # len(line)
             display_lines.append(''.join(line))
 
         processed_seq = ''.join(display_lines)
-        self.contigs = [Contig(self.current_chromosome, processed_seq, 0, 0, 0, 0, 4)]
+        # TODO: overwriting self.contigs isn't really great data management
+        self.contigs = [Contig(self.current_chromosome, processed_seq, 0, 0, 0,
+                               0, 0)]  # TODO: title_length currently doesn't have a title and might break mouse tracking
+        super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
