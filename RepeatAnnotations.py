@@ -5,6 +5,7 @@ It is similar to Annotations.py.  But at the moment, they're separate files beca
 input and output is significantly different."""
 
 # Read annotation file and just mark where things land on the consensus
+import sys
 
 from DDVUtils import pluck_contig, just_the_name, rev_comp
 from Span import Span
@@ -294,8 +295,9 @@ def test_reader():
 if __name__ == '__main__':
     # test_reader()
     annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
-    column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
-    mode = 'condense'  # 'breaks' raw_breaks
+    mode, column, rep_name = sys.argv[1], sys.argv[2], sys.argv[3]  # 'condense', 'repName', 'L1PA3'
+    # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    # mode = 'condense'  # 'breaks' raw_breaks
     rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
     chromosome = 'chr1'
     rep_entries = [x for x in rep_entries if x.geno_name == chromosome]

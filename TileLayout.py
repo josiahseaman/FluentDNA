@@ -125,7 +125,7 @@ class TileLayout:
                     if len(seq_collection) > 0:
                         sequence = "".join(seq_collection)
                         seq_collection = []  # clear
-                        if len(sequence) > self.levels[4].chunk_size and len(self.contigs) == 0:
+                        if len(self.levels) >= 5 and len(sequence) > self.levels[4].chunk_size and len(self.contigs) == 0:
                             self.enable_fat_headers()  # first contig is huge and there's more coming
                         reset, title, tail = self.calc_padding(total_progress, len(sequence), True)
                         self.contigs.append(Contig(current_name, sequence, reset, title, tail,
@@ -144,12 +144,8 @@ class TileLayout:
         return total_progress + reset + title + tail + len(sequence)
 
 
-    def prepare_image(self, image_length, width=None, height=None):
-        if width is None or height is None:
-            width, height = self.max_dimensions(image_length)
-        else:
-            width += self.origin[0]
-            height += self.origin[1]
+    def prepare_image(self, image_length):
+        width, height = self.max_dimensions(image_length)
         self.image = Image.new('RGB', (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
