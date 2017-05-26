@@ -292,6 +292,10 @@ def test_reader():
     assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
 
 
+def filter_repeats_by_chromosome(repeat_entries, contig):
+    return [x for x in repeat_entries if x.geno_name == contig.name]
+
+
 if __name__ == '__main__':
     # test_reader()
     annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
@@ -299,8 +303,8 @@ if __name__ == '__main__':
     # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     # mode = 'condense'  # 'breaks' raw_breaks
     rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
-    chromosome = 'chr1'
-    rep_entries = [x for x in rep_entries if x.geno_name == chromosome]
+    chromosome = 'chr1' if len(sys.argv) < 5 else sys.argv[4]
+    rep_entries = filter_repeats_by_chromosome(rep_entries, chromosome)
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
     sequence = pluck_contig(chromosome, 'data/hg38.fa') if 'breaks' not in mode else ''

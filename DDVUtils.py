@@ -196,7 +196,7 @@ def _write_fasta_lines(filestream, seq):
     contigs = seq.split('\n')
     index = 0
     while index < len(contigs):
-        if len(contigs) > index + 1 and contigs[index].startswith('>') and contigs[index+1].startswith('>'):
+        if len(contigs) > index + 1 and contigs[index].startswith('>') and contigs[index + 1].startswith('>'):
             print("Warning: Orphaned header:", contigs[index])
         if contigs[index].startswith('>'):
             header, contents = contigs[index], contigs[index + 1]

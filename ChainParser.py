@@ -1,12 +1,13 @@
 import os
-from array import array
 from datetime import datetime
+
 import blist
+from array import array
 
 from ChainFiles import chain_file_to_list, match
 from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
 from DefaultOrderedDict import DefaultOrderedDict
-from Span import AlignedSpans, Span
+from Span import AlignedSpans, Span, alignment_chopping_index
 
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
@@ -109,29 +110,6 @@ class ChainParser:
                                                    len(self.query_sequence) - query_pointer,
                                                    len(self.ref_sequence) - ref_pointer),)
 
-
-    def alignment_chopping_index(self, new_alignment):
-        """Return the index where to insert item x in list a, assuming a is sorted.
-
-        The return value i is such that all e in a[:i] have e < x, and all e in
-        a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
-        insert just before the leftmost x already there.
-
-        Optional args lo (default 0) and hi (default len(a)) bound the
-        slice of a to be searched.
-        """
-        lo = 0
-        hi = len(self.alignment)
-
-        while lo < hi:
-            mid = (lo + hi) // 2
-            if self.alignment[mid] < new_alignment:
-                lo = mid + 1
-            else:
-                hi = mid
-        return lo
-
-
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
         Needs special casing to avoid looking at non-master chain entries."""
@@ -206,7 +184,7 @@ class ChainParser:
                 # self.find_old_query_location(new_alignment)  # Binary search using query
 
                 # Add new_alignment at ref location
-                scrutiny_index = max(self.alignment_chopping_index(new_alignment) - 1, 0)  # Binary search
+                scrutiny_index = max(alignment_chopping_index(self.alignment, new_alignment) - 1, 0)  # Binary search
                 try:
                     old = self.alignment.pop(scrutiny_index)
                     first, second = old.align_ref_unique(new_alignment)
