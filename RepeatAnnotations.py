@@ -28,11 +28,6 @@ class RepeatAnnotation(object):
         self.rep_family = repFamily
         self.rep_start = int(repStart)
         self.rep_end = int(repEnd)
-        if self.rep_end == self.rep_start:
-            if self.strand == '+':
-                self.rep_end += 1
-            else:
-                self.rep_start += 1
         self.__consensus_span = None
         self.__genome_span = None
 
@@ -59,6 +54,9 @@ class RepeatAnnotation(object):
         if geno_size != rep_size:
             print(geno_size, rep_size, geno_size - rep_size)
 
+    def is_good(self):
+        return self.rep_end != self.rep_start
+
 
 def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_value=None):
     # example: chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
@@ -69,13 +67,19 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
             headers = headers[1:-1].split('\t')  # remove '#' and \n
             white_list_key = headers.index(white_list_key)  # column index matching the filter criteria
         entries = []
+        bad_count = 0
         for row in csvfile:
             columns = row.split('\t')
             if white_list_key:
                 if white_list_value in columns[white_list_key]:  # [7] = rep_family, [5] = repName
-                    entries.append(RepeatAnnotation(*columns))
+                    annotation = RepeatAnnotation(*columns)
+                    if annotation.is_good():
+                        entries.append(annotation)
+                    else:
+                        bad_count += 1
             else:
                 entries.append(RepeatAnnotation(*columns))
+        print("Discarded", bad_count, "bad entries.")
         assert len(entries), "No matches found for " + str(white_list_value)
         return entries
 
@@ -108,7 +112,7 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         for text_line in display_lines:
-            line = array('u', ('A' * consensus_width) + '\n')
+            line = blank_line_array(consensus_width)
             for fragment in text_line:
                 nucleotides = fragment.genome_span().sample(seq)
                 if fragment.strand == '-':
@@ -121,12 +125,16 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
             out.write(''.join(line))
 
 
+def blank_line_array(consensus_width):
+    return array('u', ('A' * consensus_width) + '\n')
+
+
 def write_consensus_sandpile(anno_entries, out_filename, seq):
     consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        depth_graph = [0 for i in range(consensus_width)]
-        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        depth_graph = [0] * consensus_width
+        image = [blank_line_array(consensus_width) for _ in range(len(anno_entries))]
         for fragment in anno_entries:
             nucleotides = fragment.genome_span().sample(seq)
             if fragment.strand == '-':
@@ -286,12 +294,12 @@ def test_reader():
 if __name__ == '__main__':
     # test_reader()
     annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
-    column, rep_name = 'repName', 'L1HS'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    mode = 'condense'  # 'breaks' raw_breaks
     rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
     rep_entries = [x for x in rep_entries if x.geno_name == 'chr1' and len(x) < 1500]
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    mode = 'fasta'  # 'breaks' raw_breaks
     sequence = pluck_contig('chr1', 'data/hg38.fa') if 'breaks' not in mode else ''
     layout_repeats(rep_entries, 'data/hg38_chr1-short_' + rep_name.replace('_',''), sequence, mode)
     print('Done')
