@@ -216,7 +216,8 @@ class ChainParser:
 
         for pair in self.alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
-                self.switch_sequences(pair.query.contig_name, pair.query.strand)  # pair.ref.contig_name could be None
+                if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
+                    continue  # skip this pair since it can't be displayed
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
             query_snippet = pair.query.sample(self.query_sequence)
@@ -228,6 +229,7 @@ class ChainParser:
             if not self.aligned_only:  # Aligned_only simply skips over the unaligned tails
                 ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
                 ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
+
             if pair.is_hidden or self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = 'X' * len(ref_snippet)
                 query_snippet = 'X' * len(query_snippet)
@@ -349,8 +351,12 @@ class ChainParser:
             r += 1
 
         # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = os.path.join(self.output_folder, query_gapped_name.replace(self.gapped, '_unique'))
-        ref_unique_name = os.path.join(self.output_folder, ref_gapped_name.replace(self.gapped, '_unique'))
+        query_unique_name = query_gapped_name.replace(self.gapped, '_unique')
+        if not query_unique_name.startswith(self.output_folder):  # TODO: this shouldn't happen but it does
+            query_unique_name = os.path.join(self.output_folder, query_unique_name)
+        ref_unique_name = ref_gapped_name.replace(self.gapped, '_unique')
+        if not ref_unique_name.startswith(self.output_folder):
+            ref_unique_name = os.path.join(self.output_folder, ref_unique_name)
         write_complete_fasta(query_unique_name, query_uniq_array)
         write_complete_fasta(ref_unique_name, ref_uniq_array)
 

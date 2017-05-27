@@ -119,7 +119,7 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
                 if fragment.strand == '-':
                     nucleotides = rev_comp(nucleotides)
                 nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
-                if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
+                if fragment.rep_end < len(nucleotides):  # sequence I have sampled starts before the beginning of the frame
                     nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
                 line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
             assert len(line) == consensus_width + 1, display_lines.index(text_line)  # len(line)
@@ -292,8 +292,8 @@ def test_reader():
     assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
 
 
-def filter_repeats_by_chromosome(repeat_entries, contig):
-    return [x for x in repeat_entries if x.geno_name == contig.name]
+def filter_repeats_by_chromosome(repeat_entries, contig_name):
+    return [x for x in repeat_entries if x.geno_name == contig_name]
 
 
 if __name__ == '__main__':

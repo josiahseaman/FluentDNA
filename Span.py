@@ -95,7 +95,7 @@ class Span:
 
 
 class AlignedSpans:
-    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False):
+    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False, is_hidden=False):
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
         assert query_tail_size >= 0 and ref_tail_size >= 0, "Bad tail sizes %i and %i" % (ref_tail_size, query_tail_size)
@@ -107,7 +107,7 @@ class AlignedSpans:
         self.query_tail_size = query_tail_size
         self.is_master_chain = is_master_chain
         self.is_first_entry = is_first_entry
-        self.is_hidden = False
+        self.is_hidden = is_hidden
 
 
     def ref_unique_span(self):
@@ -121,6 +121,8 @@ class AlignedSpans:
         """Useful for putting Spans in a sorted list"""
         if isinstance(other, AlignedSpans):  # TODO: more cases for None
             return self.ref.begin < other.ref.begin
+        elif isinstance(other, Span):
+            return self.ref.begin < other.begin
         else:
             return self.ref.begin < other
 
