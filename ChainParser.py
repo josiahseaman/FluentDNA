@@ -316,6 +316,20 @@ class ChainParser:
 
 
     def print_only_unique(self, query_gapped_name, ref_gapped_name):
+        query_uniq_array, ref_uniq_array = self.compute_unique_sequence()
+
+        query_unique_name = query_gapped_name.replace(self.gapped, '_unique')
+        if not query_unique_name.startswith(self.output_folder):  # TODO: this shouldn't happen but it does
+            query_unique_name = os.path.join(self.output_folder, query_unique_name)
+        ref_unique_name = ref_gapped_name.replace(self.gapped, '_unique')
+        if not ref_unique_name.startswith(self.output_folder):
+            ref_unique_name = os.path.join(self.output_folder, ref_unique_name)
+        write_complete_fasta(query_unique_name, query_uniq_array)
+        write_complete_fasta(ref_unique_name, ref_uniq_array)
+
+        return ref_unique_name, query_unique_name
+
+    def compute_unique_sequence(self):
         query_uniq_array = array('u', self.query_seq_gapped)
         ref_uniq_array = array('u', self.ref_seq_gapped)
         print("Done allocating unique array")
@@ -350,18 +364,7 @@ class ChainParser:
             q += 1
             r += 1
 
-        # Just to be thorough: prints aligned section (shortest_sequence) plus any dangling end sequence
-        query_unique_name = query_gapped_name.replace(self.gapped, '_unique')
-        if not query_unique_name.startswith(self.output_folder):  # TODO: this shouldn't happen but it does
-            query_unique_name = os.path.join(self.output_folder, query_unique_name)
-        ref_unique_name = ref_gapped_name.replace(self.gapped, '_unique')
-        if not ref_unique_name.startswith(self.output_folder):
-            ref_unique_name = os.path.join(self.output_folder, ref_unique_name)
-        write_complete_fasta(query_unique_name, query_uniq_array)
-        write_complete_fasta(ref_unique_name, ref_uniq_array)
-
-        return ref_unique_name, query_unique_name
-
+        return query_uniq_array, ref_uniq_array
 
     def create_alignment_from_relevant_chains(self, ref_chr, relevant_chains=None):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.

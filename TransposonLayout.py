@@ -14,16 +14,22 @@ class TransposonLayout(TileLayout):
         self.repeat_entries = None
 
 
+    def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
+        self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)  # sets self.layout
+        self.read_contigs(input_file_path)
+        super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
+        self.output_image(output_folder, output_file_name)
+
+
     def process_file(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename=None):
         start_time = datetime.now()
         self.read_all_files(ref_fasta, repeat_annotation_filename)
+        consensus_width = max_consensus_width(self.repeat_entries)
+        num_lines = len(self.repeat_entries)
 
         print("Read contigs :", datetime.now() - start_time)
 
-        self.layout_based_on_repeat_size()
-        self.image_length = max_consensus_width(self.repeat_entries) * len(self.repeat_entries)
-        self.prepare_image(self.image_length)
-        print("Image is ", self.image.width, "x", self.image.height)
+        self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)
         print("Initialized Image:", datetime.now() - start_time, "\n")
         try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
             self.draw_nucleotides()
@@ -35,6 +41,13 @@ class TransposonLayout(TileLayout):
         print("Output Image in:", datetime.now() - start_time)
 
 
+    def initialize_image_by_sequence_dimensions(self, consensus_width, num_lines):
+        self.layout_based_on_repeat_size(consensus_width)
+        self.image_length = consensus_width * num_lines
+        self.prepare_image(self.image_length)
+        print("Image is ", self.image.width, "x", self.image.height)
+
+
     def read_all_files(self, ref_fasta, repeat_annotation_filename, column='repName', rep_name='L1PA3'):
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
@@ -44,9 +57,8 @@ class TransposonLayout(TileLayout):
         self.read_contigs(ref_fasta)
 
 
-    def layout_based_on_repeat_size(self):
+    def layout_based_on_repeat_size(self, consensus_width):
         """change layout to match dimensions of the repeat"""
-        consensus_width = max_consensus_width(self.repeat_entries)
         self.levels = [
             LayoutLevel("X_in_consensus", consensus_width, 1, 0),  # [0]
             LayoutLevel("Instance_line", consensus_width * 10, consensus_width, 0)  # [1]
