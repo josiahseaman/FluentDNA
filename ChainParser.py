@@ -237,8 +237,18 @@ class ChainParser:
                 query_snippet = 'X' * len(query_snippet)
             elif self.separate_translocations and pair.is_first_entry and not pair.is_master_chain:
                 self.add_translocation_header(pair)
+            if len(query_snippet) != len(ref_snippet):  # make absolute sure we don't step out of phase with bad lengths
+                difference = len(ref_snippet) - len(query_snippet)
+                ref_snippet += 'X' * max(0, -difference)
+                query_snippet += 'X' * max(0, difference)
+
+            assert len(query_snippet) == len(ref_snippet), "Mismatched lengths: " + '\n'.join([ref_snippet, query_snippet])
             self.query_seq_gapped.extend(query_snippet)
             self.ref_seq_gapped.extend(ref_snippet)
+
+            # else:  # if 'random' not in str(pair) and 'unknown' not in str(pair):  # Only notify me when a
+            #     print("Processed bad alignment pair:\n", pair, "\nRef:", ref_snippet, "\nQry:", query_snippet)
+
         print("Done gapping sequence")
 
 

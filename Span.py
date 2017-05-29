@@ -89,8 +89,14 @@ class Span:
         return first, second  # happy path
 
 
-    def sample(self, sequence):
-        return sequence[self.begin: self.end]
+    def sample(self, sequence, error_gap_okay=True):
+        try:
+            return sequence[self.begin: self.end]
+        except IndexError as e:
+            if error_gap_okay:
+                return 'X' * len(self)
+            else:
+                raise e
 
 
 

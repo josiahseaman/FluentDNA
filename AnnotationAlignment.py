@@ -51,13 +51,16 @@ def align_annotation(annotation_filename, ref_fasta, query_fasta, chain_file):
     chain = ChainParser(chain_file, ref_fasta, query_fasta, '')
     # We want to do pieces of the contents of _parse_chromosome_in_chain
     names, ref_chr = chain.setup_for_reference_chromosome(chromosome)  # TODO: make this the parent folder
-    chain.create_alignment_from_relevant_chains(ref_chr)
+    chain.create_alignment_from_relevant_chains(chromosome)
 
     for repeat_type_name in repeat_families:
         ending = chromosome + '_' + repeat_type_name
         repeat_entries = filter_repeats_by_chromosome_and_family(all_repeat_entries, chromosome, repeat_type_name)
         repeat_entries.sort(key=lambda x: -len(x))
-        consensus_width = max_consensus_width(repeat_entries)
+        try:
+            consensus_width = max_consensus_width(repeat_entries)
+        except ValueError:
+            continue  # There's no usable entries left to use
 
         # modify chain.alignment to only contain annotated stretches
         chain.output_folder = make_output_dir_with_suffix(chain.output_prefix, ending)  # create a folder specifically for this repeat
