@@ -296,6 +296,10 @@ def filter_repeats_by_chromosome(repeat_entries, contig_name):
     return [x for x in repeat_entries if x.geno_name == contig_name]
 
 
+def filter_repeats_by_chromosome_and_family(repeat_entries, contig_name, family):
+    return [x for x in repeat_entries if x.geno_name == contig_name and x.rep_family == family]
+
+
 if __name__ == '__main__':
     # test_reader()
     annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment

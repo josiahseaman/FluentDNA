@@ -1,10 +1,11 @@
 import os
+from array import array
 
 from ChainParser import ChainParser
 from Span import alignment_chopping_index, AlignedSpans, Span
-from DDVUtils import Contig, just_the_name
-from RepeatAnnotations import max_consensus_width, read_repeatmasker_csv
-from TransposonLayout import TransposonLayout, grab_aligned_repeat, filter_repeats_by_chromosome
+from DDVUtils import just_the_name, make_output_dir_with_suffix
+from RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, filter_repeats_by_chromosome_and_family
+from TransposonLayout import TransposonLayout
 
 
 # class AnnotationAlignment:
@@ -44,29 +45,34 @@ def create_aligned_annotation_fragments(alignment, repeat_entries):
 
 def align_annotation(annotation_filename, ref_fasta, query_fasta, chain_file):
     chromosome = 'chr1'
-    repeat_type_name = 'Alu'
-    repeat_entries = read_repeatmasker_csv(annotation_filename, 'repFamily', repeat_type_name)
-    repeat_entries = filter_repeats_by_chromosome(repeat_entries, chromosome)
-    repeat_entries.sort(key=lambda x: -len(x))
-    consensus_width = max_consensus_width(repeat_entries)
-    # We want to do pieces of the contents of _parse_chromosome_in_chain
+    all_repeat_entries = read_repeatmasker_csv(annotation_filename, 'genoName', chromosome)
+    repeat_families = set(x.rep_family.replace('?', '#') for x in all_repeat_entries if x.rep_family)
+
     chain = ChainParser(chain_file, ref_fasta, query_fasta, '')
-    names, ref_chr = chain.setup_for_reference_chromosome(chromosome, ending='_' + repeat_type_name)
+    # We want to do pieces of the contents of _parse_chromosome_in_chain
+    names, ref_chr = chain.setup_for_reference_chromosome(chromosome)  # TODO: make this the parent folder
     chain.create_alignment_from_relevant_chains(ref_chr)
 
-    # modify chain.alignment to only contain annotated stretches
-    print("Consensus Width: ", consensus_width)
-    trimmed_alignment = create_aligned_annotation_fragments(chain.alignment, repeat_entries)
-    chain.create_fasta_from_composite_alignment(previous_chr=None, alignment=trimmed_alignment)  # populates chain.query_seq_gapped and ref_seq_gapped
-    # or if no fasta output is wanted: query_uniq_array, ref_uniq_array = chain.compute_unique_sequence()
+    for repeat_type_name in repeat_families:
+        ending = chromosome + '_' + repeat_type_name
+        repeat_entries = filter_repeats_by_chromosome_and_family(all_repeat_entries, chromosome, repeat_type_name)
+        repeat_entries.sort(key=lambda x: -len(x))
+        consensus_width = max_consensus_width(repeat_entries)
 
-    names['ref_gapped'], names['query_gapped'] = chain.write_gapped_fasta(names['ref'], names['query'], prepend_output_folder=True)
-    print(names['ref_gapped'], names['query_gapped'])
-    names['ref_unique'], names['query_unique'] = chain.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        # modify chain.alignment to only contain annotated stretches
+        chain.output_folder = make_output_dir_with_suffix(chain.output_prefix, ending)  # create a folder specifically for this repeat
+        chain.query_seq_gapped = array('u', '')  # these need to be cleared so they don't accumulate the previous family
+        chain.ref_seq_gapped = array('u', '')
+        trimmed_alignment = create_aligned_annotation_fragments(chain.alignment, repeat_entries)
+        chain.create_fasta_from_composite_alignment(previous_chr=None, alignment=trimmed_alignment)  # populates chain.query_seq_gapped and ref_seq_gapped
+        # or if no fasta output is wanted: query_uniq_array, ref_uniq_array = chain.compute_unique_sequence()
 
-    num_lines = len(chain.alignment) + 30 + 10  # 30 for title, 10 for origin
-    for key in ['ref_gapped', 'query_gapped', 'ref_unique', 'query_unique']:
-        make_image_from_repeat_fasta(names[key], consensus_width, num_lines)
+        names['ref_gapped'], names['query_gapped'] = chain.write_gapped_fasta(names['ref'], names['query'], prepend_output_folder=True)
+        names['ref_unique'], names['query_unique'] = chain.print_only_unique(names['query_gapped'], names['ref_gapped'])
+
+        num_lines = len(trimmed_alignment) + 30 + 10  # 30 for title, 10 for origin
+        for key in ['ref_gapped', 'query_gapped', 'ref_unique', 'query_unique']:
+            make_image_from_repeat_fasta(names[key], consensus_width, num_lines)
 
 
 def make_image_from_repeat_fasta(current_file, consensus_width, num_lines):
