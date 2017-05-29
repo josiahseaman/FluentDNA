@@ -209,12 +209,14 @@ class ChainParser:
         return ref_pointer, query_pointer
 
 
-    def create_fasta_from_composite_alignment(self, previous_chr=None):
+    def create_fasta_from_composite_alignment(self, previous_chr=None, alignment=None):
         """self.alignment is a data structure representing the composites of all the relevant
         chain data.  This method turns that data construct into a gapped FASTA file by reading the original
         FASTA files."""
+        if alignment is None:
+            alignment = self.alignment
 
-        for pair in self.alignment:
+        for pair in alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
                 if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
                     continue  # skip this pair since it can't be displayed
@@ -379,8 +381,9 @@ class ChainParser:
             previous = chain
 
 
-    def setup_for_reference_chromosome(self, ref_chr):
-        ending = ref_chr + '__squished' * self.squish_gaps + \
+    def setup_for_reference_chromosome(self, ref_chr, ending=''):
+        ending = ref_chr + ending + \
+            '__squished' * self.squish_gaps + \
             '__separate_translocations' * self.separate_translocations + \
             '__translocations' * self.show_translocations_only + \
             '__aligned_only' * self.aligned_only
