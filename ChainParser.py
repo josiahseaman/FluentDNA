@@ -31,7 +31,7 @@ def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
 class ChainParser:
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
-                 show_translocations_only=False, aligned_only=False):
+                 show_translocations_only=False, aligned_only=False, no_titles=False):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -39,6 +39,7 @@ class ChainParser:
         self.query_contigs = dict()
         self.trial_run = trial_run
         self.separate_translocations = separate_translocations
+        self.no_titles = no_titles
         self.show_translocations_only = show_translocations_only
         self.squish_gaps = squish_gaps
         self.aligned_only = aligned_only
@@ -290,15 +291,20 @@ class ChainParser:
 
 
     def pad_next_line(self):
-        self.ref_seq_gapped.extend('X' * len(self.ref_seq_gapped) % 100)
-        self.query_seq_gapped.extend('X' * len(self.query_seq_gapped) % 100)
+        column_width = 100
+        characters_remaining = column_width - (len(self.ref_seq_gapped) % column_width)
+        self.ref_seq_gapped.extend('X' * characters_remaining)
+        self.query_seq_gapped.extend('X' * characters_remaining)
 
 
     def add_translocation_header(self, alignment):
         """ :param alignment: AlignedSpan
         """
-        self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.ref.contig_name, alignment.ref.strand, alignment.ref.begin))  # visual separators
-        self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.query.contig_name, alignment.query.strand, alignment.query.begin))
+        if self.no_titles:
+            self.pad_next_line()
+        else:
+            self.ref_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.ref.contig_name, alignment.ref.strand, alignment.ref.begin))  # visual separators
+            self.query_seq_gapped.extend('\n>%s_%s_%i\n' % (alignment.query.contig_name, alignment.query.strand, alignment.query.begin))
 
         # delete the ungapped query sequence
         # 	delete the query sequence that doesn't match to anything based on the original start, stop, size,

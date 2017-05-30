@@ -159,6 +159,7 @@ def ddv(args):
                                        output_prefix=base_path,
                                        trial_run=args.trial_run,
                                        separate_translocations=args.separate_translocations,
+                                       no_titles=args.no_titles,
                                        squish_gaps=args.squish_gaps,
                                        show_translocations_only=args.show_translocations_only,
                                        aligned_only=args.aligned_only)
@@ -279,6 +280,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Don't edit in translocations, list them at the end.",
                         dest="separate_translocations")
+    parser.add_argument("-nt", "--no_titles",
+                        action='store_true',
+                        help="No gaps for a title.  Useful when combined with separate_translocations",
+                        dest="no_titles")
     parser.add_argument("-g", "--squish_gaps",
                         action='store_true',
                         help="If two gaps are approximately the same size, subtract the intersection.",
