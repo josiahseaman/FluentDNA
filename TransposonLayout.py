@@ -1,10 +1,12 @@
 import traceback
+from collections import defaultdict
 from datetime import datetime
 
+import math
 from array import array
 
 from DDVUtils import LayoutLevel, rev_comp, Contig
-from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array, filter_repeats_by_chromosome
+from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
 
 
@@ -77,18 +79,18 @@ class TransposonLayout(TileLayout):
 
     def create_repeat_fasta_contigs(self):
         consensus_width = max_consensus_width(self.repeat_entries)
-        # matches = [contig for contig in self.contigs if contig.name == self.current_chromosome]
         processed_contigs = []
+        ordered_lines = defaultdict(lambda: 'X' * consensus_width)
         for contig in self.contigs:
-            display_lines = []
-            reps_on_chr = filter_repeats_by_chromosome(self.repeat_entries, contig.name)
-            for fragment in reps_on_chr:
-                line = grab_aligned_repeat(consensus_width, contig, fragment)
-                display_lines.append(''.join(line))
+            for line_number, fragment in enumerate(self.repeat_entries):
+                if fragment.geno_name == contig.name:
+                    line = grab_aligned_repeat(consensus_width, contig, fragment)
+                    ordered_lines[line_number] = ''.join(line)
 
-            processed_seq = ''.join(display_lines)
-            processed_contigs.append(Contig(contig.name, processed_seq, 0, 0, 0,
-                                            0, 0))  # TODO: title_length currently doesn't have a title and might break mouse tracking
+        processed_seq = ''.join([ordered_lines[i] for i in range(len(self.repeat_entries))])
+        processed_contigs.append(Contig('Sorted_by_length', processed_seq, 0, 0, 0,
+                                        0, 0, consensus_width=consensus_width))
+        # TODO: title_length currently doesn't have a title and might break mouse tracking
         return processed_contigs
 
 

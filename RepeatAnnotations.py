@@ -59,7 +59,7 @@ class RepeatAnnotation(object):
         return self.rep_end != self.rep_start
 
 
-def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_value=None):
+def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_value=None, strict=True):
     # example: chr20	1403353	1403432	63040735	-	L3	LINE	CR1	3913	3992
     with open(annotation_filename) as csvfile:
         headers = csvfile.readline()  # ensure the header is what I am expecting and matches RepeatAnnotation definition
@@ -72,7 +72,8 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
         for row in csvfile:
             columns = row.split('\t')
             if white_list_key:
-                if white_list_value in columns[white_list_key]:  # [7] = rep_family, [5] = repName
+                if not strict and white_list_value in columns[white_list_key] \
+                        or strict and white_list_value == columns[white_list_key]:  # [7] = rep_family, [5] = repName
                     annotation = RepeatAnnotation(*columns)
                     if annotation.is_good():
                         entries.append(annotation)
@@ -253,6 +254,7 @@ def output_archetypes_fasta(ano_entries, out_filename, seq):
             if fragment.strand == '-':
                 nucleotides = rev_comp(nucleotides)
             out.write(nucleotides + '\n')  # we're currently not dividing long lines (not FASTA standard)
+        print("Wrote", out_filename)
 
 
 def layout_repeats(anno_entries, filename, seq, key='condense', kwargs=None):
@@ -282,6 +284,8 @@ def layout_repeats(anno_entries, filename, seq, key='condense', kwargs=None):
         output_transposon_fasta(anno_entries, filename, seq)
     elif key == 'archetypes':
         output_archetypes_fasta(anno_entries, filename, seq)
+    else:
+        print("Key not recognized:", key)
 
 
 
@@ -306,12 +310,16 @@ if __name__ == '__main__':
     mode, column, rep_name = sys.argv[1], sys.argv[2], sys.argv[3]  # 'condense', 'repName', 'L1PA3'
     # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     # mode = 'condense'  # 'breaks' raw_breaks
-    rep_entries = read_repeatmasker_csv(annotation, column, rep_name)
+    rep_entries = read_repeatmasker_csv(annotation, column, rep_name, strict=True)
     chromosome = 'chr1' if len(sys.argv) < 5 else sys.argv[4]
-    rep_entries = filter_repeats_by_chromosome(rep_entries, chromosome)
+    if 'breaks' not in mode:
+        sequence = pluck_contig(chromosome, 'data/hg38.fa')
+        rep_entries = filter_repeats_by_chromosome(rep_entries, chromosome)
+    else:
+        sequence = ''
+        chromosome = ''
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    sequence = pluck_contig(chromosome, 'data/hg38.fa') if 'breaks' not in mode else ''
-    layout_repeats(rep_entries, 'data/hg38_chr1-short_' + rep_name.replace('_',''), sequence, mode)
+    layout_repeats(rep_entries, 'data/hg38_' + chromosome + '_' + rep_name.replace('_', ''), sequence, mode)
     print('Done')
 

@@ -37,7 +37,7 @@ class LayoutLevel:
 
 
 class Contig:
-    def __init__(self, name, seq, reset_padding, title_padding, tail_padding, title_index, title_length):
+    def __init__(self, name, seq, reset_padding, title_padding, tail_padding, title_index, title_length, consensus_width=0):
         self.name = name
         self.seq = seq
         self.reset_padding = reset_padding
@@ -45,6 +45,7 @@ class Contig:
         self.tail_padding = tail_padding
         self.nuc_title_start = title_index  # These two are used to track mouse position on the web UI
         self.nuc_seq_start = title_index + title_length
+        self.consensus_width = consensus_width
 
 
 
