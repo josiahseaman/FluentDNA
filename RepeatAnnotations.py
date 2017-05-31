@@ -156,7 +156,6 @@ def write_consensus_sandpile(anno_entries, out_filename, seq):
 def max_consensus_width(anno_entries):
     consensus_width = max(max([e.rep_end for e in anno_entries]),
                           max([e.rep_start + len(e) for e in anno_entries]))  # two different ways of finding the end
-    consensus_width = (consensus_width + (12 - consensus_width % 12))  # make it a multiple of 12
     return consensus_width
 
 
