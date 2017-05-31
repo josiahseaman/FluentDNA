@@ -45,6 +45,11 @@ class TransposonLayout(TileLayout):
         print("Output Image in:", datetime.now() - start_time)
 
 
+    def max_dimensions(self, image_length):
+        rough = math.ceil(math.sqrt(image_length * 4))
+        return rough + 50, rough + 50
+
+
     def initialize_image_by_sequence_dimensions(self, consensus_width, num_lines):
         self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
@@ -56,7 +61,7 @@ class TransposonLayout(TileLayout):
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
         self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, rep_name)
-        self.repeat_entries.sort(key=lambda x: -len(x))  # longest first
+        self.repeat_entries.sort(key=lambda x: -len(x) + x.geno_start / 200000000)  # longest first, chromosome position breaks ties
         print("Found %i entries under %s" % (len(self.repeat_entries), str(rep_name)))
         self.read_contigs(ref_fasta)
 
@@ -65,10 +70,10 @@ class TransposonLayout(TileLayout):
         """change layout to match dimensions of the repeat"""
         self.levels = [
             LayoutLevel("X_in_consensus", consensus_width, 1, 0),  # [0]
-            LayoutLevel("Instance_line", 100 * 100, consensus_width, 0)  # [1]  10x taller than normal layout columns
+            LayoutLevel("Instance_line", 400, consensus_width, 0)  # [1]
         ]
         self.levels.append(LayoutLevel("TypeColumn", 100, padding=20, levels=self.levels))  # [2]
-        self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
+        self.levels.append(LayoutLevel("RowInTile", 1000, levels=self.levels))  # [3]
         self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
 
@@ -84,33 +89,44 @@ class TransposonLayout(TileLayout):
         for contig in self.contigs:
             assert contig.consensus_width, "You must set the consensus_width in order to use this layout"
             self.layout_based_on_repeat_size(contig.consensus_width)
+            if self.origin[0] + contig.consensus_width + 10 > self.image.width:
+                self.skip_to_next_mega_row()
+            if self.origin[1] > self.image.height:
+                return  # can't fit anything more
             contig_progress = 0
             seq_length = len(contig.seq)
             line_width = self.levels[0].modulo
-            try:
-                for cx in range(0, seq_length, line_width):
-                    x, y = self.position_on_screen(contig_progress)
-                    remaining = min(line_width, seq_length - cx)
-                    contig_progress += remaining
+            for cx in range(0, seq_length, line_width):
+                x, y = self.position_on_screen(contig_progress)
+                remaining = min(line_width, seq_length - cx)
+                contig_progress += remaining
+                try:
                     for i in range(remaining):
                         nuc = contig.seq[cx + i]
                         # if nuc != 'X':
                         self.draw_pixel(nuc, x + i, y)
-            except:
-                print("Skipping to next row:", self.origin)
-                self.origin[0] = self.levels[2].padding  # start at left again
-                self.origin[1] += self.levels[1].thickness  # go to next mega row
-                continue
-            # add trailing white space after the contig sequence body
+                except:
+                    self.skip_to_next_mega_row()
+                    contig_progress = 0  # reset to beginning of line
+                    continue
             columns_consumed = math.ceil(contig_progress / self.levels[2].chunk_size)
             self.origin[0] += columns_consumed * self.levels[2].thickness
 
+    def skip_to_next_mega_row(self):
+        print("Skipping to next row:", self.origin)
+        self.origin[0] = self.levels[2].padding  # start at left again
+        self.origin[1] += self.levels[3].thickness  # go to next mega row
 
     def create_repeat_fasta_contigs(self):
         processed_contigs = []
-        rep_names = {x.rep_name for x in self.repeat_entries}
+        rep_names = list({x.rep_name for x in self.repeat_entries})
+        rep_names.sort()  # iterate through unique set in alphabetical order
         for rep_name in rep_names:
-            processed_contigs.append(self.make_contig_from_repName(rep_name))
+            contig = self.make_contig_from_repName(rep_name)
+            lines_in_contig = len(contig.seq) // contig.consensus_width
+            # minimum number of repeats based on aspect ratio 1:20
+            if lines_in_contig > 10 and lines_in_contig > contig.consensus_width // 20:
+                processed_contigs.append(contig)
         return processed_contigs
 
 
