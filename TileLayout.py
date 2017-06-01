@@ -216,7 +216,8 @@ class TileLayout:
         title_lines = 2
 
         # Title orientation and size
-        if contig.title_padding == self.levels[2].chunk_size:
+        vertical_label = contig.title_padding == self.levels[2].chunk_size
+        if vertical_label:
             # column titles are vertically oriented
             width, height = height, width  # swap
             font_size = 38
@@ -237,17 +238,20 @@ class TileLayout:
                 height = self.levels[3].thickness
                 width = self.levels[4].thickness * tiles_spanned  # spans 3 full Tiles, or one full Page width
 
+        contig_name = contig.name
+        self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label)
+
+
+    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label):
+        multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         font = ImageFont.truetype("tahoma.ttf", font_size)
         txt = Image.new('RGBA', (width, height))
-        multi_line_title = pretty_contig_name(contig, title_width, title_lines)
-
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
                                            fill=(0, 0, 0, 255))
-        if contig.title_padding == self.levels[2].chunk_size:
+        if vertical_label:
             txt = txt.rotate(90, expand=True)
             upper_left[0] += 8  # adjusts baseline for more polish
-
         self.image.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 

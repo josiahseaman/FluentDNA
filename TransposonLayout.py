@@ -16,6 +16,7 @@ class TransposonLayout(TileLayout):
         super().__init__()
         self.using_mixed_widths = False
         self.repeat_entries = None
+        self.column_height = 400
 
 
     def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
@@ -26,17 +27,15 @@ class TransposonLayout(TileLayout):
         self.output_image(output_folder, output_file_name)
 
 
-    def process_file(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename=None):
+    def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosome):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
+        self.origin[1] += self.levels[5].padding  # One full Row of padding for Title
         start_time = datetime.now()
-        self.read_all_files(ref_fasta, repeat_annotation_filename)
-        average_width = int(statistics.mean([x.rep_end for x in self.repeat_entries]))  # rough approximation of size
-        num_lines = len(self.repeat_entries)
-        print("Average Width", average_width, "Entries", num_lines)
+        self.read_all_files(ref_fasta, repeat_annotation_filename, chromosome)
 
         print("Read contigs :", datetime.now() - start_time)
 
-        self.initialize_image_by_sequence_dimensions(average_width, num_lines)
+        self.initialize_image_by_sequence_dimensions()
         print("Initialized Image:", datetime.now() - start_time, "\n")
         try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
             self.draw_nucleotides()
@@ -57,36 +56,48 @@ class TransposonLayout(TileLayout):
             return super(TransposonLayout, self).max_dimensions(image_length)
 
 
-    def initialize_image_by_sequence_dimensions(self, consensus_width, num_lines):
+    def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
+        if consensus_width is None:
+            consensus_width = int(statistics.mean([x.rep_end for x in self.repeat_entries]))  # rough approximation of size
+            num_lines = len(self.repeat_entries)
+            print("Average Width", consensus_width, "Entries", num_lines)
+            self.set_column_height()
+        else:
+            self.column_height = 1000
+
         self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
         print("Image is ", self.image.width, "x", self.image.height)
 
 
-    def read_all_files(self, ref_fasta, repeat_annotation_filename, column='genoName', rep_name='chr20'):
+    def read_all_files(self, ref_fasta, repeat_annotation_filename, chromosome):
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
-        self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, rep_name)
-        self.filter_simple_repeats()
+        column = 'genoName'
+        self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, chromosome)
+        self.filter_simple_repeats(return_only_simple_repeats=False)
         self.repeat_entries.sort(key=lambda x: -len(x) + x.geno_start / 200000000)  # longest first, chromosome position breaks ties
-        print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(rep_name)))
+        print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(chromosome)))
         self.read_contigs(ref_fasta)
 
 
-    def filter_simple_repeats(self):
+    def filter_simple_repeats(self, return_only_simple_repeats=False):
         # TODO: option to keep ONLY simple_repeats and delete everything else
         before = len(self.repeat_entries)
-        self.repeat_entries = [x for x in self.repeat_entries if x.rep_class != 'Simple_repeat']  # remove 'simple'
+        if return_only_simple_repeats:
+            self.repeat_entries = [x for x in self.repeat_entries if x.rep_class == 'Simple_repeat']  # remove 'simple'
+        else:
+            self.repeat_entries = [x for x in self.repeat_entries if x.rep_class != 'Simple_repeat']  # remove 'simple'
         difference = before - len(self.repeat_entries)
-        print("Removed", difference, "simple repeats", "{:.1%}".format(difference / before), "of the data.")
+        print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
     def layout_based_on_repeat_size(self, consensus_width):
         """change layout to match dimensions of the repeat"""
         self.levels = [
             LayoutLevel("X_in_consensus", consensus_width, 1, 0),  # [0]
-            LayoutLevel("Instance_line", 400, consensus_width, 0)  # [1]
+            LayoutLevel("Instance_line", self.column_height, consensus_width, 0)  # [1]
         ]
         if self.using_mixed_widths:
             self.levels.append(LayoutLevel("TypeColumn", 999999, padding=20, levels=self.levels))  # [2]
@@ -125,6 +136,8 @@ class TransposonLayout(TileLayout):
                 if y + self.levels[1].modulo >= self.image.height:
                     print("Ran into bottom of image at", contig.name)
                     return contig  # can't fit anything more
+                if y == self.origin[1]:  # first line in a column
+                    self.draw_repeat_title(contig, x, y)
                 remaining = min(line_width, seq_length - cx)
                 contig_progress += remaining
                 for i in range(remaining):
@@ -170,6 +183,26 @@ class TransposonLayout(TileLayout):
         contig_name = '__'.join([annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
         return Contig(contig_name, processed_seq, 0, 0, 0,
                       0, 0, consensus_width=consensus_width)
+
+    def draw_repeat_title(self, contig, x, y):
+        chars_per_line = math.ceil(contig.consensus_width / 5.625)
+        height = 30
+        self.write_title(contig.name,
+                         width=contig.consensus_width,
+                         height=height - 5,
+                         font_size=9,
+                         title_lines=2,
+                         title_width=chars_per_line,
+                         upper_left=[x, y - height],
+                         vertical_label=False)
+
+    def set_column_height(self):
+        counts = defaultdict(lambda: 0)
+        for x in self.repeat_entries:
+            counts[x.rep_name] += 1
+        average_line_count = math.ceil(statistics.mean(counts.values()))
+        print("Setting Column Height to %i based on Average line count per Repeat Name" % (average_line_count * 2))
+        self.column_height = average_line_count * 2
 
 
 def grab_aligned_repeat(consensus_width, contig, fragment):

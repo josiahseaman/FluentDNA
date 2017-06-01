@@ -89,10 +89,10 @@ def multi_line_height(font, multi_line_title, txt):
     return sum_line_spacing + descender
 
 
-def pretty_contig_name(contig, title_width, title_lines):
+def pretty_contig_name(contig_name, title_width, title_lines):
     """Since textwrap.wrap break on whitespace, it's important to make sure there's whitespace
     where there should be.  Contig names don't tend to be pretty."""
-    pretty_name = contig.name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
+    pretty_name = contig_name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)  # don't ask
     if title_width < 20 and len(pretty_name) > title_width * 1.5:  # this is a suboptimal special case to try and

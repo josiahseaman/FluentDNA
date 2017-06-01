@@ -163,8 +163,8 @@ def unnormalized_histogram_of_breakpoints(anno_entries, out_filename):
     consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        depth_graph = [0 for i in range(consensus_width)]
-        image = [array('u', ('A' * consensus_width) + '\n') for i in range(len(anno_entries))]
+        depth_graph = [0 for _ in range(consensus_width)]
+        image = [array('u', ('A' * consensus_width) + '\n') for _ in range(len(anno_entries))]
         for fragment in anno_entries:
             x = fragment.rep_start
             image[depth_graph[x]][x] = 'G'
@@ -183,8 +183,8 @@ def histogram_of_breakpoints(anno_entries, out_filename, reference_points=None):
     consensus_width = max_consensus_width(anno_entries)
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
-        breakpoints = [0 for i in range(consensus_width)]
-        coverage = [0 for i in range(consensus_width)]
+        breakpoints = [0 for _ in range(consensus_width)]
+        coverage = [0 for _ in range(consensus_width)]
         for fragment in anno_entries:
             for x in range(fragment.rep_start, fragment.rep_end + 1):
                 coverage[x] += 1  # used for normalization
@@ -205,7 +205,7 @@ def histogram_of_breakpoints(anno_entries, out_filename, reference_points=None):
             normalized_break_counts.append(breakpoints[x] / max(1, expected_breaks[x]))  # 566 copies is a good cutoff for L1
         int_break_counts = [min(1000, int(normalized_break_counts[x] * 20.0)) for x in range(consensus_width)]
         greatest_depth = max(int_break_counts) + 1
-        image = [array('u', ('A' * consensus_width) + '\n') for i in range(greatest_depth)]
+        image = [array('u', ('A' * consensus_width) + '\n') for _ in range(greatest_depth)]
         for line_number, line in enumerate(image[:greatest_depth]):
             for x in range(consensus_width):
                 if reference_points is not None and x in reference_points:
@@ -256,7 +256,7 @@ def output_archetypes_fasta(ano_entries, out_filename, seq):
         print("Wrote", out_filename)
 
 
-def layout_repeats(anno_entries, filename, seq, key='condense', kwargs=None):
+def layout_repeats(anno_entries, filename, seq, key='condense'):
     filename = filename + '_' + key
     if key == 'condense':
         display_lines = condense_fragments_to_lines(anno_entries, crowded_count=10)
@@ -305,20 +305,19 @@ def filter_repeats_by_chromosome_and_family(repeat_entries, contig_name, family)
 
 if __name__ == '__main__':
     # test_reader()
-    annotation = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
-    mode, column, rep_name = sys.argv[1], sys.argv[2], sys.argv[3]  # 'condense', 'repName', 'L1PA3'
+    annotation_file = r'data\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
+    layout_mode, column, rep_name = sys.argv[1], sys.argv[2], sys.argv[3]  # 'condense', 'repName', 'L1PA3'
     # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
     # mode = 'condense'  # 'breaks' raw_breaks
-    rep_entries = read_repeatmasker_csv(annotation, column, rep_name, strict=True)
-    chromosome = 'chr1' if len(sys.argv) < 5 else sys.argv[4]
-    if 'breaks' not in mode:
-        sequence = pluck_contig(chromosome, 'data/hg38.fa')
-        rep_entries = filter_repeats_by_chromosome(rep_entries, chromosome)
+    rep_entries = read_repeatmasker_csv(annotation_file, column, rep_name, strict=True)
+    target_chr = 'chr1' if len(sys.argv) < 5 else sys.argv[4]
+    if 'breaks' not in layout_mode:
+        sequence = pluck_contig(target_chr, 'data/hg38.fa')
+        rep_entries = filter_repeats_by_chromosome(rep_entries, target_chr)
     else:
         sequence = ''
-        chromosome = ''
+        target_chr = ''
     print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
 
-    layout_repeats(rep_entries, 'data/hg38_' + chromosome + '_' + rep_name.replace('_', ''), sequence, mode)
+    layout_repeats(rep_entries, 'data/hg38_' + target_chr + '_' + rep_name.replace('_', ''), sequence, layout_mode)
     print('Done')
-

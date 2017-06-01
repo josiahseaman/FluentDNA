@@ -143,7 +143,9 @@ def ddv(args):
     if args.layout_type == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout.process_file(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation)
+        if len(args.chromosomes) != 1:
+            raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
+        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes[0])
         print("Done with Transposons")
         sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -333,8 +335,8 @@ if __name__ == "__main__":
         parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
     # if args.layout_type and args.layout_type == 'unique' and args.extra_fastas:
     #     parser.error("For Unique view, you don't need to specify 'extrafastas'.")
-    if args.chromosomes and not args.chain_file:
-        parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files!")
+    if args.chromosomes and not (args.chain_file or args.layout_type == 'transposon'):
+        parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
     # if args.extra_fastas and "parallel" not in args.layout_type:
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout_type not in ["parallel", "unique"]:
