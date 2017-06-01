@@ -71,7 +71,7 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
         bad_count = 0
         for row in csvfile:
             columns = row.split('\t')
-            if white_list_key:
+            if white_list_key is not None:
                 if not strict and white_list_value in columns[white_list_key] \
                         or strict and white_list_value == columns[white_list_key]:  # [7] = rep_family, [5] = repName
                     annotation = RepeatAnnotation(*columns)

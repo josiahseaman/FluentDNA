@@ -47,6 +47,8 @@ class Contig:
         self.nuc_seq_start = title_index + title_length
         self.consensus_width = consensus_width
 
+    def __repr__(self):
+        return self.name + ": " + '{:,d}'.format(len(self.seq)) + "bp"
 
 
 comp = {'A': 'T', 'G': 'C', 'T': 'A', 'C': 'G', 'N': 'N', 'X': 'X'}

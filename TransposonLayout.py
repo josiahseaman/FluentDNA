@@ -14,10 +14,12 @@ from TileLayout import TileLayout
 class TransposonLayout(TileLayout):
     def __init__(self):
         super().__init__()
+        self.using_mixed_widths = False
         self.repeat_entries = None
 
 
     def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
+        self.using_mixed_widths = False  # use a consistent consensus_width throughout and standard layout levels
         self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)  # sets self.layout
         self.read_contigs(input_file_path)
         super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
@@ -25,6 +27,7 @@ class TransposonLayout(TileLayout):
 
 
     def process_file(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename=None):
+        self.using_mixed_widths = True  # we are processing all repeat types with different widths
         start_time = datetime.now()
         self.read_all_files(ref_fasta, repeat_annotation_filename)
         average_width = int(statistics.mean([x.rep_end for x in self.repeat_entries]))  # rough approximation of size
@@ -46,8 +49,12 @@ class TransposonLayout(TileLayout):
 
 
     def max_dimensions(self, image_length):
-        rough = math.ceil(math.sqrt(image_length * 4))
-        return rough + 50, rough + 50
+        if self.using_mixed_widths:
+            rough = math.ceil(math.sqrt(image_length * 3))
+            rough = min(62950, rough)  # hard cap at 4GB images created
+            return rough + 50, rough + 50
+        else:
+            return super(TransposonLayout, self).max_dimensions(image_length)
 
 
     def initialize_image_by_sequence_dimensions(self, consensus_width, num_lines):
@@ -61,9 +68,18 @@ class TransposonLayout(TileLayout):
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
         self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, rep_name)
+        self.filter_simple_repeats()
         self.repeat_entries.sort(key=lambda x: -len(x) + x.geno_start / 200000000)  # longest first, chromosome position breaks ties
-        print("Found %i entries under %s" % (len(self.repeat_entries), str(rep_name)))
+        print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(rep_name)))
         self.read_contigs(ref_fasta)
+
+
+    def filter_simple_repeats(self):
+        # TODO: option to keep ONLY simple_repeats and delete everything else
+        before = len(self.repeat_entries)
+        self.repeat_entries = [x for x in self.repeat_entries if x.rep_class != 'Simple_repeat']  # remove 'simple'
+        difference = before - len(self.repeat_entries)
+        print("Removed", difference, "simple repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
     def layout_based_on_repeat_size(self, consensus_width):
@@ -72,50 +88,60 @@ class TransposonLayout(TileLayout):
             LayoutLevel("X_in_consensus", consensus_width, 1, 0),  # [0]
             LayoutLevel("Instance_line", 400, consensus_width, 0)  # [1]
         ]
-        self.levels.append(LayoutLevel("TypeColumn", 100, padding=20, levels=self.levels))  # [2]
-        self.levels.append(LayoutLevel("RowInTile", 1000, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
+        if self.using_mixed_widths:
+            self.levels.append(LayoutLevel("TypeColumn", 999999, padding=20, levels=self.levels))  # [2]
+            self.levels.append(LayoutLevel("RowInTile", 999999, levels=self.levels))  # [3]
+        else:
+            self.levels.append(LayoutLevel("TypeColumn", 100, padding=20, levels=self.levels))  # [2]
+            self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
+            self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
+            self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
 
 
     def draw_nucleotides(self):
         processed_contigs = self.create_repeat_fasta_contigs()
+        print("Finished creating contigs")
         self.contigs = processed_contigs  # TODO: overwriting self.contigs isn't really great data management
         self.draw_nucleotides_in_variable_column_width()  # uses self.contigs and self.layout to draw
 
 
     def draw_nucleotides_in_variable_column_width(self):
-        # Layout contigs one at a time
+        """Layout a whole set of different repeat types with different widths.  Column height is fixed,
+        but column width varies constantly.  Wrapping to the next row is determined by hitting the
+        edge of the allocated image."""
         for contig in self.contigs:
             assert contig.consensus_width, "You must set the consensus_width in order to use this layout"
             self.layout_based_on_repeat_size(contig.consensus_width)
-            if self.origin[0] + contig.consensus_width + 10 > self.image.width:
-                self.skip_to_next_mega_row()
-            if self.origin[1] > self.image.height:
-                return  # can't fit anything more
+
             contig_progress = 0
             seq_length = len(contig.seq)
-            line_width = self.levels[0].modulo
+            line_width = contig.consensus_width
             for cx in range(0, seq_length, line_width):
                 x, y = self.position_on_screen(contig_progress)
+                if x + contig.consensus_width + 10 >= self.image.width:
+                    contig_progress = 0  # reset to beginning of line
+                    self.skip_to_next_mega_row()
+                    x, y = self.position_on_screen(contig_progress)
+                if y + self.levels[1].modulo >= self.image.height:
+                    print("Ran into bottom of image at", contig.name)
+                    return contig  # can't fit anything more
                 remaining = min(line_width, seq_length - cx)
                 contig_progress += remaining
-                try:
-                    for i in range(remaining):
-                        nuc = contig.seq[cx + i]
-                        # if nuc != 'X':
-                        self.draw_pixel(nuc, x + i, y)
-                except:
-                    self.skip_to_next_mega_row()
-                    contig_progress = 0  # reset to beginning of line
-                    continue
+                for i in range(remaining):
+                    nuc = contig.seq[cx + i]
+                    # if nuc != 'X':
+                    self.draw_pixel(nuc, x + i, y)
+            print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
             columns_consumed = math.ceil(contig_progress / self.levels[2].chunk_size)
             self.origin[0] += columns_consumed * self.levels[2].thickness
+        print('')
+
 
     def skip_to_next_mega_row(self):
         print("Skipping to next row:", self.origin)
         self.origin[0] = self.levels[2].padding  # start at left again
         self.origin[1] += self.levels[3].thickness  # go to next mega row
+
 
     def create_repeat_fasta_contigs(self):
         processed_contigs = []
@@ -126,6 +152,7 @@ class TransposonLayout(TileLayout):
             lines_in_contig = len(contig.seq) // contig.consensus_width
             # minimum number of repeats based on aspect ratio 1:20
             if lines_in_contig > 10 and lines_in_contig > contig.consensus_width // 20:
+                print("Collected repeats sequences for", contig)
                 processed_contigs.append(contig)
         return processed_contigs
 
@@ -140,7 +167,8 @@ class TransposonLayout(TileLayout):
                     line = grab_aligned_repeat(consensus_width, contig, fragment)
                     ordered_lines[line_number] = ''.join(line)
         processed_seq = ''.join([ordered_lines[i] for i in range(len(annotations))])
-        return Contig(rep_name, processed_seq, 0, 0, 0,
+        contig_name = '__'.join([annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
+        return Contig(contig_name, processed_seq, 0, 0, 0,
                       0, 0, consensus_width=consensus_width)
 
 
