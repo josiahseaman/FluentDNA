@@ -64,26 +64,33 @@ def read_repeatmasker_csv(annotation_filename, white_list_key=None, white_list_v
     with open(annotation_filename) as csvfile:
         headers = csvfile.readline()  # ensure the header is what I am expecting and matches RepeatAnnotation definition
         assert headers == '#genoName	genoStart	genoEnd	genoLeft	strand	repName	repClass	repFamily	repStart	repEnd\n', headers
-        if white_list_key:
+        if isinstance(white_list_value, list):
+            strict = False  # the 'in' operator will check for exact matches inside the list
+        if white_list_value is not None:
             headers = headers[1:-1].split('\t')  # remove '#' and \n
             white_list_key = headers.index(white_list_key)  # column index matching the filter criteria
         entries = []
         bad_count = 0
         for row in csvfile:
             columns = row.split('\t')
-            if white_list_key is not None:
+            if white_list_value is not None:
                 if not strict and white_list_value in columns[white_list_key] \
                         or strict and white_list_value == columns[white_list_key]:  # [7] = rep_family, [5] = repName
-                    annotation = RepeatAnnotation(*columns)
-                    if annotation.is_good():
-                        entries.append(annotation)
-                    else:
-                        bad_count += 1
+                    bad_count = add_good_annotation(bad_count, columns, entries)
             else:
-                entries.append(RepeatAnnotation(*columns))
+                bad_count = add_good_annotation(bad_count, columns, entries)
         print("Discarded", bad_count, "bad entries.")
         assert len(entries), "No matches found for " + str(white_list_value)
         return entries
+
+
+def add_good_annotation(bad_count, columns, entries):
+    annotation = RepeatAnnotation(*columns)
+    if annotation.is_good():
+        entries.append(annotation)
+    else:
+        bad_count += 1
+    return bad_count
 
 
 def condense_fragments_to_lines(anno_entries, crowded_count=10):

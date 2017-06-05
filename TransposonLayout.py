@@ -27,11 +27,11 @@ class TransposonLayout(TileLayout):
         self.output_image(output_folder, output_file_name)
 
 
-    def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosome):
+    def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosomes=None):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.origin[1] += self.levels[5].padding  # One full Row of padding for Title
         start_time = datetime.now()
-        self.read_all_files(ref_fasta, repeat_annotation_filename, chromosome)
+        self.read_all_files(ref_fasta, repeat_annotation_filename, chromosomes)
 
         print("Read contigs :", datetime.now() - start_time)
 
@@ -71,14 +71,15 @@ class TransposonLayout(TileLayout):
         print("Image is ", self.image.width, "x", self.image.height)
 
 
-    def read_all_files(self, ref_fasta, repeat_annotation_filename, chromosome):
+    def read_all_files(self, ref_fasta, repeat_annotation_filename, chromosomes=None):
         if repeat_annotation_filename is None:  # necessary for inheritance requirements
             raise NotImplementedError("TransposonLayout requires a repeat annotation to work")
+        print('Getting all annotations in ', chromosomes)
         column = 'genoName'
-        self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, chromosome)
+        self.repeat_entries = read_repeatmasker_csv(repeat_annotation_filename, column, chromosomes)
         self.filter_simple_repeats(return_only_simple_repeats=False)
         self.repeat_entries.sort(key=lambda x: -len(x) + x.geno_start / 200000000)  # longest first, chromosome position breaks ties
-        print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(chromosome)))
+        print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(chromosomes)))
         self.read_contigs(ref_fasta)
 
 
@@ -138,12 +139,14 @@ class TransposonLayout(TileLayout):
                     return contig  # can't fit anything more
                 if y == self.origin[1]:  # first line in a column
                     self.draw_repeat_title(contig, x, y)
+
                 remaining = min(line_width, seq_length - cx)
                 contig_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
                     # if nuc != 'X':
                     self.draw_pixel(nuc, x + i, y)
+
             print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
             columns_consumed = math.ceil(contig_progress / self.levels[2].chunk_size)
             self.origin[0] += columns_consumed * self.levels[2].thickness

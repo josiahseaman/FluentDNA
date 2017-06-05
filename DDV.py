@@ -143,9 +143,9 @@ def ddv(args):
     if args.layout_type == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
-        if len(args.chromosomes) != 1:
-            raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
-        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes[0])
+        # if len(args.chromosomes) != 1:
+        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
+        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
         print("Done with Transposons")
         sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
