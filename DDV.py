@@ -11,8 +11,6 @@ import multiprocessing
 import os
 import sys
 
-from TileLayout import TileLayout
-from TransposonLayout import TransposonLayout
 
 print("Setting up Python...")
 
@@ -45,7 +43,8 @@ from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
 from UniqueOnlyChainParser import UniqueOnlyChainParser
 from AnnotatedAlignment import AnnotatedAlignment
-
+from TileLayout import TileLayout
+from TransposonLayout import TransposonLayout
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
