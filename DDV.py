@@ -218,7 +218,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
-        layout = TileLayout()
+        layout = TileLayout(use_titles=not args.no_titles)
     layout.process_file(fasta, output_dir, just_the_name(output_dir))
     layout_final_output_location = layout.final_output_location
     del layout

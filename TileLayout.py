@@ -13,9 +13,10 @@ from DDVUtils import LayoutLevel, Contig, pretty_contig_name, multi_line_height,
 class TileLayout:
     final_output_location = None
 
-    def __init__(self, use_fat_headers=False):
+    def __init__(self, use_fat_headers=False, use_titles=True):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
+        self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.image = None
         self.draw = None
@@ -48,13 +49,14 @@ class TileLayout:
             self.enable_fat_headers()
 
     def enable_fat_headers(self):
-        print("Using Fat Headers!")
-        self.use_fat_headers = True
-        self.levels = self.levels[:6]
-        self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-        self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
-        self.origin[1] += self.levels[5].padding  # padding comes before, not after
-        self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
+        if self.use_titles:
+            print("Using Fat Headers!")
+            self.use_fat_headers = True
+            self.levels = self.levels[:6]
+            self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
+            self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+            self.origin[1] += self.levels[5].padding  # padding comes before, not after
+            self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
@@ -69,7 +71,7 @@ class TileLayout:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
         try:
-            if len(self.contigs) > 1:
+            if len(self.contigs) > 1 and self.use_titles:
                 print("Drawing %i titles" % len(self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
@@ -160,6 +162,8 @@ class TileLayout:
             if next_segment_length + min_gap < current_level.chunk_size:
                 # give a full level of blank space just in case the previous
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
+                if not self.use_titles:
+                    title_padding = 0  # don't leave space for a title, but still use tail and reset padding
                 if title_padding > self.levels[3].chunk_size:  # Special case for full tile, don't need to go that big
                     title_padding = self.tile_label_size
                 if next_segment_length + title_padding > current_level.chunk_size:
