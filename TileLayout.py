@@ -18,6 +18,9 @@ class TileLayout:
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
+        self.skip_small_titles = False
+        # precomputing fonts turns out to be a big performance gain
+        self.fonts = {size: ImageFont.truetype("tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
         self.draw = None
         self.pixels = None
@@ -119,6 +122,8 @@ class TileLayout:
         # Pre-read generates an array of contigs with labels and sequences
         with open(input_file_path, 'r') as streamFASTAFile:
             for read in streamFASTAFile.read().splitlines():
+                if len(self.contigs) > 10000:
+                    self.skip_small_titles = True
                 if read == "":
                     continue
                 if read[0] == ">":
@@ -162,6 +167,8 @@ class TileLayout:
             if next_segment_length + min_gap < current_level.chunk_size:
                 # give a full level of blank space just in case the previous
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
+                if title_padding == min_gap and self.skip_small_titles:
+                    title_padding = 0  # no small titles, but larger ones will still display, this affects layout
                 if not self.use_titles:
                     title_padding = 0  # don't leave space for a title, but still use tail and reset padding
                 if title_padding > self.levels[3].chunk_size:  # Special case for full tile, don't need to go that big
@@ -206,7 +213,8 @@ class TileLayout:
         total_progress = 0
         for contig in self.contigs:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
-            self.draw_title(total_progress, contig)
+            if not self.skip_small_titles or contig.title_padding >= self.levels[2].chunk_size:
+                self.draw_title(total_progress, contig)
             total_progress += contig.title_padding + len(contig.seq) + contig.tail_padding
 
 
@@ -215,7 +223,7 @@ class TileLayout:
         bottom_right = self.position_on_screen(total_progress + contig.title_padding - 2)
         width, height = bottom_right[0] - upper_left[0], bottom_right[1] - upper_left[1]
 
-        font_size = 9
+        font_size = 9  # font sizes: [9, 38, 380, 380 * 2]
         title_width = 18
         title_lines = 2
 
@@ -247,8 +255,11 @@ class TileLayout:
 
 
     def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label):
+        if font_size in self.fonts:
+            font = self.fonts[font_size]
+        else:
+            font = ImageFont.truetype("tahoma.ttf", font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
-        font = ImageFont.truetype("tahoma.ttf", font_size)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
