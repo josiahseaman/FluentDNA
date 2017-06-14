@@ -6,7 +6,7 @@ from datetime import datetime
 import math
 from array import array
 
-from DDVUtils import LayoutLevel, rev_comp, Contig
+from DDVUtils import LayoutLevel, rev_comp, Contig, read_contigs
 from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
 
@@ -22,7 +22,7 @@ class TransposonLayout(TileLayout):
     def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
         self.using_mixed_widths = False  # use a consistent consensus_width throughout and standard layout levels
         self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)  # sets self.layout
-        self.read_contigs(input_file_path)
+        self.read_contigs_and_calc_padding(input_file_path)
         super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
         self.output_image(output_folder, output_file_name)
 
@@ -80,7 +80,7 @@ class TransposonLayout(TileLayout):
         self.filter_simple_repeats(return_only_simple_repeats=False)
         self.repeat_entries.sort(key=lambda x: -len(x) + x.geno_start / 200000000)  # longest first, chromosome position breaks ties
         print("Found %s entries under %s" % ('{:,}'.format(len(self.repeat_entries)), str(chromosomes)))
-        self.read_contigs(ref_fasta)
+        self.contigs = read_contigs(ref_fasta)
 
 
     def filter_simple_repeats(self, return_only_simple_repeats=False):
@@ -184,8 +184,7 @@ class TransposonLayout(TileLayout):
                     ordered_lines[line_number] = ''.join(line)
         processed_seq = ''.join([ordered_lines[i] for i in range(len(annotations))])
         contig_name = '__'.join([annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
-        return Contig(contig_name, processed_seq, 0, 0, 0,
-                      0, 0, consensus_width=consensus_width)
+        return Contig(contig_name, processed_seq, consensus_width=consensus_width)
 
     def draw_repeat_title(self, contig, x, y):
         chars_per_line = math.ceil(contig.consensus_width / 5.625)

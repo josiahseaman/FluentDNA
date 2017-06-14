@@ -36,7 +36,7 @@ class ParallelLayout(TileLayout):
     def process_file(self, output_folder, output_file_name, fasta_files=list()):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
-        self.image_length = self.read_contigs(fasta_files[0])
+        self.image_length = self.read_contigs_and_calc_padding(fasta_files[0])
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
@@ -46,7 +46,7 @@ class ParallelLayout(TileLayout):
             # Do inner work for two other files
             for index, filename in enumerate(fasta_files):
                 if index != 0:
-                    self.read_contigs(filename)
+                    self.read_contigs_and_calc_padding(filename)
                 if self.using_background_colors:
                     self.change_background_color(self.genome_processed)
                 self.draw_nucleotides()

@@ -37,7 +37,7 @@ class LayoutLevel:
 
 
 class Contig:
-    def __init__(self, name, seq, reset_padding, title_padding, tail_padding, title_index, title_length, consensus_width=0):
+    def __init__(self, name, seq, reset_padding=0, title_padding=0, tail_padding=0, title_index=0, title_length=0, consensus_width=0):
         self.name = name
         self.seq = seq
         self.reset_padding = reset_padding
@@ -244,3 +244,27 @@ def base_directories(args):
     SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
     base_path = os.path.join(SERVER_HOME, args.output_name) if args.output_name else SERVER_HOME
     return SERVER_HOME, base_path
+
+
+def read_contigs(input_file_path):
+    contigs = []
+    current_name = ""
+    seq_collection = []
+    # Pre-read generates an array of contigs with labels and sequences
+    with open(input_file_path, 'r') as streamFASTAFile:
+        for read in streamFASTAFile.read().splitlines():
+            if read == "":
+                continue
+            if read[0] == ">":
+                # If we have sequence gathered and we run into a second (or more) block
+                if len(seq_collection) > 0:
+                    sequence = "".join(seq_collection)
+                    seq_collection = []  # clear
+                    contigs.append(Contig(current_name, sequence))
+                current_name = read[1:]  # remove >
+            else:
+                # collects the sequence to be stored in the contig, constant time performance don't concat strings!
+                seq_collection.append(read.upper())
+    sequence = "".join(seq_collection)  # add the last contig to the list
+    contigs.append(Contig(current_name, sequence))
+    return contigs

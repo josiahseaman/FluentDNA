@@ -1,13 +1,12 @@
 import os
 import traceback
+from collections import defaultdict
+from datetime import datetime
 
 import math
-
-from datetime import datetime
-from collections import defaultdict
 from PIL import Image, ImageDraw, ImageFont
 
-from DDVUtils import LayoutLevel, Contig, pretty_contig_name, multi_line_height, copytree
+from DDVUtils import LayoutLevel, pretty_contig_name, multi_line_height, copytree, read_contigs
 
 
 class TileLayout:
@@ -63,7 +62,7 @@ class TileLayout:
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
-        self.image_length = self.read_contigs(input_file_path)
+        self.image_length = self.read_contigs_and_calc_padding(input_file_path)
         print("Read contigs :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time, "\n")
@@ -110,46 +109,35 @@ class TileLayout:
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
         print('')
 
+    def calc_all_padding(self):
+        total_progress = 0  # pointer in image
+        seq_start = 0  # pointer in text
+        multipart_file = len(self.contigs) > 1
 
-    def read_contigs(self, input_file_path):
-        self.contigs = []
-        total_progress = 0
-        current_name = ""
-        title_length = 0
-        seq_collection = []
-        seq_start = 0
+        if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
+            self.enable_fat_headers()  # first contig is huge and there's more contigs coming
+        if len(self.contigs) > 10000:
+            self.skip_small_titles = True
 
-        # Pre-read generates an array of contigs with labels and sequences
-        with open(input_file_path, 'r') as streamFASTAFile:
-            for read in streamFASTAFile.read().splitlines():
-                if len(self.contigs) > 10000:
-                    self.skip_small_titles = True
-                if read == "":
-                    continue
-                if read[0] == ">":
-                    # If we have sequence gathered and we run into a second (or more) block
-                    title_length = len(current_name) + 1
-                    if len(seq_collection) > 0:
-                        sequence = "".join(seq_collection)
-                        seq_collection = []  # clear
-                        if len(self.levels) >= 5 and len(sequence) > self.levels[4].chunk_size and len(self.contigs) == 0:
-                            self.enable_fat_headers()  # first contig is huge and there's more coming
-                        reset, title, tail = self.calc_padding(total_progress, len(sequence), True)
-                        self.contigs.append(Contig(current_name, sequence, reset, title, tail,
-                                                   seq_start, title_length))
-                        total_progress += reset + title + tail + len(sequence)
-                        seq_start += title_length + len(sequence)
-                    current_name = read[1:]  # remove >
-                else:
-                    # collects the sequence to be stored in the contig, constant time performance don't concat strings!
-                    seq_collection.append(read.upper())
+        for contig in self.contigs:  # Type: class DDV.DDVUtils.Contig
+            length = len(contig.seq)
+            title_length = len(contig.name) + 1  # for tracking where we are in the SEQUENCE file
+            reset, title, tail = self.calc_padding(total_progress, length, multipart_file)
 
-        # add the last contig to the list
-        sequence = "".join(seq_collection)
-        reset, title, tail = self.calc_padding(total_progress, len(sequence), len(self.contigs) > 0)
-        self.contigs.append(Contig(current_name, sequence, reset, title, tail, seq_start, title_length))
-        return total_progress + reset + title + tail + len(sequence)
+            contig.reset_padding = reset
+            contig.title_padding = title
+            contig.tail_padding = tail
+            contig.nuc_title_start = seq_start
+            contig.nuc_seq_start = seq_start + title_length
 
+            total_progress += reset + title + tail + length  # pointer in image
+            seq_start += title_length + length  # pointer in text
+        return total_progress  # + reset + title + tail + length
+
+
+    def read_contigs_and_calc_padding(self, input_file_path):
+        self.contigs = read_contigs(input_file_path)
+        return self.calc_all_padding()
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
@@ -282,7 +270,7 @@ class TileLayout:
     def max_dimensions(self, image_length):
         """ Uses Tile Layout to find the largest chunk size in each dimension (XY) that the
         image_length will reach
-        :param image_length: includes sequence length and padding from self.read_contigs()
+        :param image_length: includes sequence length and padding from self.read_contigs_and_calc_padding()
         :return: width and height needed
         """
         width_height = [0, 0]
