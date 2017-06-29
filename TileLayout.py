@@ -118,6 +118,7 @@ class TileLayout:
             self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
             self.skip_small_titles = True
+            self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
         for contig in self.contigs:  # Type: class DDV.DDVUtils.Contig
             length = len(contig.seq)
