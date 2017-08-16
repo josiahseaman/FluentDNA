@@ -323,7 +323,9 @@ class TileLayout:
     def contig_json(self):
         json = []
         xy_seq_start = 0  # camel case is left over from C# for javascript compatibility
-        for contig in self.contigs:
+        for index, contig in enumerate(self.contigs):
+            if index > 1000:
+                break  # I don't want to use a slice operator on the for loop because that will copy it
             xy_seq_start += contig.reset_padding + contig.title_padding
             xy_seq_end = xy_seq_start + len(contig.seq)
             json.append({"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
@@ -331,7 +333,7 @@ class TileLayout:
                          "xy_title_start": xy_seq_start - contig.title_padding,
                          "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start})
             xy_seq_start += len(contig.seq) + contig.tail_padding
-        return str(json)
+        return '[' + ',\n'.join([str(x) for x in json]) + ']'
 
     def levels_json(self):
         json = []
