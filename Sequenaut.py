@@ -182,7 +182,7 @@ def run_sequenaut(args):
     # TODO: allow batch of tiling layout by chromosome
     output_dir = make_output_dir_with_suffix(base_path, '')
     renderer = Sequenaut(layout=args.layout, oligomer_size=args.oligomer_size, peak=args.peak, baseline=args.baseline, log_scale=not args.linear_scale)
-    create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, renderer)
+    create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, renderer)
     sys.exit(0)
 
 

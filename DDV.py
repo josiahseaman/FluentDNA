@@ -119,7 +119,8 @@ def ddv(args):
         del anno_align
         print("Done creating Gapped Annotations.")
         for batch in batches:  # multiple chromosomes, multiple views
-            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, batch.fastas)
+            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
+                                            batch.fastas)
         sys.exit(0)
 
     if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
@@ -132,7 +133,7 @@ def ddv(args):
     elif args.layout_type == "tiled":  # Typical Use Case
         # TODO: allow batch of tiling layout by chromosome
         output_dir = make_output_dir_with_suffix(base_path, '')
-        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir)
+        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
         if args.run_server:
             run_server(output_dir)
         sys.exit(0)
@@ -151,7 +152,8 @@ def ddv(args):
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
             output_dir = make_output_dir_with_suffix(base_path, '')
-            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, [args.fasta] + args.extra_fastas)
+            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, args.output_name,
+                                            [args.fasta] + args.extra_fastas)
             sys.exit(0)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
@@ -169,7 +171,8 @@ def ddv(args):
             del chain_parser
             print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple chromosomes, multiple views
-                create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, batch.fastas)
+                create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
+                                                args.output_name, batch.fastas)
             sys.exit(0)
     elif args.layout_type == "unique":
         """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
@@ -186,7 +189,7 @@ def ddv(args):
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
         for batch in batches:
-            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder)
+            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         sys.exit(0)
 
     elif args.layout_type == "original":
@@ -195,10 +198,10 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes)
-    layout.process_file(output_dir, just_the_name(output_dir), fastas)
+    layout.process_file(output_dir, output_name, fastas)
     layout_final_output_location = layout.final_output_location
     del layout
     try:
@@ -207,19 +210,20 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, fastas):
     except shutil.SameFileError:
         pass  # not a problem
     print("Done creating Large Image and HTML.")
-    print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
-                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-    print("Done creating Deep Zoom Structure.")
+    if not args.no_webpage:
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
+                              os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
     if args.run_server:
         run_server(output_dir)
 
 
-def create_tile_layout_viz_from_fasta(args, fasta, output_dir, layout=None):
+def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
         layout = TileLayout(use_titles=not args.no_titles)
-    layout.process_file(fasta, output_dir, just_the_name(output_dir))
+    layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
     del layout
     try:
@@ -227,9 +231,10 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, layout=None):
     except shutil.SameFileError:
         pass  # not a problem
     print("Done creating Large Image and HTML.")
-    print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-    print("Done creating Deep Zoom Structure.")
+    if not args.no_webpage:
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
 
 
 if __name__ == "__main__":
@@ -285,6 +290,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="No gaps for a title.  Useful when combined with separate_translocations",
                         dest="no_titles")
+    parser.add_argument("-nw", "--no_webpage",
+                        action='store_true',
+                        help="Use if you only want an image.  No webpage or zoomstack will be calculated.",
+                        dest="no_webpage")
     parser.add_argument("-g", "--squish_gaps",
                         action='store_true',
                         help="If two gaps are approximately the same size, subtract the intersection.",
@@ -327,6 +336,9 @@ if __name__ == "__main__":
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
+    if args.image and args.no_webpage:
+        parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image"
+                     "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
 
     if args.extra_fastas and not args.layout_type:
         args.layout_type = "parallel"
