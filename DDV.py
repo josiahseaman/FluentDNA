@@ -226,10 +226,10 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
     del layout
-    try:
-        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
-    except shutil.SameFileError:
-        pass  # not a problem
+    # try:
+    #     shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
+    # except shutil.SameFileError:
+    #     pass  # not a problem
     print("Done creating Large Image and HTML.")
     if not args.no_webpage:
         print("Creating Deep Zoom Structure from Generated Image...")

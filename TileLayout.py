@@ -117,6 +117,8 @@ class TileLayout:
         if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
             self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
+            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn."
+                  "  Scaffolds are being sorted by length.")
             self.skip_small_titles = True
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
@@ -156,8 +158,9 @@ class TileLayout:
             if next_segment_length + min_gap < current_level.chunk_size:
                 # give a full level of blank space just in case the previous
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
-                if title_padding == min_gap and self.skip_small_titles:
-                    title_padding = 0  # no small titles, but larger ones will still display, this affects layout
+                if self.skip_small_titles and next_segment_length < 10000:
+                    title_padding = 0  # no small titles, but larger ones will still display,
+                    # this affects layout
                 if not self.use_titles:
                     title_padding = 0  # don't leave space for a title, but still use tail and reset padding
                 if title_padding > self.levels[3].chunk_size:  # Special case for full tile, don't need to go that big
@@ -202,7 +205,7 @@ class TileLayout:
         total_progress = 0
         for contig in self.contigs:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
-            if not self.skip_small_titles or contig.title_padding >= self.levels[2].chunk_size:
+            if contig.title_padding:
                 self.draw_title(total_progress, contig)
             total_progress += contig.title_padding + len(contig.seq) + contig.tail_padding
 
