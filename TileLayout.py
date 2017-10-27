@@ -25,14 +25,22 @@ class TileLayout:
         self.pixels = None
         self.contigs = []
         self.image_length = 0
+        #Natural, color blind safe Colors
+        self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
+        self.palette['T'] = (166, 206, 227)  # light blue, pyrimidines are light colors
+        self.palette['A'] = (31, 120, 180)  # A/T is blue
+        self.palette['G'] = (51, 160, 44)  # G/C is green, purines are dark colors
+        self.palette['C'] = (178, 223, 138)  # light green
+        self.palette['N'] = (61, 61, 61)  # charcoal grey
+        self.palette['X'] = (247, 247, 247)  # almost white
+
         # Original DDV Colors
-        self.palette = defaultdict(lambda: (255, 255, 255))
-        self.palette['A'] = (255, 0, 0)
-        self.palette['G'] = (0, 255, 0)
-        self.palette['T'] = (250, 240, 114)
-        self.palette['C'] = (0, 0, 255)
-        self.palette['N'] = (30, 30, 30)
-        self.palette['X'] = (247, 247, 247)
+        # self.palette['A'] = (255, 0, 0)
+        # self.palette['G'] = (0, 255, 0)
+        # self.palette['T'] = (250, 240, 114)
+        # self.palette['C'] = (0, 0, 255)
+        # self.palette['N'] = (30, 30, 30)
+        # self.palette['X'] = (247, 247, 247)
 
         # noinspection PyListCreation
         self.levels = [
