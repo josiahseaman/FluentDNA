@@ -27,12 +27,18 @@ class TileLayout:
         self.image_length = 0
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
-        self.palette['T'] = (166, 206, 227)  # light blue, pyrimidines are light colors
-        self.palette['A'] = (31, 120, 180)  # A/T is blue
-        self.palette['G'] = (51, 160, 44)  # G/C is green, purines are dark colors
-        self.palette['C'] = (178, 223, 138)  # light green
+        self.palette['T'] = (173, 20, 25)
+        self.palette['A'] = (219, 113, 74)
+        self.palette['G'] = (77, 205, 74)
+        self.palette['C'] = (55, 113, 184)
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette['X'] = (247, 247, 247)  # almost white
+
+
+        # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
+        # self.palette['A'] = (77, 175, 74)  # A/T is blue
+        # self.palette['G'] = (173, 20, 25)  # G/C is green, purines are dark colors
+        # self.palette['C'] = (152, 78, 163)  # light green
 
         # Original DDV Colors
         # self.palette['A'] = (255, 0, 0)

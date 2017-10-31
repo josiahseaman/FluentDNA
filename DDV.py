@@ -292,7 +292,8 @@ if __name__ == "__main__":
                         dest="no_titles")
     parser.add_argument("-nw", "--no_webpage",
                         action='store_true',
-                        help="Use if you only want an image.  No webpage or zoomstack will be calculated.",
+                        help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
+                        "You can use --image option later to resume the process to get a deepzoom stack.",
                         dest="no_webpage")
     parser.add_argument("-g", "--squish_gaps",
                         action='store_true',
