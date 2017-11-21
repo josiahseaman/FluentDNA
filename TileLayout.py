@@ -27,10 +27,10 @@ class TileLayout:
         self.image_length = 0
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
-        self.palette['T'] = (173, 20, 25)
-        self.palette['A'] = (219, 113, 74)
-        self.palette['G'] = (77, 205, 74)
-        self.palette['C'] = (55, 113, 184)
+        self.palette['T'] = (173, 20, 25)  # Red
+        self.palette['A'] = (219, 113, 74)  # Orange
+        self.palette['G'] = (77, 205, 74)  # Green
+        self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette['X'] = (247, 247, 247)  # almost white
 

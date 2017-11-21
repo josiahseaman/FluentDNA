@@ -49,9 +49,9 @@ def collect_n50_stats(scaffold_lengths):
     return stats
 
 
-if __name__ == '__main__':
+def scaffold_lengths_from_fasta(input_fasta_path):
     lengths = []
-    with open(sys.argv[1]) as fasta:
+    with open(input_fasta_path) as fasta:
         # parse each sequence by header: groupby(data, key)
         faiter = (x[1] for x in groupby(fasta, lambda line: line[0] == ">"))
 
@@ -59,6 +59,12 @@ if __name__ == '__main__':
             # join sequence lines to one.
             seq = "".join(s.strip() for s in next(faiter))
             lengths.append(len(seq))
+    return lengths
+
+
+if __name__ == '__main__':
+    input_fasta_name= sys.argv[1]
+    lengths = scaffold_lengths_from_fasta(input_fasta_name)
     assembly_stats = collect_n50_stats(lengths)
     for key in assembly_stats:
         print(key, assembly_stats[key])
