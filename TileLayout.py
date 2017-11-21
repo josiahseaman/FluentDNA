@@ -12,12 +12,13 @@ from DDVUtils import LayoutLevel, pretty_contig_name, multi_line_height, copytre
 class TileLayout:
     final_output_location = None
 
-    def __init__(self, use_fat_headers=False, use_titles=True):
+    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
+        self.sort_contigs = sort_contigs
         # precomputing fonts turns out to be a big performance gain
         self.fonts = {size: ImageFont.truetype("tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
@@ -131,9 +132,11 @@ class TileLayout:
         if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
             self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
-            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn."
-                  "  Scaffolds are being sorted by length.")
+            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
+            self.sort_contigs = True
+        if self.sort_contigs:
+            print("Scaffolds are being sorted by length.")
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
         for contig in self.contigs:  # Type: class DDV.DDVUtils.Contig

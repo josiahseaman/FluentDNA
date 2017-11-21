@@ -222,7 +222,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
-        layout = TileLayout(use_titles=not args.no_titles)
+        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs)
     layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
     del layout
@@ -278,7 +278,7 @@ if __name__ == "__main__":
                         type=str,
                         help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
                         dest="chromosomes")
-    parser.add_argument("-s", "--runserver",
+    parser.add_argument("-r", "--runserver",
                         action='store_true',
                         help="Run Web Server after computing.",
                         dest="run_server")
@@ -319,6 +319,10 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
+    parser.add_argument('-s', '--sort_contigs',
+                        action='store_true',
+                        help="Sort the entries of the fasta file by length.",
+                        dest="sort_contigs")
     args = parser.parse_args()
 
     # Respond to an updater query

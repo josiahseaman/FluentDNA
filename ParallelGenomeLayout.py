@@ -10,7 +10,8 @@ from TileLayout import TileLayout
 
 class ParallelLayout(TileLayout):
     def __init__(self, n_genomes):
-        super(ParallelLayout, self).__init__(use_fat_headers=False)  # This layout is best used on one chromosome at a time.
+        # This layout is best used on one chromosome at a time.
+        super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False)
         # modify layout with an additional bundled column layer
         columns = self.levels[2]
         new_width = columns.thickness * n_genomes + columns.padding * 2
