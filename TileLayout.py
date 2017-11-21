@@ -95,11 +95,6 @@ class TileLayout:
         except BaseException as e:
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
-        try:
-            self.generate_html(input_file_path, output_folder, output_file_name)
-        except Exception as e:
-            print('While generating HTML:', '\n')
-            traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
@@ -311,34 +306,40 @@ class TileLayout:
 
 
     def generate_html(self, input_file_path, output_folder, output_file_name):
-        input_file_name = os.path.basename(input_file_path)
-        copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
-        html_path = os.path.join(output_folder, 'index.html')
-        html_content = {"title": output_file_name.replace('_', ' '),
-                        "originalImageWidth": str(self.image.width),
-                        "originalImageHeight": str(self.image.height),
-                        "image_origin": str(self.origin),
-                        "ColumnPadding": str(self.levels[2].padding),
-                        "columnWidthInNucleotides": str(self.levels[1].chunk_size),
-                        "layoutSelector": '1',
-                        "layout_levels": self.levels_json(),
-                        "ContigSpacingJSON": self.contig_json(),
-                        "multipart_file": str(len(self.contigs) > 1).lower(),
-                        # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
-                        "includeDensity": 'false',
-                        "usa": 'refseq_fetch:' + input_file_name,
-                        "ipTotal": str(self.image_length),
-                        "direct_data_file": input_file_name,
-                        "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
-                        "sbegin": '1',
-                        "send": str(self.image_length),
-                        "date": datetime.now().strftime("%Y-%m-%d")}
-        with open(os.path.join('html template', 'index.html'), 'r') as template:
-            template_content = template.read()
-            for key, value in html_content.items():
-                template_content = template_content.replace('{{' + key + '}}', value)
-            with open(html_path, 'w') as out:
-                out.write(template_content)
+        try:
+            input_file_name = os.path.basename(input_file_path)
+            copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
+            html_path = os.path.join(output_folder, 'index.html')
+            html_content = {"title": output_file_name.replace('_', ' '),
+                            "originalImageWidth": str(self.image.width),
+                            "originalImageHeight": str(self.image.height),
+                            "image_origin": str(self.origin),
+                            "ColumnPadding": str(self.levels[2].padding),
+                            "columnWidthInNucleotides": str(self.levels[1].chunk_size),
+                            "layoutSelector": '1',
+                            "layout_levels": self.levels_json(),
+                            "ContigSpacingJSON": self.contig_json(),
+                            "multipart_file": str(len(self.contigs) > 1).lower(),
+                            # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
+                            "includeDensity": 'false',
+                            "usa": 'refseq_fetch:' + input_file_name,
+                            "ipTotal": str(self.image_length),
+                            "direct_data_file": input_file_name,
+                            "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
+                            "sbegin": '1',
+                            "send": str(self.image_length),
+                            "date": datetime.now().strftime("%Y-%m-%d")}
+            with open(os.path.join('html template', 'index.html'), 'r') as template:
+                template_content = template.read()
+                for key, value in html_content.items():
+                    template_content = template_content.replace('{{' + key + '}}', value)
+                with open(html_path, 'w') as out:
+                    out.write(template_content)
+
+        except Exception as e:
+            print('Error while generating HTML:', '\n')
+            traceback.print_exc()
+
 
     def contig_json(self):
         json = []

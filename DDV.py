@@ -209,7 +209,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
     except shutil.SameFileError:
         pass  # not a problem
-    print("Done creating Large Image and HTML.")
+    print("Done creating Large Image.")
     if not args.no_webpage:
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
@@ -230,14 +230,24 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     #     shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     # except shutil.SameFileError:
     #     pass  # not a problem
-    print("Done creating Large Image and HTML.")
+    print("Done creating Large Image at ", layout_final_output_location)
     if not args.no_webpage:
+        layout.generate_html(fasta, output_dir, output_name)
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
+        print("--Starting in Quick Mode--")
+        print("This will convert the one FASTA file directly to an image and place it in the same "
+              "folder as the image for easy access.  "
+              "Recommend you open large files with 'Windows Photo Viewer'.")
+        sys.argv[1] = '--fasta=' + sys.argv[1]
+        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
+        sys.argv.append("--quick")
+
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
                                      add_help=True)
@@ -323,6 +333,12 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Sort the entries of the fasta file by length.",
                         dest="sort_contigs")
+    parser.add_argument('--quick',
+                        action='store_true',
+                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
+                             "in the same directory as the FASTA.",
+                        dest="quick")
+
     args = parser.parse_args()
 
     # Respond to an updater query
