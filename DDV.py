@@ -132,7 +132,11 @@ def ddv(args):
         sys.exit(0)
     elif args.layout_type == "tiled":  # Typical Use Case
         # TODO: allow batch of tiling layout by chromosome
-        output_dir = make_output_dir_with_suffix(base_path, '')
+        if args.quick:
+            output_dir = os.path.dirname(os.path.abspath(args.fasta))  # just place the image next to the fasta
+        else:
+            output_dir = make_output_dir_with_suffix(base_path, '')
+
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
         if args.run_server:
             run_server(output_dir)
@@ -151,6 +155,7 @@ def ddv(args):
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
+            # TODO: support drag and drop
             output_dir = make_output_dir_with_suffix(base_path, '')
             create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, args.output_name,
                                             [args.fasta] + args.extra_fastas)
