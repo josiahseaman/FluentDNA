@@ -3,7 +3,8 @@ from array import array
 
 from ChainParser import ChainParser
 from Span import alignment_chopping_index, AlignedSpans, Span
-from DDVUtils import just_the_name, make_output_dir_with_suffix
+from DNASkittleUtils.CommandLineUtils import just_the_name
+from DDVUtils import make_output_dir_with_suffix
 from RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, filter_repeats_by_chromosome_and_family
 from TransposonLayout import TransposonLayout
 

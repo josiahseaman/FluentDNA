@@ -1,7 +1,10 @@
 from bisect import bisect_left
+
+from DNASkittleUtils.Contigs import write_complete_fasta, pluck_contig
+from DNASkittleUtils.DDVUtils import Batch
+
 from ChainFiles import fetch_all_chains
 from ChainParser import ChainParser
-from DDVUtils import pluck_contig, Batch, write_complete_fasta
 from Span import Span
 
 

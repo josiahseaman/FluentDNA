@@ -38,7 +38,8 @@ import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack, just_the_name, make_output_dir_with_suffix, base_directories
+from DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
+from DNASkittleUtils.CommandLineUtils import just_the_name
 from ParallelGenomeLayout import ParallelLayout
 from ChainParser import ChainParser
 from UniqueOnlyChainParser import UniqueOnlyChainParser
@@ -248,10 +249,12 @@ if __name__ == "__main__":
         print("--Starting in Quick Mode--")
         print("This will convert the one FASTA file directly to an image and place it in the same "
               "folder as the image for easy access.  "
+              # "The scaffolds will be sorted by length for best layout."
               "Recommend you open large files with 'Windows Photo Viewer'.")
         sys.argv[1] = '--fasta=' + sys.argv[1]
         sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
         sys.argv.append("--quick")
+        # sys.argv.append("--sort_contigs")
 
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",

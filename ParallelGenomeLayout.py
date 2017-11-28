@@ -2,9 +2,11 @@ import os
 
 from datetime import datetime
 from math import floor
+
+from DNASkittleUtils.CommandLineUtils import just_the_name
 from PIL import ImageFont
 
-from DDVUtils import LayoutLevel, just_the_name
+from DDVUtils import LayoutLevel
 from TileLayout import TileLayout
 
 

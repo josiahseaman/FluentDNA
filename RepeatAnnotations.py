@@ -7,7 +7,10 @@ input and output is significantly different."""
 # Read annotation file and just mark where things land on the consensus
 import sys
 
-from DDVUtils import pluck_contig, just_the_name, rev_comp
+from DNASkittleUtils.CommandLineUtils import just_the_name
+from DNASkittleUtils.Contigs import pluck_contig
+from DNASkittleUtils.DDVUtils import rev_comp
+
 from Span import Span
 from array import array
 import math

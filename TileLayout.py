@@ -6,7 +6,10 @@ from datetime import datetime
 import math
 from PIL import Image, ImageDraw, ImageFont
 
-from DDVUtils import LayoutLevel, pretty_contig_name, multi_line_height, copytree, read_contigs
+from DDVUtils import LayoutLevel,  multi_line_height, pretty_contig_name
+from DNASkittleUtils.DDVUtils import copytree
+from DNASkittleUtils.Contigs import read_contigs
+
 
 
 class TileLayout:
@@ -129,7 +132,7 @@ class TileLayout:
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
-            self.sort_contigs = True
+            self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
         if self.sort_contigs:
             print("Scaffolds are being sorted by length.")
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront

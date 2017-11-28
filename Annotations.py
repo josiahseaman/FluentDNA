@@ -119,7 +119,7 @@ class GFF(object):
 
 
 def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
-    from DDVUtils import write_complete_fasta
+    from DNASkittleUtils.Contigs import write_complete_fasta
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename
     filler = 'X'

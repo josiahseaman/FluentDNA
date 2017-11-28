@@ -5,10 +5,12 @@ import blist
 from array import array
 
 from ChainFiles import chain_file_to_list, match
-from DDVUtils import just_the_name, pluck_contig, first_word, Batch, make_output_dir_with_suffix, ReverseComplement, write_complete_fasta, BlankIterator
+from DDVUtils import make_output_dir_with_suffix
 from DefaultOrderedDict import DefaultOrderedDict
 from Span import AlignedSpans, Span, alignment_chopping_index
-
+from DNASkittleUtils.CommandLineUtils import just_the_name
+from DNASkittleUtils.DDVUtils import first_word, Batch,  ReverseComplement, BlankIterator
+from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
     """Moves the pointer past any headers or comments and places index on the next valid sequence character.

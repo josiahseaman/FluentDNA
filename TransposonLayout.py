@@ -6,7 +6,9 @@ from datetime import datetime
 import math
 from array import array
 
-from DDVUtils import LayoutLevel, rev_comp, Contig, read_contigs
+from DDVUtils import LayoutLevel
+from DNASkittleUtils.DDVUtils import rev_comp
+from DNASkittleUtils.Contigs import Contig, read_contigs
 from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
 
