@@ -11,6 +11,13 @@ from DNASkittleUtils.DDVUtils import copytree
 from DNASkittleUtils.Contigs import read_contigs
 
 
+small_title_bp = 10000
+title_skip_padding = self.levels[0].modulo
+
+
+def hex_to_rgb(h):
+    h = h.lstrip('#')
+    return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 class TileLayout:
     final_output_location = None
@@ -31,10 +38,17 @@ class TileLayout:
         self.image_length = 0
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
-        self.palette['T'] = (173, 20, 25)  # Red
-        self.palette['A'] = (219, 113, 74)  # Orange
-        self.palette['G'] = (77, 205, 74)  # Green
-        self.palette['C'] = (55, 113, 184)  # Blue
+
+        self.palette['T'] = hex_to_rgb('C35653')  # Red
+        self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
+        self.palette['G'] = hex_to_rgb('55AA55')  # Green
+        self.palette['C'] = hex_to_rgb('457585')  # Blue
+
+
+        # self.palette['T'] = (173, 20, 25)  # Red
+        # self.palette['A'] = (219, 113, 74)  # Orange
+        # self.palette['G'] = (77, 205, 74)  # Green
+        # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette['X'] = (247, 247, 247)  # almost white
 
@@ -92,7 +106,7 @@ class TileLayout:
             traceback.print_exc()
         try:
             if len(self.contigs) > 1 and self.use_titles:
-                print("Drawing %i titles" % len(self.contigs))
+                print("Drawing %i titles" % sum(len(x.seq) > small_title_bp for x in self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
         except BaseException as e:
@@ -132,7 +146,7 @@ class TileLayout:
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
-            self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
+            # self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
         if self.sort_contigs:
             print("Scaffolds are being sorted by length.")
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
@@ -173,8 +187,9 @@ class TileLayout:
             if next_segment_length + min_gap < current_level.chunk_size:
                 # give a full level of blank space just in case the previous
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
-                if self.skip_small_titles and next_segment_length < 10000:
-                    title_padding = 0  # no small titles, but larger ones will still display,
+                if self.skip_small_titles and next_segment_length < small_title_bp:
+                    # no small titles, but larger ones will still display,
+                    title_padding = title_skip_padding  # normally 100 pixels per line
                     # this affects layout
                 if not self.use_titles:
                     title_padding = 0  # don't leave space for a title, but still use tail and reset padding
@@ -220,7 +235,7 @@ class TileLayout:
         total_progress = 0
         for contig in self.contigs:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
-            if contig.title_padding:
+            if contig.title_padding > title_skip_padding:  # there needs to be room to draw
                 self.draw_title(total_progress, contig)
             total_progress += contig.title_padding + len(contig.seq) + contig.tail_padding
 
