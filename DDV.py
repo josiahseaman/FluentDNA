@@ -124,8 +124,10 @@ def ddv(args):
                                             batch.fastas)
         sys.exit(0)
 
-    if args.layout_type == "NONE":  # DEPRECATED: Shortcut for old visualizations to create dz stack from existing large image
+    if args.layout_type == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs)
+        layout.generate_html(base_path, output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
@@ -209,24 +211,21 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     layout = ParallelLayout(n_genomes=n_genomes)
     layout.process_file(output_dir, output_name, fastas)
     layout_final_output_location = layout.final_output_location
+    del layout
     try:
         for extra_fasta in fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
     except shutil.SameFileError:
         pass  # not a problem
-    print("Done creating Large Image.")
-    if not args.no_webpage:
-        layout.generate_html(fasta, output_dir, output_name)
-        del layout
-        print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
-                              os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-        print("Done creating Deep Zoom Structure.")
-    else:
-        del layout
+    print("Done creating Large Image and HTML.")
+    print("Creating Deep Zoom Structure from Generated Image...")
+    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
+                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+    print("Done creating Deep Zoom Structure.")
 
     if args.run_server:
         run_server(output_dir)
+
 
 
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):

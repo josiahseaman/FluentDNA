@@ -146,7 +146,7 @@ class TileLayout:
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
-            # self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
+            self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
         if self.sort_contigs:
             print("Scaffolds are being sorted by length.")
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
@@ -298,7 +298,7 @@ class TileLayout:
         print("-- Writing:", output_file_name, "--")
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         self.image.save(self.final_output_location, 'PNG')
-        del self.image
+        # del self.image
 
 
     def max_dimensions(self, image_length):
@@ -329,8 +329,8 @@ class TileLayout:
             copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
-                            "originalImageWidth": str(self.image.width),
-                            "originalImageHeight": str(self.image.height),
+                            "originalImageWidth": str(self.image.width if self.image else 1),
+                            "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": str(self.origin),
                             "ColumnPadding": str(self.levels[2].padding),
                             "columnWidthInNucleotides": str(self.levels[1].chunk_size),
