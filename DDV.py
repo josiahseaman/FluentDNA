@@ -209,7 +209,6 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     layout = ParallelLayout(n_genomes=n_genomes)
     layout.process_file(output_dir, output_name, fastas)
     layout_final_output_location = layout.final_output_location
-    del layout
     try:
         for extra_fasta in fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
@@ -217,10 +216,15 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
         pass  # not a problem
     print("Done creating Large Image.")
     if not args.no_webpage:
+        layout.generate_html(fasta, output_dir, output_name)
+        del layout
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
                               os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
+    else:
+        del layout
+
     if args.run_server:
         run_server(output_dir)
 
@@ -231,7 +235,6 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs)
     layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
-    del layout
     # try:
     #     shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     # except shutil.SameFileError:
@@ -239,9 +242,12 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     print("Done creating Large Image at ", layout_final_output_location)
     if not args.no_webpage:
         layout.generate_html(fasta, output_dir, output_name)
+        del layout
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
+    else:
+        del layout
 
 
 if __name__ == "__main__":

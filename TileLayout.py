@@ -12,7 +12,7 @@ from DNASkittleUtils.Contigs import read_contigs
 
 
 small_title_bp = 10000
-title_skip_padding = self.levels[0].modulo
+title_skip_padding = 100
 
 
 def hex_to_rgb(h):
