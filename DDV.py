@@ -266,13 +266,13 @@ if __name__ == "__main__":
                                      add_help=True)
 
     parser = argparse.ArgumentParser(prog='DDV.exe')
-    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
-    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
+    parser.add_argument('--quick',
+                        action='store_true',
+                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
+                             "in the same directory as the FASTA.  This is the default behavior if you drop "
+                             "a file onto the program or a filepath is the only argument.",
+                        dest="quick")
 
-    parser.add_argument("-i", "--image",
-                        type=str,
-                        help="Path to already laid out big image to process with DeepZoom. No layout will be performed if an image is passed in.",
-                        dest="image")
     parser.add_argument("-f", "--fasta",
                         type=str,
                         help="Path to main FASTA file to process into new visualization.",
@@ -281,6 +281,15 @@ if __name__ == "__main__":
                         type=str,
                         help="What to name the output folder (not a path). Defaults to name of the fasta file.",
                         dest="output_name")
+    parser.add_argument("-r", "--runserver",
+                        action='store_true',
+                        help="Run Web Server after computing.",
+                        dest="run_server")
+    parser.add_argument('-s', '--sort_contigs',
+                        action='store_true',
+                        help="Sort the entries of the fasta file by length.  This option will kick in "
+                             "automatically if your file has more than 10,000 separate FASTA entries.",
+                        dest="sort_contigs")
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
@@ -292,23 +301,7 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to secondary FASTA files to process when doing Parallel layout.",
                         dest="extra_fastas")
-    parser.add_argument("-c", "--chainfile",
-                        type=str,
-                        help="Path to Chain File when doing Parallel Comparisons layout.",
-                        dest="chain_file")
-    parser.add_argument("-ch", "--chromosomes",
-                        nargs='+',
-                        type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
-                        dest="chromosomes")
-    parser.add_argument("-r", "--runserver",
-                        action='store_true',
-                        help="Run Web Server after computing.",
-                        dest="run_server")
-    parser.add_argument("-t", "--separate_translocations",
-                        action='store_true',
-                        help="Don't edit in translocations, list them at the end.",
-                        dest="separate_translocations")
+
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
                         help="No gaps for a title.  Useful when combined with separate_translocations",
@@ -318,14 +311,28 @@ if __name__ == "__main__":
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
                         "You can use --image option later to resume the process to get a deepzoom stack.",
                         dest="no_webpage")
-    parser.add_argument("-g", "--squish_gaps",
-                        action='store_true',
-                        help="If two gaps are approximately the same size, subtract the intersection.",
-                        dest="squish_gaps")
     parser.add_argument("-q", "--trial_run",
                         action='store_true',
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
                         dest="trial_run")
+    ### Chain Files
+    parser.add_argument("-c", "--chainfile",
+                        type=str,
+                        help="Path to Chain File when doing Parallel Comparisons layout.",
+                        dest="chain_file")
+    parser.add_argument("-ch", "--chromosomes",
+                        nargs='+',
+                        type=str,
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        dest="chromosomes")
+    parser.add_argument("-t", "--separate_translocations",
+                        action='store_true',
+                        help="Don't edit in translocations, list them at the end.",
+                        dest="separate_translocations")
+    parser.add_argument("-g", "--squish_gaps",
+                        action='store_true',
+                        help="If two gaps are approximately the same size, subtract the intersection.",
+                        dest="squish_gaps")
     parser.add_argument("-k", "--show_translocations_only",
                         action='store_true',
                         help="Used to highlight the locations of translocations (temporary)",
@@ -334,6 +341,8 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Don't show the unaligned pieces of ref or query sequences.",
                         dest='aligned_only')
+
+    ### Annotations
     parser.add_argument("-ra", "--ref_annotation",
                         type=str,
                         help="Path to Annotation File for Reference Genome (first).",
@@ -342,15 +351,15 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
-    parser.add_argument('-s', '--sort_contigs',
-                        action='store_true',
-                        help="Sort the entries of the fasta file by length.",
-                        dest="sort_contigs")
-    parser.add_argument('--quick',
-                        action='store_true',
-                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
-                             "in the same directory as the FASTA.",
-                        dest="quick")
+
+    ### Other
+    parser.add_argument("-i", "--image",
+                        type=str,
+                        help="Path to already computed big image to process with DeepZoom. "
+                             "No layout will be performed if an image is passed in.",
+                        dest="image")
+    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
+    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
     args = parser.parse_args()
 

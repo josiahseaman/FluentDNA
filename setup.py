@@ -104,7 +104,7 @@ def get_packages_in_path(path):
 
 
 def get_installed_packages():
-    site_packages = pip.util.site_packages
+    site_packages = pip.util.site_packages if hasattr(pip, 'util') else pip.utils.site_packages
 
     return get_packages_in_path(site_packages)
 

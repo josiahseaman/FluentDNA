@@ -94,7 +94,7 @@ class ParallelLayout(TileLayout):
     def draw_the_viz_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
-        font = ImageFont.truetype("tahoma.ttf", 380)
+        font = ImageFont.truetype("Tahoma.ttf", 380)
         titles = [just_the_name(x) for x in filenames]  # remove extension and path
         span = '      '.join(titles)
         title_spanning_width = font.getsize(span)[0]  # For centered text

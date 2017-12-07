@@ -30,7 +30,7 @@ class TileLayout:
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
         # precomputing fonts turns out to be a big performance gain
-        self.fonts = {size: ImageFont.truetype("tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
+        self.fonts = {size: ImageFont.truetype("Tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
         self.draw = None
         self.pixels = None
@@ -280,7 +280,7 @@ class TileLayout:
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            font = ImageFont.truetype("tahoma.ttf", font_size)
+            font = ImageFont.truetype("Tahoma.ttf", font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
