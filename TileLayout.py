@@ -13,11 +13,19 @@ from DNASkittleUtils.Contigs import read_contigs
 
 small_title_bp = 10000
 title_skip_padding = 100
+font_name = "Tahoma.ttf"
+try:
+    ImageFont.truetype(font_name, 10)
+except OSError:
+    font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
 
 
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+
+
+
 
 class TileLayout:
     final_output_location = None
@@ -30,7 +38,7 @@ class TileLayout:
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
         # precomputing fonts turns out to be a big performance gain
-        self.fonts = {size: ImageFont.truetype("Tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
+        self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
         self.draw = None
         self.pixels = None
@@ -51,6 +59,8 @@ class TileLayout:
         # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette['X'] = (247, 247, 247)  # almost white
+        self.palette['-'] = self.palette['X']  # other gap characters
+        self.palette['.'] = self.palette['X']
 
 
         # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
@@ -280,7 +290,7 @@ class TileLayout:
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            font = ImageFont.truetype("Tahoma.ttf", font_size)
+            font = ImageFont.truetype(font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
