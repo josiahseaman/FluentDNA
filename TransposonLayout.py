@@ -186,7 +186,9 @@ class TransposonLayout(TileLayout):
                     ordered_lines[line_number] = ''.join(line)
         processed_seq = ''.join([ordered_lines[i] for i in range(len(annotations))])
         contig_name = '__'.join([annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
-        return Contig(contig_name, processed_seq, consensus_width=consensus_width)
+        c = Contig(contig_name, processed_seq, )
+        c.consensus_width=consensus_width
+        return c
 
     def draw_repeat_title(self, contig, x, y):
         chars_per_line = math.ceil(contig.consensus_width / 5.625)

@@ -47,6 +47,26 @@ class TileLayout:
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
 
+        #### Rasmol Protein colors
+        self.palette['D'] = hex_to_rgb('EA3535')
+        self.palette['E'] = hex_to_rgb('EA3535')
+        self.palette['F'] = hex_to_rgb('4B4BB5')
+        self.palette['H'] = hex_to_rgb('9595D9')
+        self.palette['I'] = hex_to_rgb('2F932F')
+        self.palette['K'] = hex_to_rgb('3C76FF')
+        self.palette['L'] = hex_to_rgb('2F932F')
+        self.palette['M'] = hex_to_rgb('ECEC41')
+        self.palette['N'] = hex_to_rgb('3BE4E4')
+        self.palette['P'] = hex_to_rgb('E2A796')
+        self.palette['Q'] = hex_to_rgb('3BE4E4')
+        self.palette['R'] = hex_to_rgb('3C76FF')
+        self.palette['S'] = hex_to_rgb('FBAC34')
+        self.palette['T'] = hex_to_rgb('FBAC34')
+        self.palette['V'] = hex_to_rgb('2F932F')
+        self.palette['W'] = hex_to_rgb('BF72BF')
+        self.palette['Y'] = hex_to_rgb('4B4BB5')
+
+        #### Nucleotide Colors! Paletton Quadrapole colors
         self.palette['T'] = hex_to_rgb('C35653')  # Red
         self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
         self.palette['G'] = hex_to_rgb('55AA55')  # Green

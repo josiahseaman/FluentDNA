@@ -1,11 +1,11 @@
 """
-self.is an optional addon to DDV written in Python that allows you to generate a single image
+DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
 
-self.python file contains basic image handling methods.  It also contains a re-implementation of
-Josiah's "Tiled Layout" algorithm which is also in DDVLayoutManager.cs.
+The python version has matured significantly past the previous feature set.
+
 """
 import multiprocessing
 import os
@@ -46,6 +46,8 @@ from UniqueOnlyChainParser import UniqueOnlyChainParser
 from AnnotatedAlignment import AnnotatedAlignment
 from TileLayout import TileLayout
 from TransposonLayout import TransposonLayout
+from MultipleAlignmentLayout import MultipleAlignmentLayout
+
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
@@ -154,6 +156,14 @@ def ddv(args):
         #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
         layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
         print("Done with Transposons")
+        sys.exit(0)
+    if args.layout_type == 'alignment':
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = MultipleAlignmentLayout()
+        layout.process_all_alignments(args.fasta,
+                                      output_dir,
+                                      args.output_name)
+        print("Done with Alignments")
         sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
@@ -294,7 +304,7 @@ if __name__ == "__main__":
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["original", "tiled", "parallel", "unique", "transposon"],
+                        choices=["tiled", "parallel", "alignment", "unique", "transposon", "original"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
