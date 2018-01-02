@@ -1,0 +1,7 @@
+python DDV.py --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
+
+python DDV.py --fasta="data/break_996.fa" --layout=transposon
+
+python DDV.py --runserver
+
+python DDV.py "data/phiX.fa"

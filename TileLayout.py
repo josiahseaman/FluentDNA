@@ -57,16 +57,15 @@ class TileLayout:
         self.palette['L'] = hex_to_rgb('2F932F')
         self.palette['M'] = hex_to_rgb('ECEC41')
         self.palette['N'] = hex_to_rgb('3BE4E4')
-        self.palette['P'] = hex_to_rgb('E2A796')
+        self.palette['P'] = hex_to_rgb('E25826')  # replace this beige
         self.palette['Q'] = hex_to_rgb('3BE4E4')
         self.palette['R'] = hex_to_rgb('3C76FF')
         self.palette['S'] = hex_to_rgb('FBAC34')
-        self.palette['T'] = hex_to_rgb('FBAC34')
         self.palette['V'] = hex_to_rgb('2F932F')
         self.palette['W'] = hex_to_rgb('BF72BF')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
-        #### Nucleotide Colors! Paletton Quadrapole colors
+        #-----Nucleotide Colors! Paletton Quadrapole colors------
         self.palette['T'] = hex_to_rgb('C35653')  # Red
         self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
         self.palette['G'] = hex_to_rgb('55AA55')  # Green

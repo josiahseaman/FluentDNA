@@ -5,6 +5,7 @@ from DNASkittleUtils.CommandLineUtils import just_the_name
 from math import ceil
 from statistics import mean
 from datetime import datetime
+from natsort import natsorted
 import os
 import traceback
 
@@ -16,29 +17,29 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
         #### Rasmol 'Amino' Protein colors
-        self.palette['A'] = hex_to_rgb('C8C8C8')
-        self.palette['R'] = hex_to_rgb('145AFF')
-        self.palette['N'] = hex_to_rgb('00DCDC')
-        self.palette['D'] = hex_to_rgb('E60A0A')
-        self.palette['B'] = hex_to_rgb('E6E600')
-        self.palette['C'] = hex_to_rgb('00DCDC')
-        self.palette['E'] = hex_to_rgb('E60A0A')
-        self.palette['Q'] = hex_to_rgb('EBEBEB')
-        self.palette['Z'] = hex_to_rgb('8282D2')
-        self.palette['G'] = hex_to_rgb('0F820F')
-        self.palette['H'] = hex_to_rgb('0F820F')
-        self.palette['I'] = hex_to_rgb('145AFF')
-        self.palette['L'] = hex_to_rgb('E6E600')
-        self.palette['K'] = hex_to_rgb('3232AA')
-        self.palette['M'] = hex_to_rgb('DC9682')
-        self.palette['F'] = hex_to_rgb('FA9600')
-        self.palette['P'] = hex_to_rgb('FA9600')
-        self.palette['S'] = hex_to_rgb('B45AB4')
-        self.palette['T'] = hex_to_rgb('3232AA')
-        self.palette['W'] = hex_to_rgb('0F820F')
-        self.palette['Y'] = hex_to_rgb('FF69B4')
-        self.palette['V'] = hex_to_rgb('FF69B4')
-        self.palette['X'] = hex_to_rgb('FF6100')
+        # self.palette['A'] = hex_to_rgb('C8C8C8')
+        # self.palette['R'] = hex_to_rgb('145AFF')
+        # self.palette['N'] = hex_to_rgb('00DCDC')
+        # self.palette['D'] = hex_to_rgb('E60A0A')
+        # self.palette['B'] = hex_to_rgb('E6E600')
+        # self.palette['C'] = hex_to_rgb('00DCDC')
+        # self.palette['E'] = hex_to_rgb('E60A0A')
+        # self.palette['Q'] = hex_to_rgb('EBEBEB')
+        # self.palette['Z'] = hex_to_rgb('8282D2')
+        # self.palette['G'] = hex_to_rgb('0F820F')
+        # self.palette['H'] = hex_to_rgb('0F820F')
+        # self.palette['I'] = hex_to_rgb('145AFF')
+        # self.palette['L'] = hex_to_rgb('E6E600')
+        # self.palette['K'] = hex_to_rgb('3232AA')
+        # self.palette['M'] = hex_to_rgb('DC9682')
+        # self.palette['F'] = hex_to_rgb('FA9600')
+        # self.palette['P'] = hex_to_rgb('FA9600')
+        # self.palette['S'] = hex_to_rgb('B45AB4')
+        # self.palette['T'] = hex_to_rgb('3232AA')
+        # self.palette['W'] = hex_to_rgb('0F820F')
+        # self.palette['Y'] = hex_to_rgb('FF69B4')
+        # self.palette['V'] = hex_to_rgb('FF69B4')
+        # self.palette['X'] = hex_to_rgb('FF6100')
 
 
         #### Rasmol Shapely Protein colors
@@ -65,7 +66,10 @@ class MultipleAlignmentLayout(TransposonLayout):
         # self.palette['W'] = hex_to_rgb('FF8CFF')
         # self.palette['Y'] = hex_to_rgb('FF00FF')
         # self.palette['V'] = hex_to_rgb('FF00FF')
-        # self.palette['X'] = hex_to_rgb('FF6100')
+
+        # It's important that X is defined
+        self.palette['X'] = hex_to_rgb('FF6100')
+        self.palette['P'] = hex_to_rgb('E25826')
 
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
@@ -97,7 +101,7 @@ class MultipleAlignmentLayout(TransposonLayout):
     def translate_gapped_fastas_to_contigs(self, input_fasta_folder):
         from glob import glob
         self.contigs = []
-        for fasta in glob(os.path.join(input_fasta_folder, '*.fa*')):
+        for fasta in natsorted(glob(os.path.join(input_fasta_folder, '*.fa*'))):
             species = read_contigs(fasta)
             consensus_width = max([len(x.seq) for x in species])
             block = Contig(just_the_name(fasta),
