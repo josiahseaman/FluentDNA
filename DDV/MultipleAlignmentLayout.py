@@ -1,13 +1,15 @@
-from TransposonLayout import TransposonLayout
-from TileLayout import hex_to_rgb
-from DNASkittleUtils.Contigs import read_contigs, Contig
-from DNASkittleUtils.CommandLineUtils import just_the_name
-from math import ceil
-from statistics import mean
-from datetime import datetime
-from natsort import natsorted
 import os
 import traceback
+from datetime import datetime
+from math import ceil
+from statistics import mean
+
+from DNASkittleUtils.CommandLineUtils import just_the_name
+from DNASkittleUtils.Contigs import read_contigs, Contig
+from TileLayout import hex_to_rgb
+from natsort import natsorted
+
+from TransposonLayout import TransposonLayout
 
 
 class MultipleAlignmentLayout(TransposonLayout):

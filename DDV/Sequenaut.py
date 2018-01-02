@@ -1,11 +1,12 @@
 import argparse
 import math
-from collections import defaultdict
 import sys
+from collections import defaultdict
 
-from DDVUtils import make_output_dir_with_suffix, base_directories
-from DDV import create_tile_layout_viz_from_fasta
 from TileLayout import TileLayout
+
+from DDV import create_tile_layout_viz_from_fasta
+from DDVUtils import make_output_dir_with_suffix, base_directories
 
 
 def hasDepth(listLike):

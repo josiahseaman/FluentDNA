@@ -1,8 +1,9 @@
 import os
-import sys
-from PIL import ImageDraw
-import textwrap
 import re as regex
+import sys
+import textwrap
+
+from PIL import ImageDraw
 
 
 class LayoutLevel:

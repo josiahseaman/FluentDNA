@@ -1,16 +1,16 @@
+import math
 import statistics
 import traceback
+from array import array
 from collections import defaultdict
 from datetime import datetime
 
-import math
-from array import array
-
-from DDVUtils import LayoutLevel
-from DNASkittleUtils.DDVUtils import rev_comp
 from DNASkittleUtils.Contigs import Contig, read_contigs
+from DNASkittleUtils.DDVUtils import rev_comp
 from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
+
+from DDVUtils import LayoutLevel
 
 
 class TransposonLayout(TileLayout):

@@ -4,16 +4,16 @@ from UCSC.  This annotation contains alignment to the repeat consensus.
 It is similar to Annotations.py.  But at the moment, they're separate files because their target
 input and output is significantly different."""
 
+import math
 # Read annotation file and just mark where things land on the consensus
 import sys
+from array import array
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import rev_comp
 
 from Span import Span
-from array import array
-import math
 
 
 def int_log(num):

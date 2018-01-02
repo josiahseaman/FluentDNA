@@ -1,15 +1,14 @@
+import math
 import os
 import traceback
 from collections import defaultdict
 from datetime import datetime
 
-import math
+from DNASkittleUtils.Contigs import read_contigs
+from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
 
-from DDVUtils import LayoutLevel,  multi_line_height, pretty_contig_name
-from DNASkittleUtils.DDVUtils import copytree
-from DNASkittleUtils.Contigs import read_contigs
-
+from DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name
 
 small_title_bp = 10000
 title_skip_padding = 100

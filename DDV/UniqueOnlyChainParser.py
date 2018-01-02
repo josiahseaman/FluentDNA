@@ -1,11 +1,11 @@
 from bisect import bisect_left
 
+from ChainParser import ChainParser
 from DNASkittleUtils.Contigs import write_complete_fasta, pluck_contig
 from DNASkittleUtils.DDVUtils import Batch
+from Span import Span
 
 from ChainFiles import fetch_all_chains
-from ChainParser import ChainParser
-from Span import Span
 
 
 class UniqueOnlyChainParser(ChainParser):
