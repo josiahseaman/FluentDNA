@@ -1,4 +1,16 @@
-DDV2.py --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
-DDV2.py --fasta="data/break_996.fa" --layout=transposon
-DDV2.py --runserver
-DDV2.py "data/phiX.fa"
+# On Linux Systems, after installation, DDV2 will be on your path and you can call the following commands from a terminal.
+# Note that if you installed DDV in a virtual environment, you will need to activate that first.
+
+DDV2 --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
+DDV2 --fasta="data/break_996.fa" --layout=transposon
+DDV2 --runserver
+DDV2 "data/phiX.fa"
+
+# On Windows, you will need to execute the DDV2 script from the installation location.
+# Note that if you installed DDV in a virtual environment, you will need to activate that first,
+#    and change the path to the DDV2 script to match the path to your new environment location.
+
+python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
+python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --fasta="data/break_996.fa" --layout=transposon
+python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --runserver
+python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py "data/phiX.fa"
