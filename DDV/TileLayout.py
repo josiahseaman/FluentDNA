@@ -354,7 +354,7 @@ class TileLayout:
     def generate_html(self, input_file_path, output_folder, output_file_name):
         try:
             input_file_name = os.path.basename(input_file_path)
-            copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
+            copytree(os.path.join(os.getcwd(), 'html_template'), output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "originalImageWidth": str(self.image.width if self.image else 1),
@@ -375,7 +375,7 @@ class TileLayout:
                             "sbegin": '1',
                             "send": str(self.image_length),
                             "date": datetime.now().strftime("%Y-%m-%d")}
-            with open(os.path.join('html template', 'index.html'), 'r') as template:
+            with open(os.path.join('html_template', 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
                     template_content = template_content.replace('{{' + key + '}}', value)

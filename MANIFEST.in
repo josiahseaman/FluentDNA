@@ -1,0 +1,4 @@
+include README.md
+include example_DDV_commands.txt
+include favicon.ico
+recursive-include DDV/html_template *

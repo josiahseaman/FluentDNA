@@ -55,7 +55,7 @@ build_exe_options = {
         ('README.md', 'README.md'),
 
         # CHANGE ME for any files/folders you want included with your project
-        ('html template'),
+        ('html_template'),
     ],
     'include_msvcr': True  # CHANGE ME depending on if your project has licensing that is compatible with Microsoft's redistributable license
 }
