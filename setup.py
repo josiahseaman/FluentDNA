@@ -18,6 +18,10 @@ setup(
         'blist>=1.3.6',
         'numpy>=1.13.3',
         'natsort>=5.1.1',
+        'DNASkittleUtils>=v1.0.3',
+    ],
+    dependency_links=[
+        'git+https://github.com/josiahseaman/DNASkittleUtils.git@v1.0.3#egg=DNASkittleUtils-v1.0.3',
     ],
     zip_safe=False,
     url='https://github.com/josiahseaman/DDV',
