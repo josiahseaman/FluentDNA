@@ -1,17 +1,4 @@
 from DDV.DDV import __version__
-
-setup(name='DDV',
-      version=__version__,
-      description='DDV Application',
-      options={'build_exe': build_exe_options,
-               'install_exe': {'build_dir': build_exe_options['build_exe']}},
-      executables=[Executable('DDV.py', base=base, icon='favicon.ico', targetName='DDV'+EXTENSION), ],
-      cmdclass=cmdclass,
-      install_requires=requirements,
-      dependency_links=urls
-      )
-
-
 from setuptools import setup, find_packages
 
 setup(
@@ -21,16 +8,15 @@ setup(
     author='Josiah Seaman, Bryan Hurst',
     author_email='josiah.seaman@gmail.com',
     license='BSD',
-    packages=['DDV'],  # TODO: revise this line
+    packages=find_packages(exclude=('build', 'obj', 'www-data')),
     include_package_data=True,
     install_requires=[
-        'Pillow==3.2.0',
-        'six==1.10.0',
-        'wheel==0.24.0',
-        'psutil==4.3.1',
-        'blist==1.3.6',
-        'numpy==1.13.3',
-        'natsort==5.1.1',
+        'Pillow>=3.2.0',
+        'six>=1.10.0',
+        'psutil>=4.3.1',
+        'blist>=1.3.6',
+        'numpy>=1.13.3',
+        'natsort>=5.1.1',
     ],
     url='https://github.com/josiahseaman/DDV',
     download_url='https://github.com/josiahseaman/DDV',  # TODO: post a tarball
