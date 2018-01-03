@@ -31,7 +31,7 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-__version__ = '2.1.0'
+from DDV import __version__
 
 import shutil
 import argparse
