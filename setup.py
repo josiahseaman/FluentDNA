@@ -1,9 +1,9 @@
-from DDV import __version__
+from DDV import VERSION
 from setuptools import setup, find_packages
 
 setup(
     name='DDV',
-    version=__version__,
+    version=VERSION,
     description='Visualization tool for fasta files.  Supports whole genome alignment and multiple sequence alignment.',
     author='Josiah Seaman, Bryan Hurst',
     author_email='josiah.seaman@gmail.com',

@@ -8,7 +8,7 @@ import subprocess
 from cx_Freeze import setup, Executable, build_exe
 from importlib import import_module
 
-from DDV.DDV import __version__
+from DDV import VERSION
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -264,7 +264,7 @@ requirements, urls = parse_requirements_and_links(os.path.join(BASE_DIR, 'Requir
 cmdclass = {"build_exe": BuildDDV,}
 
 setup(name='DDV',
-      version=__version__,
+      version=VERSION,
       description='DDV Application',
       options={'build_exe': build_exe_options,
                'install_exe': {'build_dir': build_exe_options['build_exe']}},

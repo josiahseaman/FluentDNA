@@ -31,7 +31,7 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-from DDV import __version__
+import DDV
 
 import shutil
 import argparse
@@ -378,7 +378,7 @@ if __name__ == "__main__":
         print("DDV")
         sys.exit(0)
     elif args.version:
-        print(__version__)
+        print(DDV.VERSION)
         sys.exit(0)
 
     # Errors
