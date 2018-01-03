@@ -3,6 +3,25 @@
 This application creates visualizations of FASTA formatted DNA nucleotide data.
 DDV generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
+## Quick Start
+**Installation**  
+`pip install --process-dependency-links git+https://github.com/josiahseaman/DDV.git@pip`
+
+**Running**  
+DDV2.py will be placed in the scripts folder and accessible through PYTHONPATH.
+
+`DDV2.py --fasta="/path/to/yourfasta.fa"`  
+**Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:  
+`python C:\yourvenv\Scripts\DDV.py --fasta="C:\path\to\yourfasta.fa"`  
+
+To use the interactive browser, especially for large files, start a server.  
+
+`DDV2.py --runserver`  
+Then open your browser and enter the URL: `http://localhost:8000/`  
+
+To run DDV from your own python script I recommend looking at DDV2.py for examples such as `create_tile_layout_viz_from_fasta()`
+
+
 ## DDV 2.0 Features
 
 DDV 2.0 is a complete rewrite in Python of DDV.  DDV 2.0 has a much expanded feature set for handling
