@@ -1,4 +1,4 @@
-from DDV.DDV import __version__
+from DDV import __version__
 from setuptools import setup, find_packages
 
 setup(
