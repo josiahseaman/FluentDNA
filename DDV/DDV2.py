@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
@@ -31,22 +32,22 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-import DDV
+from DDV import VERSION
 
 import shutil
 import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
+from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from ParallelGenomeLayout import ParallelLayout
-from ChainParser import ChainParser
-from UniqueOnlyChainParser import UniqueOnlyChainParser
-from AnnotatedAlignment import AnnotatedAlignment
-from TileLayout import TileLayout
-from TransposonLayout import TransposonLayout
-from MultipleAlignmentLayout import MultipleAlignmentLayout
+from DDV.ParallelGenomeLayout import ParallelLayout
+from DDV.ChainParser import ChainParser
+from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
+from DDV.AnnotatedAlignment import AnnotatedAlignment
+from DDV.TileLayout import TileLayout
+from DDV.TransposonLayout import TransposonLayout
+from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
 
 
 if sys.platform == 'win32':
@@ -259,7 +260,7 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
         del layout
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
         print("--Starting in Quick Mode--")
         print("This will convert the one FASTA file directly to an image and place it in the same "
@@ -378,7 +379,7 @@ if __name__ == "__main__":
         print("DDV")
         sys.exit(0)
     elif args.version:
-        print(DDV.VERSION)
+        print(VERSION)
         sys.exit(0)
 
     # Errors
@@ -434,3 +435,7 @@ if __name__ == "__main__":
             args.output_name = just_the_name(args.fasta or args.image)
 
     ddv(args)
+
+
+if __name__ == "__main__":
+    main()

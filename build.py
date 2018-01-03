@@ -268,7 +268,7 @@ setup(name='DDV',
       description='DDV Application',
       options={'build_exe': build_exe_options,
                'install_exe': {'build_dir': build_exe_options['build_exe']}},
-      executables=[Executable('DDV.py', base=base, icon='favicon.ico', targetName='DDV'+EXTENSION), ],
+      executables=[Executable('DDV2.py', base=base, icon='favicon.ico', targetName='DDV2'+EXTENSION), ],
       cmdclass=cmdclass,
       install_requires=requirements,
       dependency_links=urls

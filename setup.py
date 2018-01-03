@@ -10,7 +10,7 @@ setup(
     license='BSD',
     packages=find_packages(exclude=('build', 'obj', 'www-data')),
     include_package_data=True,
-    scripts=['DDV/DDV.py'],
+    scripts=['DDV/DDV2.py'],
     install_requires=[
         'Pillow>=3.2.0',
         'six>=1.10.0',
