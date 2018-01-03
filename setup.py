@@ -10,6 +10,7 @@ setup(
     license='BSD',
     packages=find_packages(exclude=('build', 'obj', 'www-data')),
     include_package_data=True,
+    scripts=['DDV/DDV.py'],
     install_requires=[
         'Pillow>=3.2.0',
         'six>=1.10.0',
@@ -18,6 +19,7 @@ setup(
         'numpy>=1.13.3',
         'natsort>=5.1.1',
     ],
+    zip_safe=False,
     url='https://github.com/josiahseaman/DDV',
     download_url='https://github.com/josiahseaman/DDV',  # TODO: post a tarball
     keywords=['bioinformatics', 'dna', 'fasta', 'chain', 'alignment'],
