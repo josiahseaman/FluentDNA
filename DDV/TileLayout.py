@@ -29,13 +29,14 @@ def hex_to_rgb(h):
 class TileLayout:
     final_output_location = None
 
-    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False):
+    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, high_contrast=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
+        self.high_contrast = high_contrast
         # precomputing fonts turns out to be a big performance gain
         self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
@@ -375,6 +376,29 @@ class TileLayout:
                             "sbegin": '1',
                             "send": str(self.image_length),
                             "date": datetime.now().strftime("%Y-%m-%d")}
+            html_content['legend'] = """    <strong>Legend:</strong>
+                <img class='legend-icon' src='img/LEGEND-A.png'/>
+                <img class='legend-icon' src='img/LEGEND-T.png'/>
+                <img class='legend-icon' src='img/LEGEND-G.png'/>
+                <img class='legend-icon' src='img/LEGEND-C.png'/>
+                <img class='legend-icon' src='img/LEGEND-N.png'/>
+                <img class='legend-icon' src='img/LEGEND-bg.png'/>
+                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are blue/green.
+                    A/T rich areas are reddish.  Poly-purines are more yellow (orange/green).
+                    Poly-pyrimidines are more purple (blue/red).
+                    Diffuse natural colors were chosen to be less harsh on the eyes.</span>
+            """
+            if self.high_contrast:
+                html_content['legend'] = """    <strong>Legend:</strong>
+                                <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
+                                <img class='legend-icon' src='img/LEGEND-T-contrast.png'/>
+                                <img class='legend-icon' src='img/LEGEND-G-contrast.png'/>
+                                <img class='legend-icon' src='img/LEGEND-C-contrast.png'/>
+                                <img class='legend-icon' src='img/LEGEND-N.png'/>
+                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
+                                <span class='color-explanation'>G/C rich regions are blue/green.
+                                    A/T rich areas are reddish.</span>
+                            """
             with open(os.path.join('html_template', 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():

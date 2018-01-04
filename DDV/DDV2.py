@@ -129,7 +129,8 @@ def ddv(args):
 
     if args.layout_type == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs)
+        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+                            high_contrast=args.high_contrast)
         layout.generate_html(base_path, output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
@@ -242,7 +243,8 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs)
+        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+                            high_contrast=args.high_contrast)
     layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
     # try:
@@ -301,6 +303,10 @@ def main():
                         help="Sort the entries of the fasta file by length.  This option will kick in "
                              "automatically if your file has more than 10,000 separate FASTA entries.",
                         dest="sort_contigs")
+    parser.add_argument('-hc', '--high_contrast',
+                        action='store_true',
+                        help="Use high contrast colors",
+                        dest="high_contrast")
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
