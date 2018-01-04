@@ -4,6 +4,7 @@ www-data/dnadata
 build.bat
 release.bat
 scraps/
+env_fresh/
 *.chain
 
 # Created by .ignore support plugin (hsz.mobi)

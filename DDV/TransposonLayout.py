@@ -1,16 +1,16 @@
+import math
 import statistics
 import traceback
+from array import array
 from collections import defaultdict
 from datetime import datetime
 
-import math
-from array import array
-
-from DDVUtils import LayoutLevel
-from DNASkittleUtils.DDVUtils import rev_comp
 from DNASkittleUtils.Contigs import Contig, read_contigs
+from DNASkittleUtils.DDVUtils import rev_comp
 from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from TileLayout import TileLayout
+
+from DDVUtils import LayoutLevel
 
 
 class TransposonLayout(TileLayout):
@@ -186,7 +186,9 @@ class TransposonLayout(TileLayout):
                     ordered_lines[line_number] = ''.join(line)
         processed_seq = ''.join([ordered_lines[i] for i in range(len(annotations))])
         contig_name = '__'.join([annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
-        return Contig(contig_name, processed_seq, consensus_width=consensus_width)
+        c = Contig(contig_name, processed_seq, )
+        c.consensus_width=consensus_width
+        return c
 
     def draw_repeat_title(self, contig, x, y):
         chars_per_line = math.ceil(contig.consensus_width / 5.625)

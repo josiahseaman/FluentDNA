@@ -1,23 +1,30 @@
+import math
 import os
 import traceback
 from collections import defaultdict
 from datetime import datetime
 
-import math
+from DNASkittleUtils.Contigs import read_contigs
+from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
 
-from DDVUtils import LayoutLevel,  multi_line_height, pretty_contig_name
-from DNASkittleUtils.DDVUtils import copytree
-from DNASkittleUtils.Contigs import read_contigs
-
+from DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name
 
 small_title_bp = 10000
 title_skip_padding = 100
+font_name = "Tahoma.ttf"
+try:
+    ImageFont.truetype(font_name, 10)
+except OSError:
+    font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
 
 
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+
+
+
 
 class TileLayout:
     final_output_location = None
@@ -30,7 +37,7 @@ class TileLayout:
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
         # precomputing fonts turns out to be a big performance gain
-        self.fonts = {size: ImageFont.truetype("tahoma.ttf", size) for size in [9, 38, 380, 380 * 2]}
+        self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
         self.image = None
         self.draw = None
         self.pixels = None
@@ -39,6 +46,25 @@ class TileLayout:
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
 
+        #### Rasmol Protein colors
+        self.palette['D'] = hex_to_rgb('EA3535')
+        self.palette['E'] = hex_to_rgb('EA3535')
+        self.palette['F'] = hex_to_rgb('4B4BB5')
+        self.palette['H'] = hex_to_rgb('9595D9')
+        self.palette['I'] = hex_to_rgb('2F932F')
+        self.palette['K'] = hex_to_rgb('3C76FF')
+        self.palette['L'] = hex_to_rgb('2F932F')
+        self.palette['M'] = hex_to_rgb('ECEC41')
+        self.palette['N'] = hex_to_rgb('3BE4E4')
+        self.palette['P'] = hex_to_rgb('E25826')  # replace this beige
+        self.palette['Q'] = hex_to_rgb('3BE4E4')
+        self.palette['R'] = hex_to_rgb('3C76FF')
+        self.palette['S'] = hex_to_rgb('FBAC34')
+        self.palette['V'] = hex_to_rgb('2F932F')
+        self.palette['W'] = hex_to_rgb('BF72BF')
+        self.palette['Y'] = hex_to_rgb('4B4BB5')
+
+        #-----Nucleotide Colors! Paletton Quadrapole colors------
         self.palette['T'] = hex_to_rgb('C35653')  # Red
         self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
         self.palette['G'] = hex_to_rgb('55AA55')  # Green
@@ -51,6 +77,8 @@ class TileLayout:
         # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette['X'] = (247, 247, 247)  # almost white
+        self.palette['-'] = self.palette['X']  # other gap characters
+        self.palette['.'] = self.palette['X']
 
 
         # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
@@ -280,7 +308,7 @@ class TileLayout:
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            font = ImageFont.truetype("tahoma.ttf", font_size)
+            font = ImageFont.truetype(font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
@@ -326,7 +354,7 @@ class TileLayout:
     def generate_html(self, input_file_path, output_folder, output_file_name):
         try:
             input_file_name = os.path.basename(input_file_path)
-            copytree(os.path.join(os.getcwd(), 'html template'), output_folder)  # copies the whole template directory
+            copytree(os.path.join(os.getcwd(), 'html_template'), output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "originalImageWidth": str(self.image.width if self.image else 1),
@@ -347,7 +375,7 @@ class TileLayout:
                             "sbegin": '1',
                             "send": str(self.image_length),
                             "date": datetime.now().strftime("%Y-%m-%d")}
-            with open(os.path.join('html template', 'index.html'), 'r') as template:
+            with open(os.path.join('html_template', 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
                     template_content = template_content.replace('{{' + key + '}}', value)

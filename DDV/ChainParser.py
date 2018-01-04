@@ -1,16 +1,17 @@
 import os
+from array import array
 from datetime import datetime
 
 import blist
-from array import array
-
 from ChainFiles import chain_file_to_list, match
 from DDVUtils import make_output_dir_with_suffix
-from DefaultOrderedDict import DefaultOrderedDict
-from Span import AlignedSpans, Span, alignment_chopping_index
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DNASkittleUtils.DDVUtils import first_word, Batch,  ReverseComplement, BlankIterator
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
+from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator
+from Span import AlignedSpans, Span, alignment_chopping_index
+
+from DefaultOrderedDict import DefaultOrderedDict
+
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
     """Moves the pointer past any headers or comments and places index on the next valid sequence character.

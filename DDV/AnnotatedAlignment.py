@@ -1,11 +1,11 @@
 import os
 from array import array
 
-from DNASkittleUtils.Contigs import pluck_contig
-from Annotations import create_fasta_from_annotation, GFF
 from ChainParser import ChainParser, scan_past_header
+from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import Batch, first_word, ReverseComplement
 
+from Annotations import create_fasta_from_annotation, GFF
 
 
 class AnnotatedAlignment(ChainParser):
@@ -155,5 +155,5 @@ if __name__ == '__main__':
     aligner.parse_chain(['chr20'])
 
     #### ==== Command Line Configuration === ####
-    # DDV.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
+    # DDV2.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
     # --query_annotation=HongKong\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_

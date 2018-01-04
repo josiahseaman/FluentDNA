@@ -1,11 +1,12 @@
+#!/usr/bin/env python
 """
-self.is an optional addon to DDV written in Python that allows you to generate a single image
+DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
 
-self.python file contains basic image handling methods.  It also contains a re-implementation of
-Josiah's "Tiled Layout" algorithm which is also in DDVLayoutManager.cs.
+The python version has matured significantly past the previous feature set.
+
 """
 import multiprocessing
 import os
@@ -31,21 +32,23 @@ os.chdir(BASE_DIR)
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-__version__ = '1.1.1'
+from DDV import VERSION
 
 import shutil
 import argparse
 from http import server
 from socketserver import TCPServer
 
-from DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
+from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from ParallelGenomeLayout import ParallelLayout
-from ChainParser import ChainParser
-from UniqueOnlyChainParser import UniqueOnlyChainParser
-from AnnotatedAlignment import AnnotatedAlignment
-from TileLayout import TileLayout
-from TransposonLayout import TransposonLayout
+from DDV.ParallelGenomeLayout import ParallelLayout
+from DDV.ChainParser import ChainParser
+from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
+from DDV.AnnotatedAlignment import AnnotatedAlignment
+from DDV.TileLayout import TileLayout
+from DDV.TransposonLayout import TransposonLayout
+from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
+
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
@@ -155,6 +158,14 @@ def ddv(args):
         layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
         print("Done with Transposons")
         sys.exit(0)
+    if args.layout_type == 'alignment':
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = MultipleAlignmentLayout()
+        layout.process_all_alignments(args.fasta,
+                                      output_dir,
+                                      args.output_name)
+        print("Done with Alignments")
+        sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
@@ -249,7 +260,7 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
         del layout
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
         print("--Starting in Quick Mode--")
         print("This will convert the one FASTA file directly to an image and place it in the same "
@@ -266,13 +277,13 @@ if __name__ == "__main__":
                                      add_help=True)
 
     parser = argparse.ArgumentParser(prog='DDV.exe')
-    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
-    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
+    parser.add_argument('--quick',
+                        action='store_true',
+                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
+                             "in the same directory as the FASTA.  This is the default behavior if you drop "
+                             "a file onto the program or a filepath is the only argument.",
+                        dest="quick")
 
-    parser.add_argument("-i", "--image",
-                        type=str,
-                        help="Path to already laid out big image to process with DeepZoom. No layout will be performed if an image is passed in.",
-                        dest="image")
     parser.add_argument("-f", "--fasta",
                         type=str,
                         help="Path to main FASTA file to process into new visualization.",
@@ -281,34 +292,27 @@ if __name__ == "__main__":
                         type=str,
                         help="What to name the output folder (not a path). Defaults to name of the fasta file.",
                         dest="output_name")
+    parser.add_argument("-r", "--runserver",
+                        action='store_true',
+                        help="Run Web Server after computing.",
+                        dest="run_server")
+    parser.add_argument('-s', '--sort_contigs',
+                        action='store_true',
+                        help="Sort the entries of the fasta file by length.  This option will kick in "
+                             "automatically if your file has more than 10,000 separate FASTA entries.",
+                        dest="sort_contigs")
     parser.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["original", "tiled", "parallel", "unique", "transposon"],
+                        choices=["tiled", "parallel", "alignment", "unique", "transposon", "original"],
                         dest="layout_type")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
                         type=str,
                         help="Path to secondary FASTA files to process when doing Parallel layout.",
                         dest="extra_fastas")
-    parser.add_argument("-c", "--chainfile",
-                        type=str,
-                        help="Path to Chain File when doing Parallel Comparisons layout.",
-                        dest="chain_file")
-    parser.add_argument("-ch", "--chromosomes",
-                        nargs='+',
-                        type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
-                        dest="chromosomes")
-    parser.add_argument("-r", "--runserver",
-                        action='store_true',
-                        help="Run Web Server after computing.",
-                        dest="run_server")
-    parser.add_argument("-t", "--separate_translocations",
-                        action='store_true',
-                        help="Don't edit in translocations, list them at the end.",
-                        dest="separate_translocations")
+
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
                         help="No gaps for a title.  Useful when combined with separate_translocations",
@@ -318,14 +322,28 @@ if __name__ == "__main__":
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
                         "You can use --image option later to resume the process to get a deepzoom stack.",
                         dest="no_webpage")
-    parser.add_argument("-g", "--squish_gaps",
-                        action='store_true',
-                        help="If two gaps are approximately the same size, subtract the intersection.",
-                        dest="squish_gaps")
     parser.add_argument("-q", "--trial_run",
                         action='store_true',
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
                         dest="trial_run")
+    ### Chain Files
+    parser.add_argument("-c", "--chainfile",
+                        type=str,
+                        help="Path to Chain File when doing Parallel Comparisons layout.",
+                        dest="chain_file")
+    parser.add_argument("-ch", "--chromosomes",
+                        nargs='+',
+                        type=str,
+                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        dest="chromosomes")
+    parser.add_argument("-t", "--separate_translocations",
+                        action='store_true',
+                        help="Don't edit in translocations, list them at the end.",
+                        dest="separate_translocations")
+    parser.add_argument("-g", "--squish_gaps",
+                        action='store_true',
+                        help="If two gaps are approximately the same size, subtract the intersection.",
+                        dest="squish_gaps")
     parser.add_argument("-k", "--show_translocations_only",
                         action='store_true',
                         help="Used to highlight the locations of translocations (temporary)",
@@ -334,6 +352,8 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Don't show the unaligned pieces of ref or query sequences.",
                         dest='aligned_only')
+
+    ### Annotations
     parser.add_argument("-ra", "--ref_annotation",
                         type=str,
                         help="Path to Annotation File for Reference Genome (first).",
@@ -342,15 +362,15 @@ if __name__ == "__main__":
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
-    parser.add_argument('-s', '--sort_contigs',
-                        action='store_true',
-                        help="Sort the entries of the fasta file by length.",
-                        dest="sort_contigs")
-    parser.add_argument('--quick',
-                        action='store_true',
-                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
-                             "in the same directory as the FASTA.",
-                        dest="quick")
+
+    ### Other
+    parser.add_argument("-i", "--image",
+                        type=str,
+                        help="Path to already computed big image to process with DeepZoom. "
+                             "No layout will be performed if an image is passed in.",
+                        dest="image")
+    parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
+    parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
     args = parser.parse_args()
 
@@ -359,7 +379,7 @@ if __name__ == "__main__":
         print("DDV")
         sys.exit(0)
     elif args.version:
-        print(__version__)
+        print(VERSION)
         sys.exit(0)
 
     # Errors
@@ -415,3 +435,7 @@ if __name__ == "__main__":
             args.output_name = just_the_name(args.fasta or args.image)
 
     ddv(args)
+
+
+if __name__ == "__main__":
+    main()
