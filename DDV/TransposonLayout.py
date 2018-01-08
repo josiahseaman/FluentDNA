@@ -1,12 +1,5 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import generators
-from __future__ import nested_scopes
-
-
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 import math
 import traceback
 from array import array
@@ -15,10 +8,9 @@ from datetime import datetime
 
 from DNASkittleUtils.Contigs import Contig, read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
-from RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
-from TileLayout import TileLayout
-
-from DDVUtils import LayoutLevel
+from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
+from DDV.TileLayout import TileLayout
+from DDV.DDVUtils import LayoutLevel
 
 
 class TransposonLayout(TileLayout):

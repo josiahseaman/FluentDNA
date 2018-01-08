@@ -1,11 +1,11 @@
 from datetime import datetime
 from math import floor
 
-from DNASkittleUtils.CommandLineUtils import just_the_name
 from PIL import ImageFont
-from TileLayout import TileLayout, font_name
 
-from DDVUtils import LayoutLevel
+from DNASkittleUtils.CommandLineUtils import just_the_name
+from DDV.TileLayout import TileLayout, font_name
+from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):

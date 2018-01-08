@@ -1,12 +1,14 @@
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
+
 import argparse
 import math
 import sys
 from collections import defaultdict
 
-from TileLayout import TileLayout
-
-from DDV import create_tile_layout_viz_from_fasta
-from DDVUtils import make_output_dir_with_suffix, base_directories
+from DDV.TileLayout import TileLayout
+from DDV.DDV2 import create_tile_layout_viz_from_fasta
+from DDV.DDVUtils import make_output_dir_with_suffix, base_directories
 
 
 def hasDepth(listLike):

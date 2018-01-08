@@ -8,15 +8,9 @@ or Direct2D. We tried a lot of options.
 The python version has matured significantly past the previous feature set.
 
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import generators
-from __future__ import nested_scopes
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 
-import multiprocessing
 import os
 import sys
 
@@ -37,6 +31,7 @@ sys.path.append(os.path.join(BASE_DIR, 'bin', 'env'))
 
 os.chdir(BASE_DIR)
 
+import multiprocessing
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
@@ -45,8 +40,8 @@ from DDV import VERSION
 import shutil
 import argparse
 
-from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
 from DNASkittleUtils.CommandLineUtils import just_the_name
+from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser

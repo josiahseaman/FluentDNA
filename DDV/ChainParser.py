@@ -1,24 +1,19 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import generators
-from __future__ import nested_scopes
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 
 import os
 from array import array
 from datetime import datetime
-
 import blist
-from ChainFiles import chain_file_to_list, match
-from DDVUtils import make_output_dir_with_suffix
+
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator
-from Span import AlignedSpans, Span, alignment_chopping_index
+from DDV.DefaultOrderedDict import DefaultOrderedDict
+from DDV.ChainFiles import chain_file_to_list, match
+from DDV.DDVUtils import make_output_dir_with_suffix
+from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 
-from DefaultOrderedDict import DefaultOrderedDict
 
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):

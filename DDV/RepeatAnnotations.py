@@ -3,7 +3,8 @@ from UCSC.  This annotation contains alignment to the repeat consensus.
 
 It is similar to Annotations.py.  But at the moment, they're separate files because their target
 input and output is significantly different."""
-
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 import math
 # Read annotation file and just mark where things land on the consensus
 import sys
@@ -13,7 +14,7 @@ from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import rev_comp
 
-from Span import Span
+from DDV.Span import Span
 
 
 def int_log(num):

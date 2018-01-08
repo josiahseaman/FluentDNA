@@ -1,11 +1,12 @@
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 from bisect import bisect_left
 
-from ChainParser import ChainParser
 from DNASkittleUtils.Contigs import write_complete_fasta, pluck_contig
 from DNASkittleUtils.DDVUtils import Batch
-from Span import Span
-
-from ChainFiles import fetch_all_chains
+from DDV.ChainParser import ChainParser
+from DDV.Span import Span
+from DDV.ChainFiles import fetch_all_chains
 
 
 class UniqueOnlyChainParser(ChainParser):
