@@ -106,7 +106,11 @@ class ChainParser:
     def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
         if is_master_alignment:
             if not self.query_sequence:
-                self.switch_sequences(chain.qName, chain.qStrand)
+                success = self.switch_sequences(chain.qName, chain.qStrand)
+                if not success:
+                    print("Fasta source for contig", chain.qName,
+                          "not found.  No matching sequence will be displayed!", file=sys.stderr)
+                    return  # skip this pair since it can't be displayed
             if not self.trial_run and self.query_sequence and self.ref_sequence:  # include unaligned ends
                 ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
                 query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)

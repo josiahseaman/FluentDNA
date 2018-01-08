@@ -36,8 +36,6 @@ from DDV import VERSION
 
 import shutil
 import argparse
-from http import server
-from socketserver import TCPServer
 
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
 from DNASkittleUtils.CommandLineUtils import just_the_name
@@ -86,6 +84,13 @@ def query_yes_no(question, default='yes'):
 
 
 def run_server(home_directory):
+    try:
+        from http import server
+        from socketserver import TCPServer
+    except ImportError:  # Python 2 imports
+        import SimpleHTTPServer as server
+        from SocketServer import TCPServer
+
     print("Setting up HTTP Server based from", home_directory)
     os.chdir(home_directory)
 
