@@ -167,7 +167,7 @@ class AlignedSpans:
         return new_me, you
 
 
-    def remove_old_query_copy(self, new_alignment) -> tuple:
+    def remove_old_query_copy(self, new_alignment):# -> tuple:
         """Each AlignedSpan also contains the record of the unaligned region following it.  In the case where
         a match has been found elsewhere in the reference, the visual representation of the sequence is moved
         to that new location based on the reference location.  That leaves behind an old, obsolete record of

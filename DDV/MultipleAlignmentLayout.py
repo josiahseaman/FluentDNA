@@ -2,7 +2,6 @@ import os
 import traceback
 from datetime import datetime
 from math import ceil
-from statistics import mean
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import read_contigs, Contig
@@ -14,7 +13,7 @@ from TransposonLayout import TransposonLayout
 
 class MultipleAlignmentLayout(TransposonLayout):
     def __init__(self):
-        super().__init__()
+        super(MultipleAlignmentLayout, self).__init__()
         self.using_mixed_widths = True
 
 
@@ -114,7 +113,7 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
-        consensus_width = int(mean([x.consensus_width for x in self.contigs]))
+        consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
         heights = [len(x.seq) // x.consensus_width for x in self.contigs]
         num_lines = sum(heights)
         self.set_column_height(heights)
@@ -126,7 +125,7 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def set_column_height(self, heights):
-        average_line_count = ceil(mean(heights))
+        average_line_count = ceil(sum(heights) / len(heights))
         self.column_height = average_line_count * 2
 
 

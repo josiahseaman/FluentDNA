@@ -77,7 +77,7 @@ class UniqueOnlyChainParser(ChainParser):
         pass  # don't read the query contigs, we don't need them
 
 
-    def main(self, chromosome_name) -> Batch:
+    def main(self, chromosome_name):# -> Batch:
         fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         # actual work

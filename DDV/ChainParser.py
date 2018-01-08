@@ -1,3 +1,11 @@
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
+from __future__ import generators
+from __future__ import nested_scopes
+
 import os
 from array import array
 from datetime import datetime
@@ -426,7 +434,7 @@ class ChainParser:
         return names, ref_chr
 
 
-    def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+    def _parse_chromosome_in_chain(self, chromosome_name):# -> Batch:
         print("=== Begin ChainParser Unique Alignment ===")
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
@@ -451,7 +459,7 @@ class ChainParser:
         return batch
 
 
-    def parse_chain(self, chromosomes) -> list:
+    def parse_chain(self, chromosomes):# -> list:
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."
 
         batches = []

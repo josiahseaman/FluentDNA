@@ -1,3 +1,12 @@
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
+from __future__ import generators
+from __future__ import nested_scopes
+
+
 import math
 import os
 import traceback
@@ -15,7 +24,7 @@ title_skip_padding = 100
 font_name = "Tahoma.ttf"
 try:
     ImageFont.truetype(font_name, 10)
-except OSError:
+except BaseException:
     font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
 
 

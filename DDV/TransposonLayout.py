@@ -1,5 +1,13 @@
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
+from __future__ import generators
+from __future__ import nested_scopes
+
+
 import math
-import statistics
 import traceback
 from array import array
 from collections import defaultdict
@@ -15,7 +23,7 @@ from DDVUtils import LayoutLevel
 
 class TransposonLayout(TileLayout):
     def __init__(self):
-        super().__init__()
+        super(TransposonLayout, self).__init__()
         self.using_mixed_widths = False
         self.repeat_entries = None
         self.column_height = 400
@@ -60,7 +68,7 @@ class TransposonLayout(TileLayout):
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
         if consensus_width is None:
-            consensus_width = int(statistics.mean([x.rep_end for x in self.repeat_entries]))  # rough approximation of size
+            consensus_width = sum([x.rep_end for x in self.repeat_entries]) // len(self.repeat_entries)  # rough approximation of size
             num_lines = len(self.repeat_entries)
             print("Average Width", consensus_width, "Entries", num_lines)
             self.set_column_height()
@@ -206,7 +214,7 @@ class TransposonLayout(TileLayout):
         counts = defaultdict(lambda: 0)
         for x in self.repeat_entries:
             counts[x.rep_name] += 1
-        average_line_count = math.ceil(statistics.mean(counts.values()))
+        average_line_count = math.ceil(sum(counts.values()) / len(counts))
         print("Setting Column Height to %i based on Average line count per Repeat Name" % (average_line_count * 2))
         self.column_height = average_line_count * 2
 

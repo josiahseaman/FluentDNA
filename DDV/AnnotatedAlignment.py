@@ -48,7 +48,7 @@ class AnnotatedAlignment(ChainParser):
         return ReverseComplement(self.query_contigs[query_name], annotation=self.annotation_phase)
 
 
-    def _parse_chromosome_in_chain(self, chromosome_name) -> Batch:
+    def _parse_chromosome_in_chain(self, chromosome_name):# -> Batch:
         print("=== Begin Annotated Alignment ===")
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
