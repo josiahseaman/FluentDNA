@@ -1,7 +1,7 @@
 """Written by Zeekay on StackOverflow --
 Source: http://stackoverflow.com/a/6190500/562769
 """
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 from collections import OrderedDict, Callable
 

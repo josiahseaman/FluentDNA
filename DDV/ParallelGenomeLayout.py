@@ -1,3 +1,6 @@
+from __future__ import print_function, division, absolute_import, \
+    with_statement, generators, nested_scopes
+
 from datetime import datetime
 from math import floor
 
@@ -110,12 +113,13 @@ class ParallelLayout(TileLayout):
 
 
     def change_background_color(self, genome_processed):
+        from DDV import gap_char
         def hex_to_rgb(h):
             h = h.lstrip('#')
             return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
         background = hex_to_rgb(self.column_colors[genome_processed])
-        self.palette['X'] = background
+        self.palette[gap_char] = background
 
 
     def calc_padding(self, total_progress, next_segment_length, multipart_file):

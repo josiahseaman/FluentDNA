@@ -58,8 +58,8 @@ class AnnotatedAlignment(ChainParser):
         self.create_fasta_from_composite_alignment()
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
 
-        self.query_seq_gapped = array('u', '')
-        self.ref_seq_gapped = array('u', '')
+        self.query_seq_gapped = array('c', '')
+        self.ref_seq_gapped = array('c', '')
         self.query_contigs = {}
         self.stored_rev_comps = {}
         self.annotation_phase = True

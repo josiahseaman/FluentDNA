@@ -1,4 +1,4 @@
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 from bisect import bisect_left
 

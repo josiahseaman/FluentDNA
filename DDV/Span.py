@@ -3,9 +3,9 @@ Span can have sections in the middle removed, creating two or less new Spans.
 This is used by UniqueOnlyChainParser to track which parts of the file are untouched.
 AlignedSpans use a pair of Span objects to track the coordinate frames of the
 original and gapped sequence as gaps are added."""
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
-
+from DDV import gap_char
 
 class Span(object):
     """ Span can have sections in the middle removed, creating two or less new Spans.
@@ -95,7 +95,7 @@ class Span(object):
             return sequence[self.begin: self.end]
         except IndexError as e:
             if error_gap_okay:
-                return 'X' * len(self)
+                return gap_char * len(self)
             else:
                 raise e
 

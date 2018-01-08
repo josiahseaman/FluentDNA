@@ -1,4 +1,4 @@
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import math
@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 from DNASkittleUtils.Contigs import read_contigs
 from DNASkittleUtils.DDVUtils import copytree
 from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name
+from DDV import gap_char
 
 small_title_bp = 10000
 title_skip_padding = 100
@@ -79,9 +80,8 @@ class TileLayout(object):
         # self.palette['G'] = (77, 205, 74)  # Green
         # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
-        self.palette['X'] = (247, 247, 247)  # almost white
-        self.palette['-'] = self.palette['X']  # other gap characters
-        self.palette['.'] = self.palette['X']
+        self.palette[gap_char] = (247, 247, 247)  # almost white
+        self.palette['.'] = self.palette[gap_char]  # other gap characters
 
 
         # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
@@ -95,7 +95,6 @@ class TileLayout(object):
         # self.palette['T'] = (250, 240, 114)
         # self.palette['C'] = (0, 0, 255)
         # self.palette['N'] = (30, 30, 30)
-        # self.palette['X'] = (247, 247, 247)
 
         # noinspection PyListCreation
         self.levels = [
@@ -159,7 +158,7 @@ class TileLayout(object):
                 total_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
-                    # if nuc != 'X':
+                    # if nuc != gap_char:
                     self.draw_pixel(nuc, x + i, y)
                 if cx % 100000 == 0:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,

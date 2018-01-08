@@ -1,4 +1,4 @@
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import math
 import traceback
@@ -11,6 +11,7 @@ from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
 from DDV.DDVUtils import LayoutLevel
+from DDV import gap_char
 
 
 class TransposonLayout(TileLayout):
@@ -146,7 +147,7 @@ class TransposonLayout(TileLayout):
                 contig_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
-                    # if nuc != 'X':
+                    # if nuc != gap_char:
                     self.draw_pixel(nuc, x + i, y)
 
             print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
@@ -178,7 +179,7 @@ class TransposonLayout(TileLayout):
     def make_contig_from_repName(self, rep_name):
         annotations = [x for x in self.repeat_entries if x.rep_name == rep_name]
         consensus_width = max_consensus_width(annotations)
-        ordered_lines = defaultdict(lambda: 'X' * consensus_width)
+        ordered_lines = defaultdict(lambda: gap_char * consensus_width)
         for contig in self.contigs:
             for line_number, fragment in enumerate(annotations):
                 if fragment.geno_name == contig.name:
@@ -212,13 +213,13 @@ class TransposonLayout(TileLayout):
 
 
 def grab_aligned_repeat(consensus_width, contig, fragment):
-    line = blank_line_array(consensus_width, 'X', newline=False)
+    line = blank_line_array(consensus_width, gap_char, newline=False)
     nucleotides = fragment.genome_span().sample(contig.seq)
     if fragment.strand == '-':
         nucleotides = rev_comp(nucleotides)
     if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
         nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
-    line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
+    line = line[:fragment.rep_end - len(nucleotides)] + array('c', nucleotides) + line[fragment.rep_end:]
     assert len(line) == consensus_width, "%i, %i" % (len(line), consensus_width, )
 
     return line

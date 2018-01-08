@@ -1,4 +1,4 @@
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
@@ -13,6 +13,7 @@ from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
 from DDV.DDVUtils import make_output_dir_with_suffix
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
+from DDV import gap_char
 
 
 
@@ -51,8 +52,8 @@ class ChainParser(object):
         self.aligned_only = aligned_only
         self.query_sequence = ''
         self.ref_sequence = ''
-        self.query_seq_gapped = array('u', '')
-        self.ref_seq_gapped = array('u', '')
+        self.query_seq_gapped = array('c', '')
+        self.ref_seq_gapped = array('c', '')
         self.output_fastas = []
         self.alignment = blist.blist()  # optimized for inserts in the middle
         self.stored_rev_comps = {}
@@ -236,22 +237,22 @@ class ChainParser(object):
             query_snippet = pair.query.sample(self.query_sequence)
             if not self.aligned_only:
                 query_snippet += pair.query_unique_span().sample(self.query_sequence)
-                query_snippet += 'X' * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
+                query_snippet += gap_char * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
 
             ref_snippet = pair.ref.sample(self.ref_sequence)
             if not self.aligned_only:  # Aligned_only simply skips over the unaligned tails
-                ref_snippet += 'X' * pair.query_tail_size  # Ref 'X' gap is in the middle, query is at the end, to alternate
+                ref_snippet += gap_char * pair.query_tail_size  # Ref '-' gap is in the middle, query is at the end, to alternate
                 ref_snippet += pair.ref_unique_span().sample(self.ref_sequence)
 
             if pair.is_hidden or self.show_translocations_only and pair.is_master_chain:  # main chain
-                ref_snippet = 'X' * len(ref_snippet)
-                query_snippet = 'X' * len(query_snippet)
+                ref_snippet = gap_char * len(ref_snippet)
+                query_snippet = gap_char * len(query_snippet)
             elif self.separate_translocations and pair.is_first_entry and not pair.is_master_chain:
                 self.add_translocation_header(pair)
             if len(query_snippet) != len(ref_snippet):  # make absolute sure we don't step out of phase with bad lengths
                 difference = len(ref_snippet) - len(query_snippet)
-                ref_snippet += 'X' * max(0, -difference)
-                query_snippet += 'X' * max(0, difference)
+                ref_snippet += gap_char * max(0, -difference)
+                query_snippet += gap_char * max(0, difference)
 
             assert len(query_snippet) == len(ref_snippet), "Mismatched lengths: " + '\n'.join([ref_snippet, query_snippet])
             self.query_seq_gapped.extend(query_snippet)
@@ -303,8 +304,8 @@ class ChainParser(object):
     def pad_next_line(self):
         column_width = 100
         characters_remaining = column_width - (len(self.ref_seq_gapped) % column_width)
-        self.ref_seq_gapped.extend('X' * characters_remaining)
-        self.query_seq_gapped.extend('X' * characters_remaining)
+        self.ref_seq_gapped.extend(gap_char * characters_remaining)
+        self.query_seq_gapped.extend(gap_char * characters_remaining)
 
 
     def add_translocation_header(self, alignment):
@@ -358,8 +359,8 @@ class ChainParser(object):
         return ref_unique_name, query_unique_name
 
     def compute_unique_sequence(self):
-        query_uniq_array = array('u', self.query_seq_gapped)
-        ref_uniq_array = array('u', self.ref_seq_gapped)
+        query_uniq_array = array('c', self.query_seq_gapped)
+        ref_uniq_array = array('c', self.ref_seq_gapped)
         print("Done allocating unique array")
         # query_uniq_array is already initialized to contain header characters
         q = scan_past_header(self.query_seq_gapped, 0)
@@ -372,20 +373,20 @@ class ChainParser(object):
             q_letter = self.query_seq_gapped[q]
             r_letter = self.ref_seq_gapped[r]
             if q_letter == r_letter:
-                query_uniq_array[q] = 'X'
-                ref_uniq_array[r] = 'X'
+                query_uniq_array[q] = gap_char
+                ref_uniq_array[r] = gap_char
                 self.stats['Shared seq bp'] += 1
             else:  # Not equal
                 if q_letter == 'N':
-                    query_uniq_array[q] = 'X'
+                    query_uniq_array[q] = gap_char
                     self.stats['Query N to ref in bp'] += 1
                 elif r_letter == 'N':
-                    ref_uniq_array[r] = 'X'
+                    ref_uniq_array[r] = gap_char
                     self.stats['Ref N to query bp'] += 1
                 else:  # No N's involved
-                    if q_letter == 'X':
+                    if q_letter == gap_char:
                         self.stats['Ref unique bp'] += 1
-                    elif r_letter == 'X':
+                    elif r_letter == gap_char:
                         self.stats['Query unique bp'] += 1
                     else:
                         self.stats['Aligned Variance in bp'] += 1
@@ -420,8 +421,8 @@ class ChainParser(object):
         # Reset values from previous iteration
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.query_sequence = ''
-        self.query_seq_gapped = array('u', '')
-        self.ref_seq_gapped = array('u', '')
+        self.query_seq_gapped = array('c', '')
+        self.ref_seq_gapped = array('c', '')
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)

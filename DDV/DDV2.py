@@ -8,7 +8,7 @@ or Direct2D. We tried a lot of options.
 The python version has matured significantly past the previous feature set.
 
 """
-from __future__ import print_function, division, unicode_literals, absolute_import, \
+from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
