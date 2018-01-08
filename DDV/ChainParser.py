@@ -39,7 +39,7 @@ def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
     return index
 
 
-class ChainParser:
+class ChainParser(object):
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
                  show_translocations_only=False, aligned_only=False, no_titles=False):

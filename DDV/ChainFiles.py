@@ -1,4 +1,4 @@
-class ChainEntry:
+class ChainEntry(object):
     def __init__(self, size, gap_query, gap_ref):
         self.size, self.gap_query, self.gap_ref = size, gap_query, gap_ref
 
@@ -7,7 +7,7 @@ class ChainEntry:
 
 
 
-class Chain:
+class Chain(object):
     def __init__(self, line):
         label, score, tName, tSize, tStrand, tStart, tEnd, qName, qSize, qStrand, qStart, qEnd, chain_id = line.split()
         self.score = int(score)

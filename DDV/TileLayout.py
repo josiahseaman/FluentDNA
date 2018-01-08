@@ -1,11 +1,5 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import generators
-from __future__ import nested_scopes
-
+from __future__ import print_function, division, unicode_literals, absolute_import, \
+    with_statement, generators, nested_scopes
 
 import math
 import os
@@ -35,7 +29,7 @@ def hex_to_rgb(h):
 
 
 
-class TileLayout:
+class TileLayout(object):
     final_output_location = None
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, high_contrast=False):
@@ -303,7 +297,7 @@ class TileLayout:
             title_width = 50 // 2
             if self.use_fat_headers:
                 # TODO add reset_padding from next contig, just in case there's unused space on this level
-                tiles_spanned = math.ceil((len(contig.seq) + contig.tail_padding) / self.levels[4].chunk_size)
+                tiles_spanned = int(math.ceil((len(contig.seq) + contig.tail_padding) / self.levels[4].chunk_size))
                 title_width *= tiles_spanned  # Twice the size, but you have 3 tile columns to fill, also limited by 'width'
                 title_lines = 1
                 upper_left[1] -= self.levels[3].thickness  # above the start of the coordinate grid
@@ -358,7 +352,7 @@ class TileLayout:
         width_height[1] += self.levels[2].padding   # column padding used as a proxy for vertical padding
         width_height[0] += self.origin[0]  # add in origin offset
         width_height[1] += self.origin[1]
-        return width_height
+        return int(width_height[0]), int(width_height[1])
 
 
     def generate_html(self, input_file_path, output_folder, output_file_name):

@@ -125,13 +125,5 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def set_column_height(self, heights):
-        average_line_count = ceil(sum(heights) / len(heights))
+        average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = average_line_count * 2
-
-
-
-
-
-
-
-

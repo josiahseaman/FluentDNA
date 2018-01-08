@@ -59,7 +59,7 @@ class TransposonLayout(TileLayout):
 
     def max_dimensions(self, image_length):
         if self.using_mixed_widths:
-            rough = math.ceil(math.sqrt(image_length * 3))
+            rough = int(math.ceil(math.sqrt(image_length * 3)))
             rough = min(62950, rough)  # hard cap at 4GB images created
             return rough + 50, rough + 50
         else:
@@ -158,7 +158,7 @@ class TransposonLayout(TileLayout):
                     self.draw_pixel(nuc, x + i, y)
 
             print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
-            columns_consumed = math.ceil(contig_progress / self.levels[2].chunk_size)
+            columns_consumed = int(math.ceil(contig_progress / self.levels[2].chunk_size))
             self.origin[0] += columns_consumed * self.levels[2].thickness
         print('')
 
@@ -199,7 +199,7 @@ class TransposonLayout(TileLayout):
         return c
 
     def draw_repeat_title(self, contig, x, y):
-        chars_per_line = math.ceil(contig.consensus_width / 5.625)
+        chars_per_line = int(math.ceil(contig.consensus_width / 5.625))
         height = 30
         self.write_title(contig.name,
                          width=contig.consensus_width,
@@ -214,7 +214,7 @@ class TransposonLayout(TileLayout):
         counts = defaultdict(lambda: 0)
         for x in self.repeat_entries:
             counts[x.rep_name] += 1
-        average_line_count = math.ceil(sum(counts.values()) / len(counts))
+        average_line_count = int(math.ceil(sum(counts.values()) / len(counts)))
         print("Setting Column Height to %i based on Average line count per Repeat Name" % (average_line_count * 2))
         self.column_height = average_line_count * 2
 

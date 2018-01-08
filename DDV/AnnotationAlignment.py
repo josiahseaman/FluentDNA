@@ -11,7 +11,7 @@ from TransposonLayout import TransposonLayout
 from DDVUtils import make_output_dir_with_suffix
 
 
-# class AnnotationAlignment:
+# class AnnotationAlignment(object):
 #     def __init__(self):
 
 

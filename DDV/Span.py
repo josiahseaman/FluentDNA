@@ -6,7 +6,7 @@ original and gapped sequence as gaps are added."""
 
 
 
-class Span:
+class Span(object):
     """ Span can have sections in the middle removed, creating two or less new Spans.
     This is used by UniqueOnlyChainParser to track which parts of the file are untouched."""
     def __init__(self, begin, end, contig_name=None, strand='+', zero_ok=True):
@@ -100,7 +100,7 @@ class Span:
 
 
 
-class AlignedSpans:
+class AlignedSpans(object):
     def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False, is_hidden=False):
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"

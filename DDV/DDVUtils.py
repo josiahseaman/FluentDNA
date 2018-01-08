@@ -6,7 +6,7 @@ import textwrap
 from PIL import ImageDraw
 
 
-class LayoutLevel:
+class LayoutLevel(object):
     def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
         self.modulo = modulo
         if chunk_size is not None:

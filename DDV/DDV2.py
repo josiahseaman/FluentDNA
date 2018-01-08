@@ -240,8 +240,8 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     try:
         for extra_fasta in fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
-    except shutil.SameFileError:
-        pass  # not a problem
+    except shutil.Error:
+        pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
     print("Done creating Large Image and HTML.")
     print("Creating Deep Zoom Structure from Generated Image...")
     create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),

@@ -1,5 +1,5 @@
 # NOTE: The pip, setuptools, wheel, and cx_Freeze requirements are only needed if you plan to build a binary distribution
-git+https://github.com/josiahseaman/DNASkittleUtils.git@v1.0.3
+git+https://github.com/josiahseaman/DNASkittleUtils.git@1.0.6
 Pillow==3.2.0
 six==1.10.0
 psutil==4.3.1
