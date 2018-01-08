@@ -14,3 +14,16 @@ python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --fasta="data/BATG-0.5__m
 python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --fasta="data/break_996.fa" --layout=transposon
 python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py --runserver
 python3 DRIVE:\\python34\Lib\site-packages\DDV\DDV2.py "data/phiX.fa"
+
+
+# Mac Examples:
+# These are commands tested by "will" (notice the path) and found to work.  They include the full path to the site-package to avoid
+# an ambiguous lookup or "No module DDV" errors.  Edit these paths to match your computer.  
+# Note that ptyhon 2.7 is the system default, but DDV is programmed to run in Python3.
+
+# Running DDV that is directly installed to the system default "python3" environment
+pip3 install --process-dependency-links git+https://github.com/josiahseaman/DDV.git@pip
+python3 /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/DDV/DDV2.py --fasta=/Users/will/Desktop/test.fasta
+
+# Using a virtual environment in /Users/will/ddv/
+python3 /Users/will/ddv/lib/python3.6/site-packages/DDV/DDV2.py --fasta=/Users/will/Desktop/test.fasta
