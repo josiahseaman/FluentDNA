@@ -234,7 +234,7 @@ addLoadEvent(init_all);
 function outputTable() {
     document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>');
     // document.write("<div id='getSequenceButton'><br /><a onclick='getSequence()'> Fetch Sequence </a></div>");
-    document.write('<div id="base"></div><div id="SequenceFragmentFASTA" style="height:80px;"><div id="SequenceFragmentInstruction">press "x" key using keyboard to copy this fragment to Result Log</div></div>');
+    // document.write('<div id="base"></div><div id="SequenceFragmentFASTA" style="height:80px;"><div id="SequenceFragmentInstruction">press "x" key using keyboard to copy this fragment to Result Log</div></div>');
     document.write('<table class="output" style="border: 1px solid #000000;visibility:hidden;display:none;"><tr><th class="name"> </th><th class="value">Pixels</th><th class="value">Points</th></tr>');
     document.write('<tr><th>Mouse position</th><td id="mousePixels">-</td><td id="mousePoints">-</td></tr><tr><th>X, Y</th><td id="nucleotideNumberX">-</td><td id="nucleotideNumberY">-</td><td></td></tr>');
     document.write('<tr><th>(X, Y)</th><td id="NucleotideNumberX">-</td><td id="NucleotideNumberY">-</td></tr><tr><th>Column Number</th><td id="ColumnNumber">-</td><td id="ColumnRemainder">-</td></tr>');

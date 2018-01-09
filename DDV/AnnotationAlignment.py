@@ -1,5 +1,5 @@
 import os
-from array import array
+from DNASkittleUtils.DDVUtils import editable_str
 
 from ChainParser import ChainParser
 from DNASkittleUtils.CommandLineUtils import just_the_name
@@ -67,8 +67,8 @@ def align_annotation(annotation_filename, ref_fasta, query_fasta, chain_file):
 
         # modify chain.alignment to only contain annotated stretches
         chain.output_folder = make_output_dir_with_suffix(chain.output_prefix, ending)  # create a folder specifically for this repeat
-        chain.query_seq_gapped = array('c', '')  # these need to be cleared so they don't accumulate the previous family
-        chain.ref_seq_gapped = array('c', '')
+        chain.query_seq_gapped = editable_str('')  # these need to be cleared so they don't accumulate the previous family
+        chain.ref_seq_gapped = editable_str('')
         trimmed_alignment = create_aligned_annotation_fragments(chain.alignment, repeat_entries)
         chain.create_fasta_from_composite_alignment(previous_chr=None, alignment=trimmed_alignment)  # populates chain.query_seq_gapped and ref_seq_gapped
         # or if no fasta output is wanted: query_uniq_array, ref_uniq_array = chain.compute_unique_sequence()

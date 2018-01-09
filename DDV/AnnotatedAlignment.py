@@ -1,5 +1,5 @@
 import os
-from array import array
+from DNASkittleUtils.DDVUtils import editable_str
 
 from ChainParser import ChainParser, scan_past_header
 from DNASkittleUtils.Contigs import pluck_contig
@@ -58,8 +58,8 @@ class AnnotatedAlignment(ChainParser):
         self.create_fasta_from_composite_alignment()
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
 
-        self.query_seq_gapped = array('c', '')
-        self.ref_seq_gapped = array('c', '')
+        self.query_seq_gapped = editable_str('')
+        self.ref_seq_gapped = editable_str('')
         self.query_contigs = {}
         self.stored_rev_comps = {}
         self.annotation_phase = True

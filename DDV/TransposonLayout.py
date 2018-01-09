@@ -2,7 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import math
 import traceback
-from array import array
+from DNASkittleUtils.DDVUtils import editable_str
 from collections import defaultdict
 from datetime import datetime
 
@@ -104,8 +104,8 @@ class TransposonLayout(TileLayout):
             LayoutLevel("Instance_line", self.column_height, consensus_width, 0)  # [1]
         ]
         if self.using_mixed_widths:
-            self.levels.append(LayoutLevel("TypeColumn", 999999, padding=20, levels=self.levels))  # [2]
-            self.levels.append(LayoutLevel("RowInTile", 999999, levels=self.levels))  # [3]
+            self.levels.append(LayoutLevel("TypeColumn", 999, padding=20, levels=self.levels))  # [2]
+            self.levels.append(LayoutLevel("RowInTile", 999, levels=self.levels))  # [3]
         else:
             self.levels.append(LayoutLevel("TypeColumn", 100, padding=20, levels=self.levels))  # [2]
             self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
@@ -219,7 +219,7 @@ def grab_aligned_repeat(consensus_width, contig, fragment):
         nucleotides = rev_comp(nucleotides)
     if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
         nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
-    line = line[:fragment.rep_end - len(nucleotides)] + array('c', nucleotides) + line[fragment.rep_end:]
+    line = line[:fragment.rep_end - len(nucleotides)] + editable_str(nucleotides) + line[fragment.rep_end:]
     assert len(line) == consensus_width, "%i, %i" % (len(line), consensus_width, )
 
     return line

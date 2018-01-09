@@ -2,13 +2,12 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
-from array import array
 from datetime import datetime
 import blist
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
-from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator
+from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
 from DDV.DDVUtils import make_output_dir_with_suffix
@@ -52,8 +51,8 @@ class ChainParser(object):
         self.aligned_only = aligned_only
         self.query_sequence = ''
         self.ref_sequence = ''
-        self.query_seq_gapped = array('c', '')
-        self.ref_seq_gapped = array('c', '')
+        self.query_seq_gapped = editable_str('')
+        self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
         self.alignment = blist.blist()  # optimized for inserts in the middle
         self.stored_rev_comps = {}
@@ -359,8 +358,8 @@ class ChainParser(object):
         return ref_unique_name, query_unique_name
 
     def compute_unique_sequence(self):
-        query_uniq_array = array('c', self.query_seq_gapped)
-        ref_uniq_array = array('c', self.ref_seq_gapped)
+        query_uniq_array = editable_str(self.query_seq_gapped)
+        ref_uniq_array = editable_str(self.ref_seq_gapped)
         print("Done allocating unique array")
         # query_uniq_array is already initialized to contain header characters
         q = scan_past_header(self.query_seq_gapped, 0)
@@ -421,8 +420,8 @@ class ChainParser(object):
         # Reset values from previous iteration
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.query_sequence = ''
-        self.query_seq_gapped = array('c', '')
-        self.ref_seq_gapped = array('c', '')
+        self.query_seq_gapped = editable_str('')
+        self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)
