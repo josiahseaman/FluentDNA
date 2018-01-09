@@ -71,10 +71,6 @@ class MultipleAlignmentLayout(TransposonLayout):
         # self.palette['Y'] = hex_to_rgb('FF00FF')
         # self.palette['V'] = hex_to_rgb('FF00FF')
 
-        # It's important that X is defined
-        self.palette['X'] = hex_to_rgb('FF6100')
-        self.palette['P'] = hex_to_rgb('E25826')
-
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
@@ -126,7 +122,8 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.prepare_image(self.image_length)
         print("Image is ", self.image.width, "x", self.image.height)
 
-
+    def contig_json(self):
+        return '[]'  # not implemented, but must override base class
     def set_column_height(self, heights):
         average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = average_line_count * 2

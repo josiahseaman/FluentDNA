@@ -173,6 +173,16 @@ def ddv(args):
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
+        if not args.no_webpage:
+            layout.generate_html('', output_dir, args.output_name)
+            final_output_location = layout.final_output_location
+            del layout
+            print("Creating Deep Zoom Structure from Generated Image...")
+            create_deepzoom_stack(os.path.join(output_dir, final_output_location),
+                                  os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+            print("Done creating Deep Zoom Structure.")
+        else:
+            del layout
         print("Done with Alignments")
         sys.exit(0)
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
@@ -230,7 +240,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes)
     layout.process_file(output_dir, output_name, fastas)
-    layout_final_output_location = layout.final_output_location
+    final_output_location = layout.final_output_location
     del layout
     try:
         for extra_fasta in fastas:
@@ -239,7 +249,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
         pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
     print("Done creating Large Image and HTML.")
     print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
+    create_deepzoom_stack(os.path.join(output_dir, final_output_location),
                           os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
     print("Done creating Deep Zoom Structure.")
 

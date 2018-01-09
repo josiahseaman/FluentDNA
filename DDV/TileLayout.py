@@ -30,7 +30,6 @@ def hex_to_rgb(h):
 
 
 class TileLayout(object):
-    final_output_location = None
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, high_contrast=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
@@ -42,6 +41,7 @@ class TileLayout(object):
         self.high_contrast = high_contrast
         # precomputing fonts turns out to be a big performance gain
         self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
+        self.final_output_location = None
         self.image = None
         self.draw = None
         self.pixels = None
@@ -60,12 +60,13 @@ class TileLayout(object):
         self.palette['L'] = hex_to_rgb('2F932F')
         self.palette['M'] = hex_to_rgb('ECEC41')
         self.palette['N'] = hex_to_rgb('3BE4E4')
-        self.palette['P'] = hex_to_rgb('E25826')  # replace this beige
+        self.palette['P'] = hex_to_rgb('E25826')
         self.palette['Q'] = hex_to_rgb('3BE4E4')
         self.palette['R'] = hex_to_rgb('3C76FF')
         self.palette['S'] = hex_to_rgb('FBAC34')
         self.palette['V'] = hex_to_rgb('2F932F')
         self.palette['W'] = hex_to_rgb('BF72BF')
+        self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
         #-----Nucleotide Colors! Paletton Quadrapole colors------
@@ -73,6 +74,12 @@ class TileLayout(object):
         self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
         self.palette['G'] = hex_to_rgb('55AA55')  # Green
         self.palette['C'] = hex_to_rgb('457585')  # Blue
+        if self.high_contrast:
+            # Original DDV Colors
+            self.palette['A'] = (255, 0, 0)
+            self.palette['G'] = (0, 255, 0)
+            self.palette['T'] = (250, 240, 114)
+            self.palette['C'] = (0, 0, 255)
 
 
         # self.palette['T'] = (173, 20, 25)  # Red
@@ -89,12 +96,6 @@ class TileLayout(object):
         # self.palette['G'] = (173, 20, 25)  # G/C is green, purines are dark colors
         # self.palette['C'] = (152, 78, 163)  # light green
 
-        # Original DDV Colors
-        # self.palette['A'] = (255, 0, 0)
-        # self.palette['G'] = (0, 255, 0)
-        # self.palette['T'] = (250, 240, 114)
-        # self.palette['C'] = (0, 0, 255)
-        # self.palette['N'] = (30, 30, 30)
 
         # noinspection PyListCreation
         self.levels = [
@@ -355,7 +356,6 @@ class TileLayout(object):
 
     def generate_html(self, input_file_path, output_folder, output_file_name):
         try:
-            input_file_name = os.path.basename(input_file_path)
             copytree(os.path.join(os.getcwd(), 'html_template'), output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
@@ -370,9 +370,7 @@ class TileLayout(object):
                             "multipart_file": str(len(self.contigs) > 1).lower(),
                             # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
                             "includeDensity": 'false',
-                            "usa": 'refseq_fetch:' + input_file_name,
                             "ipTotal": str(self.image_length),
-                            "direct_data_file": input_file_name,
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
                             "sbegin": '1',
                             "send": str(self.image_length),
