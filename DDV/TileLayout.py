@@ -70,8 +70,8 @@ class TileLayout(object):
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
         #-----Nucleotide Colors! Paletton Quadrapole colors------
-        self.palette['T'] = hex_to_rgb('C35653')  # Red
-        self.palette['A'] = hex_to_rgb('D4A16A')  # Orange
+        self.palette['A'] = hex_to_rgb('C35653')  # Red
+        self.palette['T'] = hex_to_rgb('D4A16A')  # Orange
         self.palette['G'] = hex_to_rgb('55AA55')  # Green
         self.palette['C'] = hex_to_rgb('457585')  # Blue
         if self.high_contrast:
