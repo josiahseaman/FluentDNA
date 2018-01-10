@@ -107,12 +107,19 @@ def run_server(home_directory):
     httpd.serve_forever()
 
 
+def done(args, output_dir):
+    """Ensure that server always starts when requested.
+    Otherwise system exit."""
+    if args.run_server:
+        run_server(output_dir)
+    sys.exit(0)
+
+
 def ddv(args):
     SERVER_HOME, base_path = base_directories(args)
 
     if not args.layout_type and args.run_server:
-        run_server(SERVER_HOME)
-        sys.exit(0)
+        done(args, SERVER_HOME)
 
     if args.ref_annotation and args.layout_type != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
@@ -133,7 +140,7 @@ def ddv(args):
         for batch in batches:  # multiple chromosomes, multiple views
             create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
                                             batch.fastas)
-        sys.exit(0)
+        done(args, SERVER_HOME)
 
     if args.layout_type == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
@@ -143,22 +150,23 @@ def ddv(args):
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
-        # TODO: Copy over html structure
-        sys.exit(0)
+        done(args, output_dir)
+
     elif args.layout_type == "tiled":  # Typical Use Case
         # TODO: allow batch of tiling layout by chromosome
         if args.quick:
             output_dir = os.path.dirname(os.path.abspath(args.fasta))  # just place the image next to the fasta
         else:
             output_dir = make_output_dir_with_suffix(base_path, '')
-
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
-        if args.run_server:
-            run_server(output_dir)
-        sys.exit(0)
+        done(args, output_dir)
 
-    # views that support batches of chromosomes
+    if args.layout_type == "squares":
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
+        done(args, output_dir)
 
+    # ==========views that support batches of chromosomes============= #
     if args.layout_type == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
@@ -166,7 +174,8 @@ def ddv(args):
         #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
         layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
         print("Done with Transposons")
-        sys.exit(0)
+        done(args, output_dir)
+
     if args.layout_type == 'alignment':
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = MultipleAlignmentLayout()
@@ -184,7 +193,8 @@ def ddv(args):
         else:
             del layout
         print("Done with Alignments")
-        sys.exit(0)
+        done(args, output_dir)
+
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
@@ -211,7 +221,8 @@ def ddv(args):
             for batch in batches:  # multiple chromosomes, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
                                                 args.output_name, batch.fastas)
-            sys.exit(0)
+            done(args, SERVER_HOME)
+
     elif args.layout_type == "unique":
         """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
                                first_source='HongKong\\hg38.fa',
@@ -228,7 +239,8 @@ def ddv(args):
         del unique_chain_parser
         for batch in batches:
             create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
-        sys.exit(0)
+        done(args, SERVER_HOME)
+
 
     elif args.layout_type == "original":
         raise NotImplementedError("Original layout is not implemented!")
