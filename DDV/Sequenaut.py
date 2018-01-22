@@ -7,7 +7,7 @@ import sys
 from collections import defaultdict
 
 from DDV.TileLayout import TileLayout
-from DDV.DDV2 import create_tile_layout_viz_from_fasta
+from DDV.fluentdna import create_tile_layout_viz_from_fasta
 from DDV.DDVUtils import make_output_dir_with_suffix, base_directories
 
 

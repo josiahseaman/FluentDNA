@@ -68,6 +68,7 @@ class TileLayout(object):
         self.palette['W'] = hex_to_rgb('BF72BF')
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
+        # Characters not covered:  B J O U Z
 
         #-----Nucleotide Colors! Paletton Quadrapole colors------
         self.palette['A'] = hex_to_rgb('C35653')  # Red

@@ -308,10 +308,10 @@ def main():
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
                                      add_help=True)
 
-    parser = argparse.ArgumentParser(prog='DDV.exe')
+    parser = argparse.ArgumentParser(prog='fluentdna.exe')
     parser.add_argument('--quick',
                         action='store_true',
-                        help="Shortcut for dropping the file on DDV.exe.  Only an image will be generated "
+                        help="Shortcut for dropping the file on fluentdna.exe.  Only an image will be generated "
                              "in the same directory as the FASTA.  This is the default behavior if you drop "
                              "a file onto the program or a filepath is the only argument.",
                         dest="quick")

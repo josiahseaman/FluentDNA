@@ -1,25 +1,25 @@
-﻿# DNA Data Visualization (DDV) software
+﻿# FluentDNA Data Visualization tool (DDV) 
 
 This application creates visualizations of FASTA formatted DNA nucleotide data.
-DDV generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
+FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
 ## Quick Start
 **Installation**  
-`pip install --process-dependency-links git+https://github.com/josiahseaman/DDV.git@pip`
+`pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
 
 **Running**  
-DDV2.py will be placed in the scripts folder and accessible through PYTHONPATH.
+fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH.
 
-`DDV2.py --fasta="/path/to/yourfasta.fa"`  
+`fluentdna.py --fasta="/path/to/yourfasta.fa"`  
 **Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:  
-`python C:\yourvenv\Scripts\DDV.py --fasta="C:\path\to\yourfasta.fa"`  
+`python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`  
 
 To use the interactive browser, especially for large files, start a server.  
 
-`DDV2.py --runserver`  
+`fluentdna.py --runserver`  
 Then open your browser and enter the URL: `http://localhost:8000/`  
 
-To run DDV from your own python script I recommend looking at DDV2.py for examples such as `create_tile_layout_viz_from_fasta()`
+To run FluentDNA from your own python script I recommend looking at fluentdna.py for examples such as `create_tile_layout_viz_from_fasta()`
 
 ### Example Commands
 Check out the file [example_DDV_commands.txt](https://github.com/josiahseaman/DDV/blob/python-master/example_DDV_commands.txt) for more examples.

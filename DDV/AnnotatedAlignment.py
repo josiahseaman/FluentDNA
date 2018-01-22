@@ -155,5 +155,5 @@ if __name__ == '__main__':
     aligner.parse_chain(['chr20'])
 
     #### ==== Command Line Configuration === ####
-    # DDV2.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
+    # fluentdna.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
     # --query_annotation=HongKong\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_

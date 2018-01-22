@@ -263,12 +263,12 @@ requirements, urls = parse_requirements_and_links(os.path.join(BASE_DIR, 'Requir
 
 cmdclass = {"build_exe": BuildDDV,}
 
-setup(name='DDV',
+setup(name='FluentDNA',
       version=VERSION,
-      description='DDV Application',
+      description='DNA Sequence Visualization',
       options={'build_exe': build_exe_options,
                'install_exe': {'build_dir': build_exe_options['build_exe']}},
-      executables=[Executable('DDV2.py', base=base, icon='favicon.ico', targetName='DDV2'+EXTENSION), ],
+      executables=[Executable('fluentdna.py', base=base, icon='favicon.ico', targetName='fluentdna'+EXTENSION), ],
       cmdclass=cmdclass,
       install_requires=requirements,
       dependency_links=urls
