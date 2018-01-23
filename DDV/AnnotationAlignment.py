@@ -1,14 +1,14 @@
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from ChainParser import ChainParser
+from DDV.ChainParser import ChainParser
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
+from DDV.RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
     filter_repeats_by_chromosome_and_family
-from Span import alignment_chopping_index, AlignedSpans, Span
-from TransposonLayout import TransposonLayout
+from DDV.Span import alignment_chopping_index, AlignedSpans, Span
+from DDV.TransposonLayout import TransposonLayout
 
-from DDVUtils import make_output_dir_with_suffix
+from DDV.DDVUtils import make_output_dir_with_suffix
 
 
 # class AnnotationAlignment(object):

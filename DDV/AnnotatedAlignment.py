@@ -1,11 +1,11 @@
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from ChainParser import ChainParser, scan_past_header
+from DDV.ChainParser import ChainParser, scan_past_header
 from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import Batch, first_word, ReverseComplement
 
-from Annotations import create_fasta_from_annotation, GFF
+from DDV.Annotations import create_fasta_from_annotation, GFF
 
 
 class AnnotatedAlignment(ChainParser):

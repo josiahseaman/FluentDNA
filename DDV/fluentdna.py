@@ -468,7 +468,8 @@ def main():
             if args.layout_type == "unique":
                 args.output_name = '%s_unique_vs_%s_' % (just_the_name(args.fasta), just_the_name(args.extra_fastas[0]))
         else:
-            args.output_name = just_the_name(args.fasta or args.image)
+            either_name = args.fasta or args.image
+            args.output_name = os.path.basename(os.path.splitext(either_name)[0])
 
     ddv(args)
 

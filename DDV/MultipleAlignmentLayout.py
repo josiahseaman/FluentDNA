@@ -8,10 +8,10 @@ from math import ceil
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import read_contigs, Contig
-from TileLayout import hex_to_rgb
+from DDV.TileLayout import hex_to_rgb
 from natsort import natsorted
 
-from TransposonLayout import TransposonLayout
+from DDV.TransposonLayout import TransposonLayout
 
 
 class MultipleAlignmentLayout(TransposonLayout):
