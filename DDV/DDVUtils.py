@@ -56,7 +56,7 @@ def pretty_contig_name(contig_name, title_width, title_lines):
 
 
 def create_deepzoom_stack(input_image, output_dzi):
-    import deepzoom
+    import DDV.deepzoom
     dz_params = {'tile_size': 256,
                  'tile_overlap': 1,
                  'tile_format': "png",
