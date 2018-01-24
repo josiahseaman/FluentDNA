@@ -22,7 +22,11 @@ if getattr(sys, 'frozen', False):
     os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin')
     os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin', 'env')
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    try:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    except:  # just in case __file__ isn't defined in some contexts
+        import DDV
+        BASE_DIR = os.path.dirname(DDV.__file__)
 print('Running in:', BASE_DIR)
 
 sys.path.append(BASE_DIR)
@@ -224,8 +228,8 @@ def ddv(args):
             done(args, SERVER_HOME)
 
     elif args.layout_type == "unique":
-        """UniqueOnlyChainParser(chain_name='hg38ToPanTro4.over.chain',
-                               first_source='HongKong\\hg38.fa',
+        """UniqueOnlyChainParser(chain_name='data\\hg38ToPanTro4.over.chain',
+                               first_source='data\\hg38.fa',
                                second_source='',
                                output_folder_prefix='Hg38_unique_vs_panTro4_')"""
         unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,

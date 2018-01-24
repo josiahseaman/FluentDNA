@@ -357,7 +357,10 @@ class TileLayout(object):
 
     def generate_html(self, input_file_path, output_folder, output_file_name):
         try:
-            copytree(os.path.join(os.getcwd(), 'html_template'), output_folder)  # copies the whole template directory
+            import DDV
+            module_path = os.path.dirname(DDV.__file__)
+            html_template = os.path.join(module_path, 'html_template')
+            copytree(html_template, output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "originalImageWidth": str(self.image.width if self.image else 1),
@@ -399,7 +402,7 @@ class TileLayout(object):
                                 <span class='color-explanation'>G/C rich regions are blue/green.
                                     A/T rich areas are reddish.</span>
                             """
-            with open(os.path.join('html_template', 'index.html'), 'r') as template:
+            with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
                     template_content = template_content.replace('{{' + key + '}}', value)
