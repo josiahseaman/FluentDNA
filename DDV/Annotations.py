@@ -177,10 +177,10 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 
 
 if __name__ == '__main__':
-    # annotation = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
+    # annotation = r'DDV\data\Pan_Troglodytes_refseq2.1.4.gtf'
     # target_chromosome = 'chr20'
     # create_fasta_from_annotation(annotation, target_chromosome, 'Chimp_test_' + target_chromosome + '.fa')
 
-    # annotation = r'HongKong\Pan_Troglodytes_refseq2.1.4.gtf'
-    annotation = r'HongKong\Homo_Sapiens_GRCH38_trimmed.gtf'
+    # annotation = r'DDV\data\Pan_Troglodytes_refseq2.1.4.gtf'
+    annotation = r'DDV\data\Homo_Sapiens_GRCH38_trimmed.gtf'
     purge_annotation(annotation)

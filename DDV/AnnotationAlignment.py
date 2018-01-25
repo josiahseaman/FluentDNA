@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+"""
+Note: Unlike the rest of FluentDNA, this file is not setup for reuse yet. If you
+want to replicate similar results with your own data, you'll likely need to
+modify this python file.
+This module uses an annotation such as RepeatMasker to fetch only the annotated
+sequences.  It then uses a chain file (whole genome alignment) to fetch the matching
+sequences from a second genome, where they exist.  This allows you to show every
+instance of annotated elements in parallel and skip the rest of the genomes.
+Currently, this is targeted at repeats on chr19 of Human and Chimp.
+"""
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 

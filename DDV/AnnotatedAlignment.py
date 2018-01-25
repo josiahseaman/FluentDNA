@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+"""
+Note: This module has received only limited testing with one dataset. If you
+want to replicate similar results with your own data, you'll likely need to
+modify this python file.
+This module converts two annotations files into two FASTA files to be used as
+a visualization track alongside
+two genomes and uses a whole genome alignment .chain file to align the set
+of four "tracks" together.  This allows you to compare two annotations in the
+context of their respective sequences.
+"""
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
@@ -149,11 +160,11 @@ class AnnotatedAlignment(ChainParser):
 if __name__ == '__main__':
     output_name = 'hg38_panTro4_annotated_'
     base_path = os.path.join('.', 'www-data', 'dnadata', output_name)
-    chimp_annotation = r'HongKong\PanTro_refseq2.1.4_genes.gtf'
-    human_anno = r'HongKong\Hg38_genes.gtf'
+    chimp_annotation = r'data\PanTro_refseq2.1.4_genes.gtf'
+    human_anno = r'data\Hg38_genes.gtf'
     aligner = AnnotatedAlignment('hg38ToPanTro4.over.chain', 'hg38.fa', human_anno, 'panTro4.fa', chimp_annotation, base_path)
     aligner.parse_chain(['chr20'])
 
     #### ==== Command Line Configuration === ####
-    # fluentdna.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=HongKong\Hg38_genes.gtf
-    # --query_annotation=HongKong\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_
+    # fluentdna.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=DDV\\data\Hg38_genes.gtf
+    # --query_annotation=DDV\data\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_
