@@ -10,13 +10,13 @@ FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FA
 **Running**  
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH.
 
-`fluentdna.py --fasta="/path/to/yourfasta.fa"`  
+`python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/yourfasta.fa"`  
 **Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:  
 `python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`  
 
 To use the interactive browser, especially for large files, start a server.  
 
-`fluentdna.py --runserver`  
+`python /path/to/site-packages/DDV/fluentdna.py --runserver`  
 Then open your browser and enter the URL: `http://localhost:8000/`  
 
 To run FluentDNA from your own python script I recommend looking at fluentdna.py for examples such as `create_tile_layout_viz_from_fasta()`
