@@ -17,10 +17,10 @@ setup(
         'psutil>=4.3.1',
         'blist>=1.3.6',
         'natsort>=5.1.1',
-        'DNASkittleUtils>=v1.0.9',
+        'DNASkittleUtils>=1.0.9',
     ],
     dependency_links=[
-        'git+https://github.com/josiahseaman/DNASkittleUtils.git@v1.0.9#egg=DNASkittleUtils-v1.0.9',
+        'git+https://github.com/josiahseaman/DNASkittleUtils.git@1.0.9#egg=DNASkittleUtils-1.0.9',
     ],
     zip_safe=False,
     url='https://github.com/josiahseaman/FluentDNA',
