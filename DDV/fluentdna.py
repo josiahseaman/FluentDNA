@@ -107,7 +107,7 @@ def run_server(home_directory):
     handler = server.SimpleHTTPRequestHandler
     httpd = TCPServer((ADDRESS, PORT), handler)
 
-    print("Serving at %s on port %s" %(ADDRESS, str(PORT)))
+    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)))
     httpd.serve_forever()
 
 
@@ -162,11 +162,6 @@ def ddv(args):
             output_dir = os.path.dirname(os.path.abspath(args.fasta))  # just place the image next to the fasta
         else:
             output_dir = make_output_dir_with_suffix(base_path, '')
-        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
-        done(args, output_dir)
-
-    if args.layout_type == "squares":
-        output_dir = make_output_dir_with_suffix(base_path, '')
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
         done(args, output_dir)
 
@@ -440,8 +435,8 @@ def main():
         parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
     # if args.layout_type and args.layout_type == 'unique' and args.extra_fastas:
     #     parser.error("For Unique view, you don't need to specify 'extrafastas'.")
-    if args.chromosomes and not (args.chain_file or args.layout_type == 'transposon'):
-        parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
+    # if args.chromosomes and not (args.chain_file or args.layout_type == 'transposon'):
+    #     parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
     # if args.extra_fastas and "parallel" not in args.layout_type:
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout_type not in ["parallel", "unique"]:
