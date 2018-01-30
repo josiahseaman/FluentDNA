@@ -57,14 +57,10 @@ def pretty_contig_name(contig_name, title_width, title_lines):
 
 def create_deepzoom_stack(input_image, output_dzi):
     import DDV.deepzoom as deepzoom
-    dz_params = {'tile_size': 256,
-                 'tile_overlap': 1,
-                 'tile_format': "png",
-                 'resize_filter': "antialias"}  # cubic bilinear bicubic nearest antialias
-    creator = deepzoom.ImageCreator(tile_size=dz_params['tile_size'],
-                                    tile_overlap=dz_params['tile_overlap'],
-                                    tile_format=dz_params['tile_format'],
-                                    resize_filter=dz_params['resize_filter'])
+    creator = deepzoom.ImageCreator(tile_size=256,
+                                    tile_overlap=1,
+                                    tile_format="png",
+                                    resize_filter="antialias")# cubic bilinear bicubic nearest antialias
     creator.create(input_image, output_dzi)
 
 
