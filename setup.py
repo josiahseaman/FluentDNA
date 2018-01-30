@@ -1,6 +1,7 @@
 from DDV import VERSION
 from setuptools import setup, find_packages
 
+utils_ver = '1.0.10'
 setup(
     name='DDV',
     version=VERSION,
@@ -17,10 +18,11 @@ setup(
         'psutil>=4.3.1',
         'blist>=1.3.6',
         'natsort>=5.1.1',
-        'DNASkittleUtils>=1.0.9',
+        'DNASkittleUtils>=' + utils_ver,
     ],
     dependency_links=[
-        'git+https://github.com/josiahseaman/DNASkittleUtils.git@1.0.9#egg=DNASkittleUtils-1.0.9',
+        'git+https://github.com/josiahseaman/DNASkittleUtils.git@%s#egg=DNASkittleUtils-%s' %
+        (utils_ver, utils_ver),
     ],
     zip_safe=False,
     url='https://github.com/josiahseaman/FluentDNA',

@@ -1,12 +1,13 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 from bisect import bisect_left
-
+import os
 from DNASkittleUtils.Contigs import write_complete_fasta, pluck_contig
 from DNASkittleUtils.DDVUtils import Batch
+from DDV import gap_char
 from DDV.ChainParser import ChainParser
 from DDV.Span import Span
-from DDV.ChainFiles import fetch_all_chains
+from DDV.ChainFiles import fetch_all_chains, chain_file_to_list
 
 
 class UniqueOnlyChainParser(ChainParser):
@@ -18,10 +19,12 @@ class UniqueOnlyChainParser(ChainParser):
 
     def find_zero_coverage_areas(self, ref_chr):
         """Start with whole chromosome, subtract coverage from there"""
-        self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
+        if not self.uncovered_areas:
+            self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
         all_chains = fetch_all_chains(ref_chr, None, None, self.chain_list)
         for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
             ref_pointer = chain.tStart  # where we are in the reference
+            first, second = None, None
             for entry in chain.entries:
                 # Find the start region that's right before <= the end of entry
                 new_removal = Span(ref_pointer, ref_pointer + entry.size)
@@ -36,7 +39,7 @@ class UniqueOnlyChainParser(ChainParser):
                     first, second = old.remove_from_range(new_removal)
                 except IndexError as e:
                     print([str(x) for x in [self.uncovered_areas[scrutiny_index], new_removal, self.uncovered_areas[scrutiny_index + 1]]])
-                    raise e
+                    # raise e
 
                 while second is None:  # eating the tail, this could be multiple ranges before the end is satisfied
                     if first is not None:  # leaving behind a beginning, advance scrutiny_index by 1
@@ -50,7 +53,10 @@ class UniqueOnlyChainParser(ChainParser):
                         pass  # if both are None, then we've just deleted the uncovered entry
                     # check again on the next one
                     if new_removal.end > self.uncovered_areas[scrutiny_index].begin:
-                        first, second = self.uncovered_areas.pop(scrutiny_index).remove_from_range(new_removal)
+                        try:
+                            first, second = self.uncovered_areas.pop(scrutiny_index).remove_from_range(new_removal)
+                        except IndexError as e:
+                            print([str(x) for x in [self.uncovered_areas[scrutiny_index], new_removal, self.uncovered_areas[scrutiny_index + 1]]])
                     else:
                         first, second = None, None  # don't do anything: done processing this removal
                         break
@@ -65,12 +71,13 @@ class UniqueOnlyChainParser(ChainParser):
 
     def write_zero_coverage_areas(self, ref_name, ref_chr):
         uniq_collection = []  # of strings
-        ref_unique_name = ref_name[:ref_name.rindex('.')] + '_unique.fa'
-        self.find_zero_coverage_areas(ref_chr)
+        ref_unique_name = os.path.join(self.output_folder, os.path.splitext(ref_name)[0] + '_unique.fa')
         for region in self.uncovered_areas:
-            uniq_collection.append(self.ref_sequence[region.begin: region.end].replace('N', ''))
-
+            unique_region = self.ref_sequence[region.begin: region.end].replace('N', '')
+            if len(unique_region):
+                uniq_collection.append(unique_region + gap_char)
         write_complete_fasta(ref_unique_name, uniq_collection)
+        print("Wrote", ref_unique_name)
         return ref_unique_name
 
 
@@ -80,8 +87,13 @@ class UniqueOnlyChainParser(ChainParser):
 
     def main(self, chromosome_name):# -> Batch:
         fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
-        # actual work
+        self.find_zero_coverage_areas(ref_chr)  # actual work
+
+        #Now compound it with a second alignment  # --second_chain=data/Hg38ToGorGor5.over.chain
+        # fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
+        # self.chain_list = chain_file_to_list('data/Hg38ToGorGor5.over.chain')
+        # self.find_zero_coverage_areas(ref_chr)  # self.uncovered_areas is preserved from previous
+
         fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
 
         if True:  #self.trial_run:  # these files are never used in the viz

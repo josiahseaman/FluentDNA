@@ -459,7 +459,7 @@ def main():
     if args.image and not args.layout_type:
         args.layout_type = "NONE"
 
-    if args.chain_file and not args.chromosomes:
+    if not args.chromosomes and args.chain_file and args.layout_type != 'unique':
         args.chromosomes = ['chr21']
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':

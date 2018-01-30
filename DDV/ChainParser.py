@@ -414,8 +414,10 @@ class ChainParser(object):
             '__translocations' * self.show_translocations_only + \
             '__aligned_only' * self.aligned_only
         self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
-        names = {'ref': ref_chr + '_%s.fa' % first_word(self.ref_source),
-                 'query': '%s_to_%s_%s.fa' % (first_word(self.query_source), first_word(self.ref_source), ref_chr)
+        ref_name = first_word(os.path.basename(self.ref_source))
+        q_name = first_word(os.path.basename(self.query_source))
+        names = {'ref': ref_chr + '_%s.fa' % ref_name,
+                 'query': '%s_to_%s_%s.fa' % (q_name, ref_name, ref_chr)
                  }  # for collecting all the files names in a modifiable way
         # Reset values from previous iteration
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
