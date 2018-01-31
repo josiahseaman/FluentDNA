@@ -18,6 +18,7 @@ setup(
         'psutil>=4.3.1',
         'blist>=1.3.6',
         'natsort>=5.1.1',
+        'PyVCF>=0.6.8',
         'DNASkittleUtils>=' + utils_ver,
     ],
     dependency_links=[

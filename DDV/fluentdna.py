@@ -14,6 +14,7 @@ from __future__ import print_function, division, absolute_import, \
 import os
 import sys
 
+from DDV.VCFLayout import VCFLayout
 
 print("Setting up Python...")
 
@@ -125,6 +126,14 @@ def ddv(args):
     if not args.layout_type and args.run_server:
         done(args, SERVER_HOME)
 
+    if args.vcf:
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = VCFLayout()
+        layout.process_all_alignments(args.vcf,
+                                      output_dir,
+                                      args.output_name)
+        handle_webpage_deepzoom_and_exit(args, layout, output_dir)
+
     if args.ref_annotation and args.layout_type != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
@@ -181,18 +190,7 @@ def ddv(args):
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
-        if not args.no_webpage:
-            layout.generate_html('', output_dir, args.output_name)
-            final_output_location = layout.final_output_location
-            del layout
-            print("Creating Deep Zoom Structure from Generated Image...")
-            create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                                  os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-            print("Done creating Deep Zoom Structure.")
-        else:
-            del layout
-        print("Done with Alignments")
-        done(args, output_dir)
+        handle_webpage_deepzoom_and_exit(args, layout, output_dir)
 
     if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
@@ -245,6 +243,21 @@ def ddv(args):
         raise NotImplementedError("Original layout is not implemented!")
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
+
+
+def handle_webpage_deepzoom_and_exit(args, layout, output_dir):
+    if not args.no_webpage:
+        layout.generate_html('', output_dir, args.output_name)
+        final_output_location = layout.final_output_location
+        del layout
+        print("Creating Deep Zoom Structure from Generated Image...")
+        create_deepzoom_stack(os.path.join(output_dir, final_output_location),
+                              os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        print("Done creating Deep Zoom Structure.")
+    else:
+        del layout
+    print("Done with Alignments")
+    done(args, output_dir)
 
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
@@ -319,6 +332,10 @@ def main():
                         type=str,
                         help="Path to main FASTA file to process into new visualization.",
                         dest="fasta")
+    parser.add_argument("-vcf", '--vcf',
+                        type=str,
+                        help="VCF folder with files containing SNPs to be displayed as an alignment",
+                        dest="vcf")
     parser.add_argument("-o", "--outname",
                         type=str,
                         help="What to name the output folder (not a path). Defaults to name of the fasta file.",
@@ -423,8 +440,8 @@ def main():
 
     if args.image and (args.fasta or args.layout_type or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
-    if not args.image and not args.fasta and not args.run_server:
-        parser.error("Please either define a 'fasta' file or an 'image' file!")
+    if not args.image and not args.fasta and not args.run_server and not args.vcf:
+        parser.error("Please either define a fasta, image, or vcf file!")
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image"
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
