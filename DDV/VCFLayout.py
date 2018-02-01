@@ -4,11 +4,11 @@ from __future__ import print_function, division, absolute_import, \
 import os
 import traceback
 from datetime import datetime
+from PIL import Image, ImageDraw
+from natsort import natsorted
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import Contig
-from natsort import natsorted
-
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
 
 
@@ -21,12 +21,13 @@ def read_vcf_to_contig(vcf_file_path):
     vcf_reader = vcf.Reader(open(vcf_file_path, 'r'))
     for record in vcf_reader:
         if not samples:
-            samples = [list() for i in record.samples]
+            samples = [list() for i in range(2 * len(record.samples))]
         for i, specimen in enumerate(record.samples):
             bases = specimen.gt_bases
             bases = '..' if bases is None else bases.replace('/', '')
-            samples[i].append(bases)
-    contigs = [Contig(name=vcf_reader.samples[i],
+            samples[i * 2].append(bases[0])  # each phase of the diploid goes in a separate sequence
+            samples[i * 2 + 1].append(bases[1])
+    contigs = [Contig(name=vcf_reader.samples[i//2],
                       seq=''.join(samples[i])) for i in range(len(samples))]
     return contigs
 
@@ -69,3 +70,18 @@ class VCFLayout(MultipleAlignmentLayout):
     def set_column_height(self, heights):
         self.column_height = max(heights)  # For clusters of VCF, there's likely to be the same
         # number of specimens for every file
+
+    def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
+        # consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
+        # heights = [len(x.seq) // x.consensus_width for x in self.contigs]
+        # num_lines = sum(heights)
+        # self.set_column_height(heights)
+        # print("Average Width", consensus_width, "Genes", num_lines)
+        # self.layout_based_on_repeat_size(consensus_width)
+        # self.image_length = consensus_width * num_lines
+        # self.prepare_image(self.image_length)
+        width, height = 4000, 1000
+        self.image = Image.new('RGB', (width, height), "white")
+        self.draw = ImageDraw.Draw(self.image)
+        self.pixels = self.image.load()
+        print("Image is ", self.image.width, "x", self.image.height)

@@ -8,7 +8,6 @@ from math import ceil
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import read_contigs, Contig
-from DDV.TileLayout import hex_to_rgb
 from natsort import natsorted
 
 from DDV.TransposonLayout import TransposonLayout
