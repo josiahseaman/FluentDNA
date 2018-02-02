@@ -332,7 +332,7 @@ def main():
                         help="Sort the entries of the fasta file by length.  This option will kick in "
                              "automatically if your file has more than 10,000 separate FASTA entries.",
                         dest="sort_contigs")
-    parser.add_argument('-lc', '--low_contrast',
+    parser.add_argument('-nc', '--natural_colors',
                         action='store_true',
                         help="Use low contrast, natural colors that are easier on the eyes",
                         dest="low_contrast")
