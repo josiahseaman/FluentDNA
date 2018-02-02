@@ -31,14 +31,14 @@ def hex_to_rgb(h):
 
 class TileLayout(object):
 
-    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, high_contrast=False):
+    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, low_contrast=False):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
-        self.high_contrast = high_contrast
+        self.low_contrast = low_contrast
         # precomputing fonts turns out to be a big performance gain
         self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
         self.final_output_location = None
@@ -70,18 +70,17 @@ class TileLayout(object):
         self.palette['Y'] = hex_to_rgb('4B4BB5')
         # Characters not covered:  B J O U Z
 
-        #-----Nucleotide Colors! Paletton Quadrapole colors------
-        self.palette['A'] = hex_to_rgb('C35653')  # Red
-        self.palette['T'] = hex_to_rgb('D4A16A')  # Yellow
-        self.palette['G'] = hex_to_rgb('55AA55')  # Green
-        self.palette['C'] = hex_to_rgb('457585')  # Blue
-        if self.high_contrast:
-            # Original DDV Colors
-            self.palette['A'] = (255, 0, 0)
-            self.palette['G'] = (0, 255, 0)
-            self.palette['T'] = (250, 240, 114)
-            self.palette['C'] = (0, 0, 255)
-
+        # Original DDV Colors
+        self.palette['A'] = (255, 0, 0)
+        self.palette['G'] = (0, 255, 0)
+        self.palette['T'] = (250, 240, 114)
+        self.palette['C'] = (0, 0, 255)
+        if self.low_contrast:
+            #-----Nucleotide Colors! Paletton Quadrapole colors------
+            self.palette['A'] = hex_to_rgb('C35653')  # Red
+            self.palette['T'] = hex_to_rgb('D4A16A')  # Yellow
+            self.palette['G'] = hex_to_rgb('55AA55')  # Green
+            self.palette['C'] = hex_to_rgb('457585')  # Blue
 
         # self.palette['T'] = (173, 20, 25)  # Red
         # self.palette['A'] = (219, 113, 74)  # Orange
@@ -391,7 +390,7 @@ class TileLayout(object):
                     Poly-pyrimidines are more purple (blue/red).
                     Diffuse natural colors were chosen to be less harsh on the eyes.</span>
             """
-            if self.high_contrast:
+            if not self.low_contrast:
                 html_content['legend'] = """    <strong>Legend:</strong>
                                 <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
                                 <img class='legend-icon' src='img/LEGEND-T-contrast.png'/>

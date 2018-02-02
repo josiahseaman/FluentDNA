@@ -4,13 +4,18 @@ This application creates visualizations of FASTA formatted DNA nucleotide data.
 FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
 ## Quick Start
+You will need:
+1. Python 3.4 or older: [Download Link](https://www.python.org/downloads/release/python-343/)
+2. Git: [Download Link](https://git-scm.com/downloads)
+
 **Installation**  
+From a command line in your python directory or virtual environment:    
 `pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
 
 **Running**  
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH.
 
-`python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/yourfasta.fa"`  
+`python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/site-packages/DDV/example_data/hg38_chr19_sample.fa"`  
 **Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:  
 `python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`  
 
