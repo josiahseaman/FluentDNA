@@ -128,7 +128,7 @@ def ddv(args):
 
     if args.vcf:
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = VCFLayout()
+        layout = VCFLayout(low_contrast=args.low_contrast)
         layout.process_all_alignments(args.vcf,
                                       output_dir,
                                       args.output_name)
@@ -176,7 +176,7 @@ def ddv(args):
 
     # ==========views that support batches of chromosomes============= #
     if args.layout_type == 'transposon':
-        layout = TransposonLayout()
+        layout = TransposonLayout(low_contrast=args.low_contrast)
         output_dir = make_output_dir_with_suffix(base_path, '')
         # if len(args.chromosomes) != 1:
         #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
@@ -186,7 +186,7 @@ def ddv(args):
 
     if args.layout_type == 'alignment':
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = MultipleAlignmentLayout()
+        layout = MultipleAlignmentLayout(low_contrast=args.low_contrast)
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
@@ -262,24 +262,14 @@ def handle_webpage_deepzoom_and_exit(args, layout, output_dir):
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
-    layout = ParallelLayout(n_genomes=n_genomes)
+    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast,)
     layout.process_file(output_dir, output_name, fastas)
-    final_output_location = layout.final_output_location
-    del layout
     try:
         for extra_fasta in fastas:
             shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
     except shutil.Error:
         pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
-    print("Done creating Large Image and HTML.")
-    print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-    print("Done creating Deep Zoom Structure.")
-
-    if args.run_server:
-        run_server(output_dir)
-
+    handle_webpage_deepzoom_and_exit(args, layout, output_dir)
 
 
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):

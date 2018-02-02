@@ -14,10 +14,9 @@ from DDV.TransposonLayout import TransposonLayout
 
 
 class MultipleAlignmentLayout(TransposonLayout):
-    def __init__(self):
-        super(MultipleAlignmentLayout, self).__init__()
+    def __init__(self, **kwargs):
+        super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
-
 
         #### Rasmol 'Amino' Protein colors
         # self.palette['A'] = hex_to_rgb('C8C8C8')

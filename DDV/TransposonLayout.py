@@ -15,8 +15,8 @@ from DDV import gap_char
 
 
 class TransposonLayout(TileLayout):
-    def __init__(self):
-        super(TransposonLayout, self).__init__()
+    def __init__(self, **kwargs):
+        super(TransposonLayout, self).__init__(**kwargs)
         self.using_mixed_widths = False
         self.repeat_entries = None
         self.column_height = 400
@@ -144,6 +144,9 @@ class TransposonLayout(TileLayout):
                     self.draw_repeat_title(contig, x, y)
 
                 remaining = min(line_width, seq_length - cx)
+                if x + remaining >= self.image.width:
+                    print("Ran into right side of image at", contig.name)
+                    return contig  # can't fit anything more
                 contig_progress += remaining
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]

@@ -415,7 +415,7 @@ class TileLayout(object):
 
     def contig_json(self):
         json = []
-        xy_seq_start = 0  # camel case is left over from C# for javascript compatibility
+        xy_seq_start = 0
         for index, contig in enumerate(self.contigs):
             if index > 1000:
                 break  # I don't want to use a slice operator on the for loop because that will copy it
