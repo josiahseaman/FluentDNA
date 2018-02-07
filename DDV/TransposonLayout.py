@@ -15,8 +15,8 @@ from DDV import gap_char
 
 
 class TransposonLayout(TileLayout):
-    def __init__(self):
-        super(TransposonLayout, self).__init__()
+    def __init__(self, **kwargs):
+        super(TransposonLayout, self).__init__(**kwargs)
         self.using_mixed_widths = False
         self.repeat_entries = None
         self.column_height = 400

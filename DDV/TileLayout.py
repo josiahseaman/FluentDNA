@@ -15,11 +15,16 @@ from DDV import gap_char
 
 small_title_bp = 10000
 title_skip_padding = 100
-font_name = "Tahoma.ttf"
+font_name = "Arial.ttf"
 try:
     ImageFont.truetype(font_name, 10)
-except BaseException:
-    font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
+except IOError:
+    try:
+        font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
+        ImageFont.truetype(font_name, 10)
+    except IOError:
+        font_name = None
+
 
 
 def hex_to_rgb(h):
@@ -40,7 +45,11 @@ class TileLayout(object):
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         # precomputing fonts turns out to be a big performance gain
-        self.fonts = {size: ImageFont.truetype(font_name, size) for size in [9, 38, 380, 380 * 2]}
+        sizes = [9, 38, 380, 380 * 2]
+        if font_name is not None:
+            self.fonts = {size: ImageFont.truetype(font_name, size) for size in sizes}
+        else:
+            self.fonts = {size: ImageFont.load_default() for size in sizes}
         self.final_output_location = None
         self.image = None
         self.draw = None
