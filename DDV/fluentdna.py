@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
+FluentDNA DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
@@ -45,7 +45,8 @@ import shutil
 import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories
+from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
+    hold_console_for_windows
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
@@ -116,6 +117,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
+    hold_console_for_windows()
     sys.exit(0)
 
 
@@ -307,7 +309,7 @@ def main():
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
                                      add_help=True)
 
-    parser = argparse.ArgumentParser(prog='fluentdna.exe')
+    parser = argparse.ArgumentParser(prog='fluentdna')
     parser.add_argument('--quick',
                         action='store_true',
                         help="Shortcut for dropping the file on fluentdna.exe.  Only an image will be generated "

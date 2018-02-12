@@ -85,3 +85,46 @@ def base_directories(args):
     base_path = os.path.join(SERVER_HOME, args.output_name) if args.output_name else SERVER_HOME
     return SERVER_HOME, base_path
 
+
+
+def hold_console_for_windows():
+    """
+    Demonstration of app that knows if it should keep the console open once done.
+    Written by Martin Packman.  https://stackoverflow.com/a/2261219/3067894
+    """
+    try:
+        import ctypes
+        from ctypes.wintypes import DWORD, HWND
+
+        LPDWORD = ctypes.POINTER(DWORD)
+
+        _kernel32 = ctypes.windll.kernel32
+        _user32 = ctypes.windll.user32
+
+        # <http://msdn.microsoft.com/library/ms683180>
+        GetCurrentProcessId = ctypes.WINFUNCTYPE(DWORD)(
+            ("GetCurrentProcessId", _kernel32))
+
+        # Needs _WIN32_WINNT >= 0x0500
+        # <http://msdn.microsoft.com/library/ms683175>
+        GetConsoleWindow = ctypes.WINFUNCTYPE(HWND)(("GetConsoleWindow", _kernel32))
+        # can return None (NULL)
+
+        # <http://msdn.microsoft.com/library/ms633522>
+        GetWindowThreadProcessId = ctypes.WINFUNCTYPE(DWORD, HWND, LPDWORD)(
+            ("GetWindowThreadProcessId", _user32),
+            ((1, "hWnd"), (2, "lpdwProcessId")))
+
+        # Giving paramflags means the return value gets eaten?
+
+        def owns_console():
+            wnd = GetConsoleWindow()
+            if wnd is None:
+                return False
+            return GetCurrentProcessId() == GetWindowThreadProcessId(wnd)
+
+
+        if owns_console():
+            input("Press ENTER key to exit.")
+    except BaseException:
+        pass  # probably not windows, so it doesn't matter
