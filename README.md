@@ -5,7 +5,8 @@ FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FA
 
 ## Quick Start
 You will need:
-1. Python 3.4 or older: [Download Link](https://www.python.org/downloads/release/python-343/)
+1. Familiarity with the command line: [Windows Tutorial](https://github.com/pettarin/python-on-windows) [Mac Tutorial](http://docs.python-guide.org/en/latest/starting/install3/osx/#install3-osx)
+1. Python (Windows must by Python 3.4 or older): [Download Link](https://www.python.org/downloads/release/python-343/)
 2. Git: [Download Link](https://git-scm.com/downloads)
 
 **Installation**  
