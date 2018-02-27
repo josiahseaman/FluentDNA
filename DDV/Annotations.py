@@ -130,7 +130,7 @@ def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
     for chromosome in gff.annotations.keys():
         if chromosome.lower() == target_chromosome.lower() or \
                 chromosome.lower() == target_chromosome.lower().replace('chr', ''):  # only one
-            seq_array = editable_str(filler * (gff.chromosome_lengths[chromosome] + 1))
+            seq_array = editable_str(gap_char * (gff.chromosome_lengths[chromosome] + 1))
             for entry in gff.annotations[chromosome]:
                 assert isinstance(entry, GFF.Annotation), "I'm confused"
                 if entry.feature == 'exon':
