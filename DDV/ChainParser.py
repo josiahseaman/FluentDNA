@@ -4,6 +4,7 @@ from __future__ import print_function, division, absolute_import, \
 import os
 from datetime import datetime
 import blist
+import sys
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
