@@ -8,9 +8,9 @@ from collections import defaultdict
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
-from DNASkittleUtils.Contigs import read_contigs
+from DNASkittleUtils.Contigs import read_contigs, Contig
 from DNASkittleUtils.DDVUtils import copytree
-from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name
+from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette
 from DDV import gap_char
 
 small_title_bp = 10000
@@ -42,6 +42,7 @@ class TileLayout(object):
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
+        self.using_spectrum = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         # precomputing fonts turns out to be a big performance gain
@@ -208,7 +209,14 @@ class TileLayout(object):
 
 
     def read_contigs_and_calc_padding(self, input_file_path):
-        self.contigs = read_contigs(input_file_path)
+        try:
+            self.contigs = read_contigs(input_file_path)
+        except UnicodeDecodeError as e:
+            print(e)
+            print("Important: Non-standard characters detected.  Switching to 256 colormap for bytes")
+            self.using_spectrum = True
+            self.palette = viridis_palette()
+            self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
         return self.calc_all_padding()
 
     def prepare_image(self, image_length):
@@ -410,6 +418,12 @@ class TileLayout(object):
                                 <span class='color-explanation'>G/C rich regions are blue/green.
                                     A/T rich areas are reddish.</span>
                             """
+            if self.using_spectrum:
+                html_content['legend'] = """    <strong>Legend:</strong>
+                <span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
+                0 = dark purple. 125 = green, 255 = yellow. Developed as 
+                Matplotlib's default color palette.  It is 
+                perceptually uniform and color blind safe.</span>"""
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
@@ -470,3 +484,4 @@ class TileLayout(object):
         for y in range(column_height):
             coords.extend([(x, y, y * self.levels[0].modulo + x) for x in line])
         return coords
+
