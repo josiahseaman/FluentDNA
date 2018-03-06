@@ -36,7 +36,8 @@ def hex_to_rgb(h):
 
 class TileLayout(object):
 
-    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False, low_contrast=False):
+    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
+                 low_contrast=False, base_width=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
@@ -44,6 +45,7 @@ class TileLayout(object):
         self.skip_small_titles = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
+        self.base_width = base_width if base_width is not None else 100
         # precomputing fonts turns out to be a big performance gain
         sizes = [9, 38, 380, 380 * 2]
         if font_name is not None:
@@ -108,8 +110,8 @@ class TileLayout(object):
 
         # noinspection PyListCreation
         self.levels = [
-            LayoutLevel("XInColumn", 100, 1, 0),  # [0]
-            LayoutLevel("LineInColumn", 1000, 100, 0)  # [1]
+            LayoutLevel("XInColumn", self.base_width, 1, 0),  # [0]
+            LayoutLevel("LineInColumn", self.base_width * 10, self.base_width, 0)  # [1]
         ]
         self.levels.append(LayoutLevel("ColumnInRow", 100, padding=6, levels=self.levels))  # [2]
         self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
