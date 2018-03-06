@@ -124,10 +124,10 @@ def done(args, output_dir):
 def ddv(args):
     SERVER_HOME, base_path = base_directories(args)
 
-    if not args.layout_type and args.run_server:
+    if not args.layout and args.run_server:
         done(args, SERVER_HOME)
 
-    if args.ref_annotation and args.layout_type != 'transposon':  # parse chain files, possibly in batch
+    if args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
                                         first_annotation=args.ref_annotation,
@@ -148,7 +148,7 @@ def ddv(args):
                                             batch.fastas)
         done(args, SERVER_HOME)
 
-    if args.layout_type == "NONE":  # Complete webpage generation from existing image
+    if args.layout == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast)
@@ -158,7 +158,7 @@ def ddv(args):
         print("Done creating Deep Zoom Structure.")
         done(args, output_dir)
 
-    elif args.layout_type == "tiled":  # Typical Use Case
+    elif args.layout == "tiled":  # Typical Use Case
         # TODO: allow batch of tiling layout by chromosome
         if args.quick:
             output_dir = os.path.dirname(os.path.abspath(args.fasta))  # just place the image next to the fasta
@@ -168,7 +168,7 @@ def ddv(args):
         done(args, output_dir)
 
     # ==========views that support batches of chromosomes============= #
-    if args.layout_type == 'transposon':
+    if args.layout == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
         # if len(args.chromosomes) != 1:
@@ -177,7 +177,7 @@ def ddv(args):
         print("Done with Transposons")
         done(args, output_dir)
 
-    if args.layout_type == 'alignment':
+    if args.layout == 'alignment':
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = MultipleAlignmentLayout()
         layout.process_all_alignments(args.fasta,
@@ -196,7 +196,7 @@ def ddv(args):
         print("Done with Alignments")
         done(args, output_dir)
 
-    if args.layout_type == "parallel":  # Parallel genome column layout OR quad comparison columns
+    if args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
             # TODO: support drag and drop
@@ -224,7 +224,7 @@ def ddv(args):
                                                 args.output_name, batch.fastas)
             done(args, SERVER_HOME)
 
-    elif args.layout_type == "unique":
+    elif args.layout == "unique":
         """UniqueOnlyChainParser(chain_name='data\\hg38ToPanTro4.over.chain',
                                first_source='data\\hg38.fa',
                                second_source='',
@@ -243,7 +243,7 @@ def ddv(args):
         done(args, SERVER_HOME)
 
 
-    elif args.layout_type == "original":
+    elif args.layout == "original":
         raise NotImplementedError("Original layout is not implemented!")
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
@@ -275,7 +275,7 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     print("Creating Large Image from Input Fasta...")
     if layout is None:
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
-                            low_contrast=args.low_contrast)
+                            low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name)
     layout_final_output_location = layout.final_output_location
     # try:
@@ -343,12 +343,18 @@ def main():
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
                         choices=["tiled", "parallel", "alignment", "unique", "transposon", "original"],
-                        dest="layout_type")  # Don't set a default so we can do error checking on it later
+                        dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
                         type=str,
                         help="Path to secondary FASTA files to process when doing Parallel layout.",
                         dest="extra_fastas")
+    parser.add_argument("-bw", "--base_width",
+                        help="Overrides the default 100bp column width in standard --layout=tiled. "
+                        "Use this only if you are trying to accomplish something custom. "
+                        "The rest of the layout will ratio adjust, so base_width=200 will produce "
+                        "columns that are 2,000 lines tall and rows containing 40 Mbp, etc.",
+                        dest="base_width")
 
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
@@ -420,10 +426,12 @@ def main():
         sys.exit(0)
 
     # Errors
-    if args.layout_type == "original":
+    if args.base_width:
+        args.base_width = int(args.base_width)
+    if args.layout == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
 
-    if args.image and (args.fasta or args.layout_type or args.extra_fastas or args.chain_file):
+    if args.image and (args.fasta or args.layout or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
         parser.error("Please either define a 'fasta' file or an 'image' file!")
@@ -431,42 +439,42 @@ def main():
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image"
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
 
-    if args.extra_fastas and not args.layout_type:
-        args.layout_type = "parallel"
-    if args.layout_type and args.layout_type == "parallel" and not args.extra_fastas:
+    if args.extra_fastas and not args.layout:
+        args.layout = "parallel"
+    if args.layout and args.layout == "parallel" and not args.extra_fastas:
         parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
-    # if args.layout_type and args.layout_type == 'unique' and args.extra_fastas:
+    # if args.layout and args.layout == 'unique' and args.extra_fastas:
     #     parser.error("For Unique view, you don't need to specify 'extrafastas'.")
-    # if args.chromosomes and not (args.chain_file or args.layout_type == 'transposon'):
+    # if args.chromosomes and not (args.chain_file or args.layout == 'transposon'):
     #     parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
-    # if args.extra_fastas and "parallel" not in args.layout_type:
+    # if args.extra_fastas and "parallel" not in args.layout:
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
-    if args.chain_file and args.layout_type not in ["parallel", "unique"]:
+    if args.chain_file and args.layout not in ["parallel", "unique"]:
         parser.error("The 'chainfile' argument is only used when doing a Parallel or Unique layout!")
     if args.chain_file and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
-    if args.layout_type == "unique" and not args.chain_file:
+    if args.layout == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")
     if args.show_translocations_only and args.separate_translocations:
         parser.error("It just doesn't make sense to ask to show translocations in context while separating them.  You've got to pick one or the other.")
 
     # Set post error checking defaults
-    if not args.image and not args.layout_type and args.fasta:
-        args.layout_type = "tiled"
-    if args.image and not args.layout_type:
-        args.layout_type = "NONE"
+    if not args.image and not args.layout and args.fasta:
+        args.layout = "tiled"
+    if args.image and not args.layout:
+        args.layout = "NONE"
 
-    if not args.chromosomes and args.chain_file and args.layout_type != 'unique':
+    if not args.chromosomes and args.chain_file and args.layout != 'unique':
         args.chromosomes = ['chr21']
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore
 
     # Set dependent defaults
-    if not args.output_name and args.layout_type:
+    if not args.output_name and args.layout:
         if args.chain_file:
             args.output_name = 'Parallel_%s_and_%s_' % (just_the_name(args.fasta), just_the_name(args.extra_fastas[0]))
-            if args.layout_type == "unique":
+            if args.layout == "unique":
                 args.output_name = '%s_unique_vs_%s_' % (just_the_name(args.fasta), just_the_name(args.extra_fastas[0]))
         else:
             either_name = args.fasta or args.image

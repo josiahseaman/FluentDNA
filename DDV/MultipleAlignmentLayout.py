@@ -14,6 +14,15 @@ from natsort import natsorted
 from DDV.TransposonLayout import TransposonLayout
 
 
+def collapse_file_to_one_contig(fasta):
+    species = read_contigs(fasta)
+    consensus_width = max([len(x.seq) for x in species])
+    block = Contig(just_the_name(fasta),
+                   ''.join([x.seq for x in species]), )
+    block.consensus_width = consensus_width
+    return block
+
+
 class MultipleAlignmentLayout(TransposonLayout):
     def __init__(self, **kwargs):
         kwargs['low_contrast'] = True
@@ -101,15 +110,14 @@ class MultipleAlignmentLayout(TransposonLayout):
     def translate_gapped_fastas_to_contigs(self, input_fasta_folder):
         from glob import glob
         self.contigs = []
-        for fasta in natsorted(glob(os.path.join(input_fasta_folder, '*.fa*'))):
-            species = read_contigs(fasta)
-            consensus_width = max([len(x.seq) for x in species])
-            block = Contig(just_the_name(fasta),
-                           ''.join([x.seq for x in species]),)
-            block.consensus_width = consensus_width
-            self.contigs.append(block)
+        # If I was actually given a file name and not a directory, just process the one file
+        if not os.path.isdir(input_fasta_folder) and os.path.exists(input_fasta_folder):
+            self.contigs.append(collapse_file_to_one_contig(input_fasta_folder))
+        else:
+            for fasta in natsorted(glob(os.path.join(input_fasta_folder, '*.fa*'))):
+                block = collapse_file_to_one_contig(fasta)
+                self.contigs.append(block)
         return self.contigs
-
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
         consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
@@ -124,6 +132,12 @@ class MultipleAlignmentLayout(TransposonLayout):
 
     def contig_json(self):
         return '[]'  # not implemented, but must override base class
+
+
     def set_column_height(self, heights):
-        average_line_count = int(ceil(sum(heights) / len(heights)))
-        self.column_height = average_line_count * 2
+        try:
+            from statistics import median
+            average_line_count = median(heights)
+        except ImportError:
+            average_line_count = int(ceil(sum(heights) / len(heights)))
+        self.column_height = min(max(heights), average_line_count * 2)
