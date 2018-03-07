@@ -128,7 +128,6 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
-        print("Image is ", self.image.width, "x", self.image.height)
 
     def contig_json(self):
         return '[]'  # not implemented, but must override base class

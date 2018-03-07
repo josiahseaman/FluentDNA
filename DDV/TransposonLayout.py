@@ -53,8 +53,10 @@ class TransposonLayout(TileLayout):
     def max_dimensions(self, image_length):
         if self.using_mixed_widths:
             rough = int(math.ceil(math.sqrt(image_length * 3)))
-            rough = min(62950, rough)  # hard cap at 4GB images created
-            return rough + 50, rough + 50
+            rough = min(62900, rough)  # hard cap at 4GB images created
+            # Layout should never be more narrow than the widest single element
+            min_width = max(rough, self.levels[2].thickness + (self.origin[0] * 2))
+            return min_width, rough + self.origin[1]
         else:
             return super(TransposonLayout, self).max_dimensions(image_length)
 
@@ -133,12 +135,12 @@ class TransposonLayout(TileLayout):
             line_width = contig.consensus_width
             for cx in range(0, seq_length, line_width):
                 x, y = self.position_on_screen(contig_progress)
-                if x + contig.consensus_width + 10 >= self.image.width:
+                if x + contig.consensus_width + 1 >= self.image.width:
                     contig_progress = 0  # reset to beginning of line
                     self.skip_to_next_mega_row()
                     x, y = self.position_on_screen(contig_progress)
                 if y + self.levels[1].modulo >= self.image.height:
-                    print("Ran into bottom of image at", contig.name)
+                    print("Ran into bottom of image at", contig.name, x,y)
                     return contig  # can't fit anything more
                 if y == self.origin[1]:  # first line in a column
                     self.draw_repeat_title(contig, x, y)

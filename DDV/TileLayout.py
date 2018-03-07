@@ -14,7 +14,6 @@ from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, vir
 from DDV import gap_char
 
 small_title_bp = 10000
-title_skip_padding = 100
 font_name = "Arial.ttf"
 try:
     ImageFont.truetype(font_name, 10)
@@ -47,6 +46,8 @@ class TileLayout(object):
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         self.base_width = base_width if base_width is not None else 100
+        self.title_skip_padding = self.base_width  # skip one line. USER: Change this
+
         # precomputing fonts turns out to be a big performance gain
         sizes = [9, 38, 380, 380 * 2]
         if font_name is not None:
@@ -169,10 +170,13 @@ class TileLayout(object):
                 x, y = self.position_on_screen(total_progress)
                 remaining = min(line_width, seq_length - cx)
                 total_progress += remaining
+                #try:
                 for i in range(remaining):
                     nuc = contig.seq[cx + i]
                     # if nuc != gap_char:
                     self.draw_pixel(nuc, x + i, y)
+                #except IndexError:
+                #    print("Cursor fell off the image at", x,y)
                 if cx % 100000 == 0:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
                           end="")  # pseudo progress bar
@@ -223,13 +227,14 @@ class TileLayout(object):
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
+        print("Image dimensions are", width, "x", height, "pixels")
         self.image = Image.new('RGB', (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
 
     def calc_padding(self, total_progress, next_segment_length, multipart_file):
-        min_gap = (20 + 6) * 100  # 20px font height, + 6px vertical padding  * 100 nt per line
+        min_gap = (20 + 6) * self.base_width  # 20px font height, + 6px vertical padding  * 100 nt per line
         if not multipart_file:
             return 0, 0, 0
 
@@ -239,7 +244,7 @@ class TileLayout(object):
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
                 if self.skip_small_titles and next_segment_length < small_title_bp:
                     # no small titles, but larger ones will still display,
-                    title_padding = title_skip_padding  # normally 100 pixels per line
+                    title_padding = self.title_skip_padding  # normally 100 pixels per line
                     # this affects layout
                 if not self.use_titles:
                     title_padding = 0  # don't leave space for a title, but still use tail and reset padding
@@ -285,7 +290,7 @@ class TileLayout(object):
         total_progress = 0
         for contig in self.contigs:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
-            if contig.title_padding > title_skip_padding:  # there needs to be room to draw
+            if contig.title_padding > self.title_skip_padding:  # there needs to be room to draw
                 self.draw_title(total_progress, contig)
             total_progress += contig.title_padding + len(contig.seq) + contig.tail_padding
 
