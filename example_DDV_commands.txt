@@ -6,6 +6,10 @@ fluentdna.py --fasta="data/break_996.fa" --layout=transposon
 fluentdna.py --runserver
 fluentdna.py "data/phiX.fa"
 
+# To show gene annotations alongside your sequence, use --fasta= and --ref_annotation=
+# an example is included in example_data/ under your DDV installation directory.
+fluentydna.py --fasta="example_data/gnetum_sample.fa" --outname="Gnetum montanum - Example Annotation" --ref_annotation="example_data/Gnetum_sample_genes.gff"
+
 # On Windows, you will need to execute the DDV2 script from the installation location.
 # Note that if you installed DDV in a virtual environment, you will need to activate that first,
 #    and change the path to the DDV2 script to match the path to your new environment location.
