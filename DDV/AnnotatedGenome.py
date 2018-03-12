@@ -1,4 +1,4 @@
-import os
+from  os.path import join, basename
 from DNASkittleUtils.Contigs import read_contigs
 
 from DDV.Annotations import create_fasta_from_annotation
@@ -12,13 +12,13 @@ class AnnotatedGenomeLayout(ParallelLayout):
 
     def render_genome(self, output_folder, output_file_name):
         # first just output one scaffold fasta annotaiton
-        annotation_fasta = os.path.basename(self.gff_file) + '.fa'
+        annotation_fasta = join(output_folder, basename(self.gff_file) + '.fa')
         self.contigs = read_contigs(self.fasta_file)
         chromosomes = [x.name.split()[0] for x in self.contigs]
         lengths = [len(x.seq) for x in self.contigs]
         create_fasta_from_annotation(self.gff_file, chromosomes,
                                      scaffold_lengths=lengths,
-                                     out_name=annotation_fasta)
+                                     output_path=annotation_fasta)
 
         super(AnnotatedGenomeLayout, self).process_file(output_folder,
                           output_file_name=output_file_name,
