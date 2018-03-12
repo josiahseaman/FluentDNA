@@ -1,6 +1,8 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
+from collections import namedtuple, defaultdict
+
 from DNASkittleUtils.DDVUtils import editable_str
 
 
@@ -120,9 +122,15 @@ class GFF(object):
             self.line = line
 
 
-def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
+def create_fasta_from_annotation(gff, target_chromosome, out_name=None, features=None):
     from DNASkittleUtils.Contigs import write_complete_fasta
     from DDV import gap_char
+    FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
+    if features is None:
+        features = {'exon':FeatureRep('G', 1),  # 1 priority is the most important
+                    'mRNA':FeatureRep('C', 2),
+                    'gene':FeatureRep('T', 3)}
+    symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename
     count = 0
@@ -132,18 +140,18 @@ def create_fasta_from_annotation(gff, target_chromosome, out_name=None):
                 chromosome.lower() == target_chromosome.lower().replace('chr', ''):  # only one
             seq_array = editable_str(gap_char * (gff.chromosome_lengths[chromosome] + 1))
             for entry in gff.annotations[chromosome]:
-                assert isinstance(entry, GFF.Annotation), "I'm confused"
-                if entry.feature == 'exon':
+                assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+                if entry.feature in features.keys():
                     count += 1
+                    my = features[entry.feature]
                     for i in range(entry.start, entry.end + 1):
-                        seq_array[i] = 'G'
+                        if symbol_priority[seq_array[i]] > my.priority :
+                            seq_array[i] = my.symbol
                 if entry.feature == 'gene':
                     # TODO: output header JSON every time we find a gene
-                    for i in range(entry.start, entry.end + 1):
-                        if seq_array[i] == gap_char:
-                            seq_array[i] = 'T'
+                    pass
     if seq_array:
-        print("Done", gff.file_name, target_chromosome, "Found %i exons" % count)
+        print("Done", gff.file_name, target_chromosome, "Found %i features" % count)
     if out_name is not None:
         write_complete_fasta(out_name, seq_array, header='>%s\n' % target_chromosome)
         return ''
