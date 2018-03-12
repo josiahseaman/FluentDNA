@@ -48,6 +48,7 @@ from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
     hold_console_for_windows
 from DDV.ParallelGenomeLayout import ParallelLayout
+from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -127,32 +128,13 @@ def ddv(args):
     if not args.layout and args.run_server:
         done(args, SERVER_HOME)
 
-    if args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
-        anno_align = AnnotatedAlignment(chain_name=args.chain_file,
-                                        first_source=args.fasta,
-                                        first_annotation=args.ref_annotation,
-                                        second_source=args.extra_fastas[0],
-                                        second_annotation=args.query_annotation,
-                                        output_prefix=base_path,
-                                        trial_run=args.trial_run,
-                                        separate_translocations=args.separate_translocations,
-                                        squish_gaps=args.squish_gaps,
-                                        show_translocations_only=args.show_translocations_only,
-                                        aligned_only=args.aligned_only)
-        print("Creating Aligned Annotations using Chain File...")
-        batches = anno_align.parse_chain(args.chromosomes)
-        del anno_align
-        print("Done creating Gapped Annotations.")
-        for batch in batches:  # multiple chromosomes, multiple views
-            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
-                                            batch.fastas)
-        done(args, SERVER_HOME)
+
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast)
-        layout.generate_html(base_path, output_dir, args.output_name)
+        layout.generate_html(output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
@@ -167,7 +149,7 @@ def ddv(args):
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
         done(args, output_dir)
 
-    # ==========views that support batches of chromosomes============= #
+    # ==========TODO: separate views that support batches of chromosomes============= #
     if args.layout == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
@@ -184,7 +166,7 @@ def ddv(args):
                                       output_dir,
                                       args.output_name)
         if not args.no_webpage:
-            layout.generate_html('', output_dir, args.output_name)
+            layout.generate_html(output_dir, args.output_name)
             final_output_location = layout.final_output_location
             del layout
             print("Creating Deep Zoom Structure from Generated Image...")
@@ -223,6 +205,17 @@ def ddv(args):
                 create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
                                                 args.output_name, batch.fastas)
             done(args, SERVER_HOME)
+    elif args.layout == "annotated":
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = AnnotatedGenomeLayout(r"D:\Genomes\Gnetum\Gnetum.final.fa",
+                                       r"D:\Genomes\Gnetum\Gmm.final.gff")
+        target_chromosome = "scaffold9999991"  # TODO: self.contigs[0].name
+        layout.render_genome(output_dir,
+            'Gnetum_annotation', # args.output_name,
+            target_chromosome
+        )
+        finish_webpage(args, layout, output_dir, args.output_name)
+        done(args, output_dir)
 
     elif args.layout == "unique":
         """UniqueOnlyChainParser(chain_name='data\\hg38ToPanTro4.over.chain',
@@ -242,6 +235,26 @@ def ddv(args):
             create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
 
+    elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
+        anno_align = AnnotatedAlignment(chain_name=args.chain_file,
+                                        first_source=args.fasta,
+                                        first_annotation=args.ref_annotation,
+                                        second_source=args.extra_fastas[0],
+                                        second_annotation=args.query_annotation,
+                                        output_prefix=base_path,
+                                        trial_run=args.trial_run,
+                                        separate_translocations=args.separate_translocations,
+                                        squish_gaps=args.squish_gaps,
+                                        show_translocations_only=args.show_translocations_only,
+                                        aligned_only=args.aligned_only)
+        print("Creating Aligned Annotations using Chain File...")
+        batches = anno_align.parse_chain(args.chromosomes)
+        del anno_align
+        print("Done creating Gapped Annotations.")
+        for batch in batches:  # multiple chromosomes, multiple views
+            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
+                                            batch.fastas)
+        done(args, SERVER_HOME)
 
     elif args.layout == "original":
         raise NotImplementedError("Original layout is not implemented!")
@@ -277,17 +290,22 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name)
-    layout_final_output_location = layout.final_output_location
     # try:
     #     shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     # except shutil.SameFileError:
     #     pass  # not a problem
+    finish_webpage(args, layout, output_dir, output_name)
+
+
+def finish_webpage(args, layout, output_dir, output_name):
+    layout_final_output_location = layout.final_output_location
     print("Done creating Large Image at ", layout_final_output_location)
     if not args.no_webpage:
-        layout.generate_html(fasta, output_dir, output_name)
+        layout.generate_html(output_dir, output_name)
         del layout
         print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location), os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
+                              os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
     else:
         del layout
@@ -342,7 +360,8 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "unique", "transposon", "original"],
+                        choices=["tiled", "parallel", "alignment", "annotated"
+                                 "unique", "transposon", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
@@ -430,11 +449,17 @@ def main():
         args.base_width = int(args.base_width)
     if args.layout == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
+    if not args.layout:
+        if args.ref_annotation and args.fasta:
+            args.layout = "annotated"
+        # elif args.ref_annotation:
+        #     args.layout = "annotation_only"
 
     if args.image and (args.fasta or args.layout or args.extra_fastas or args.chain_file):
-        parser.error("No layout will be performed if an existing image is passed in! Please only define an existing 'image' and the desired 'outfile'.")
+        parser.error("No layout will be performed if an existing image is passed in! "
+                     "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
-        parser.error("Please either define a 'fasta' file or an 'image' file!")
+        parser.error('Please define a a file to process.  Ex: fluentdna.py --fasta="example_data/phiX.fa"')
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image"
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")

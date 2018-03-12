@@ -179,7 +179,7 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
         # use the parent process_file() but override methods in child
         super(Sequenaut, self).process_file(input_file_path, output_folder, output_file_name)
         # TODO: support --no_webpage
-        self.generate_html(input_file_path, output_folder, output_file_name)
+        self.generate_html(output_folder, output_file_name)
 
 
 def run_sequenaut(args):

@@ -51,8 +51,7 @@ class ParallelLayout(TileLayout):
             for index, filename in enumerate(fasta_files):
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename)
-                if self.using_background_colors:
-                    self.change_background_color(self.genome_processed)
+                self.color_changes_per_genome()
                 self.draw_nucleotides()
                 self.draw_titles()
                 self.genome_processed += 1
@@ -60,10 +59,13 @@ class ParallelLayout(TileLayout):
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n', str(e))
         self.draw_the_viz_title(fasta_files)
-        self.generate_html(fasta_files[-1], output_folder, output_file_name)  # only furthest right file is downloadable
+        self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
+    def color_changes_per_genome(self):
+        if self.using_background_colors:
+            self.change_background_color(self.genome_processed)
 
     def position_on_screen(self, index):
         """ In ParallelLayout, each genome is given a constant x offset in order to interleave the results of each

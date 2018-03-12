@@ -89,11 +89,7 @@ class TileLayout(object):
         self.palette['T'] = (250, 240, 114)
         self.palette['C'] = (0, 0, 255)
         if self.low_contrast:
-            #-----Nucleotide Colors! Paletton Quadrapole colors------
-            self.palette['A'] = hex_to_rgb('C35653')  # Red
-            self.palette['T'] = hex_to_rgb('D4A16A')  # Yellow
-            self.palette['G'] = hex_to_rgb('55AA55')  # Green
-            self.palette['C'] = hex_to_rgb('457585')  # Blue
+            self.activate_natural_colors()
 
         # self.palette['T'] = (173, 20, 25)  # Red
         # self.palette['A'] = (219, 113, 74)  # Orange
@@ -125,6 +121,13 @@ class TileLayout(object):
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
             self.enable_fat_headers()
+
+    def activate_natural_colors(self):
+        # -----Nucleotide Colors! Paletton Quadrapole colors------
+        self.palette['A'] = hex_to_rgb('C35653')  # Red
+        self.palette['T'] = hex_to_rgb('D4A16A')  # Yellow
+        self.palette['G'] = hex_to_rgb('55AA55')  # Green
+        self.palette['C'] = hex_to_rgb('457585')  # Blue
 
     def enable_fat_headers(self):
         if self.use_titles:
@@ -350,8 +353,8 @@ class TileLayout(object):
     def output_image(self, output_folder, output_file_name):
         del self.pixels
         del self.draw
-        print("-- Writing:", output_file_name, "--")
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
+        print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')
         # del self.image
 
@@ -378,7 +381,7 @@ class TileLayout(object):
         return int(width_height[0]), int(width_height[1])
 
 
-    def generate_html(self, input_file_path, output_folder, output_file_name):
+    def generate_html(self, output_folder, output_file_name):
         try:
             import DDV
             module_path = os.path.dirname(DDV.__file__)
