@@ -2,7 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
 from collections import namedtuple, defaultdict
-
+from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
 
 
@@ -122,24 +122,28 @@ class GFF(object):
             self.line = line
 
 
-def create_fasta_from_annotation(gff, target_chromosome, out_name=None, features=None):
-    from DNASkittleUtils.Contigs import write_complete_fasta
-    from DDV import gap_char
+def handle_tail(seq_array, scaffold_lengths, sc_index):
+    if scaffold_lengths is not None:
+        remaining = scaffold_lengths[sc_index] - len(seq_array)
+        seq_array.extend( gap_char * remaining)
+
+
+def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out_name=None, features=None):
+    from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
     FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
     if features is None:
         features = {'exon':FeatureRep('G', 1),  # 1 priority is the most important
-                    'mRNA':FeatureRep('C', 2),
-                    'gene':FeatureRep('T', 3)}
+                    'mRNA':FeatureRep('T', 2),
+                    'gene':FeatureRep('C', 3)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename
     count = 0
-    seq_array = ''
-    for chromosome in gff.annotations.keys():
-        if chromosome.lower() == target_chromosome.lower() or \
-                chromosome.lower() == target_chromosome.lower().replace('chr', ''):  # only one
-            seq_array = editable_str(gap_char * (gff.chromosome_lengths[chromosome] + 1))
-            for entry in gff.annotations[chromosome]:
+    scaffolds = []
+    for sc_index, scaff_name in enumerate(scaffold_names):  # Exact match required (case sensitive)
+        if scaff_name in gff.annotations.keys():
+            seq_array = editable_str(gap_char * (gff.chromosome_lengths[scaff_name] + 1))
+            for entry in gff.annotations[scaff_name]:
                 assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
                 if entry.feature in features.keys():
                     count += 1
@@ -150,13 +154,17 @@ def create_fasta_from_annotation(gff, target_chromosome, out_name=None, features
                 if entry.feature == 'gene':
                     # TODO: output header JSON every time we find a gene
                     pass
-    if seq_array:
-        print("Done", gff.file_name, target_chromosome, "Found %i features" % count)
-    if out_name is not None:
-        write_complete_fasta(out_name, seq_array, header='>%s\n' % target_chromosome)
-        return ''
+            handle_tail(seq_array, scaffold_lengths, sc_index)
+            scaffolds.append(Contig(scaff_name, ''.join(seq_array)))
+        else:
+            print("No matches for '%s'" % scaff_name)
+    if scaffolds:
+        print("Done", gff.file_name, "Found %i features" % count, "on %i scaffolds" % len(scaffolds))
     else:
-        return ''.join(seq_array)
+        print("WARNING: No matching scaffold names were found between the annotation and the request.")
+    if out_name is not None:
+        write_contigs_to_file(out_name, scaffolds)
+    return scaffolds
 
 
 def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):

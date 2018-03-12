@@ -1,3 +1,4 @@
+import os
 from DNASkittleUtils.Contigs import read_contigs
 
 from DDV.Annotations import create_fasta_from_annotation
@@ -9,26 +10,26 @@ class AnnotatedGenomeLayout(ParallelLayout):
         self.fasta_file = fasta_file
         self.gff_file = gff_file
 
-    def render_genome(self, output_folder, output_file_name, target_chromosome):
+    def render_genome(self, output_folder, output_file_name):
         # first just output one scaffold fasta annotaiton
-        out_name = 'Annotation_' + target_chromosome + '.fa'
-        create_fasta_from_annotation(self.gff_file,
-                                     target_chromosome,
-                                     'Annotation_' + target_chromosome + '.fa')
+        annotation_fasta = os.path.basename(self.gff_file) + '.fa'
+        self.contigs = read_contigs(self.fasta_file)
+        chromosomes = [x.name.split()[0] for x in self.contigs]
+        lengths = [len(x.seq) for x in self.contigs]
+        create_fasta_from_annotation(self.gff_file, chromosomes,
+                                     scaffold_lengths=lengths,
+                                     out_name=annotation_fasta)
 
         super(AnnotatedGenomeLayout, self).process_file(output_folder,
                           output_file_name=output_file_name,
-                          fasta_files=[self.fasta_file, out_name])
+                          fasta_files=[annotation_fasta, self.fasta_file])
 
     def read_contigs_and_calc_padding(self, input_file_path):
-        self.contigs = read_contigs(input_file_path)[:1]
-
+        self.contigs = read_contigs(input_file_path)
+        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
         return self.calc_all_padding()
 
     def color_changes_per_genome(self):
-        if self.genome_processed:  # Use softer colors for annotations
+        self.activate_high_contrast_colors()
+        if not self.genome_processed:  # Use softer colors for annotations
             self.activate_natural_colors()
-
-if __name__ == '__main__':
-    layout = AnnotatedGenomeLayout(r"D:\Genomes\Gnetum\Gnetum.final.fa", r"D:\Genomes\Gnetum\Gmm.final.gff")
-    layout.render_genome()

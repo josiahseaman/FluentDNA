@@ -83,11 +83,7 @@ class TileLayout(object):
         self.palette['Y'] = hex_to_rgb('4B4BB5')
         # Characters not covered:  B J O U Z
 
-        # Original DDV Colors
-        self.palette['A'] = (255, 0, 0)
-        self.palette['G'] = (0, 255, 0)
-        self.palette['T'] = (250, 240, 114)
-        self.palette['C'] = (0, 0, 255)
+        self.activate_high_contrast_colors()
         if self.low_contrast:
             self.activate_natural_colors()
 
@@ -121,6 +117,13 @@ class TileLayout(object):
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
             self.enable_fat_headers()
+
+    def activate_high_contrast_colors(self):
+        # Original DDV Colors
+        self.palette['A'] = (255, 0, 0)
+        self.palette['G'] = (0, 255, 0)
+        self.palette['T'] = (250, 240, 114)
+        self.palette['C'] = (0, 0, 255)
 
     def activate_natural_colors(self):
         # -----Nucleotide Colors! Paletton Quadrapole colors------

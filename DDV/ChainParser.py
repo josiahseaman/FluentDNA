@@ -237,7 +237,7 @@ class ChainParser(object):
             query_snippet = pair.query.sample(self.query_sequence)
             if not self.aligned_only:
                 query_snippet += pair.query_unique_span().sample(self.query_sequence)
-                query_snippet += gap_char * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with X's
+                query_snippet += gap_char * pair.ref_tail_size  # whenever there is no alignable sequence, it's filled with -'s
 
             ref_snippet = pair.ref.sample(self.ref_sequence)
             if not self.aligned_only:  # Aligned_only simply skips over the unaligned tails

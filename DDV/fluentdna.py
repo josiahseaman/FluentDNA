@@ -207,13 +207,9 @@ def ddv(args):
             done(args, SERVER_HOME)
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = AnnotatedGenomeLayout(r"D:\Genomes\Gnetum\Gnetum.final.fa",
-                                       r"D:\Genomes\Gnetum\Gmm.final.gff")
-        target_chromosome = "scaffold9999991"  # TODO: self.contigs[0].name
-        layout.render_genome(output_dir,
-            'Gnetum_annotation', # args.output_name,
-            target_chromosome
-        )
+        layout = AnnotatedGenomeLayout(args.fasta,
+                                       args.ref_annotation)
+        layout.render_genome(output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
 
