@@ -204,7 +204,7 @@ class TileLayout(object):
             print("Scaffolds are being sorted by length.")
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
-        for contig in self.contigs:  # Type: class DDV.DDVUtils.Contig
+        for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
             title_length = len(contig.name) + 1  # for tracking where we are in the SEQUENCE file
             reset, title, tail = self.calc_padding(total_progress, length, multipart_file)

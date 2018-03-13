@@ -11,7 +11,6 @@ class AnnotatedGenomeLayout(ParallelLayout):
         self.gff_file = gff_file
 
     def render_genome(self, output_folder, output_file_name):
-        # first just output one scaffold fasta annotaiton
         annotation_fasta = join(output_folder, basename(self.gff_file) + '.fa')
         self.contigs = read_contigs(self.fasta_file)
         chromosomes = [x.name.split()[0] for x in self.contigs]
@@ -33,3 +32,9 @@ class AnnotatedGenomeLayout(ParallelLayout):
         self.activate_high_contrast_colors()
         if not self.genome_processed:  # Use softer colors for annotations
             self.activate_natural_colors()
+
+    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+        """ Skip the exceptions used in Parallel Layouts for first scaffold."""
+        reset_padding, title_padding, tail = super(ParallelLayout, self)\
+            .calc_padding(total_progress, next_segment_length, multipart_file)
+        return reset_padding, title_padding, tail

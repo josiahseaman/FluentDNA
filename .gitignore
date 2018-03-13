@@ -8,6 +8,8 @@ env_fresh/
 *.chain
 
 # Created by .ignore support plugin (hsz.mobi)
+*.pyc
+
 ### Windows template
 # Windows image file caches
 Thumbs.db
