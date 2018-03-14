@@ -2,19 +2,20 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
+from collections import namedtuple
 from datetime import datetime
 import blist
 import sys
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
+from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta, read_contigs
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
 from DDV.DDVUtils import make_output_dir_with_suffix
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
-
+from DDV.TileLayout import hex_to_rgb
 
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
@@ -52,6 +53,7 @@ class ChainParser(object):
         self.aligned_only = aligned_only
         self.query_sequence = ''
         self.ref_sequence = ''
+        self.ref_chr_name = ''
         self.query_seq_gapped = editable_str('')
         self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
@@ -62,6 +64,14 @@ class ChainParser(object):
 
         self.read_query_contigs(self.query_source)
         self.chain_list = chain_file_to_list(chain_name)
+        TranslocationMark = namedtuple('TranslocationMark', ['legend', 'char', 'color'])
+        trans_types = [TranslocationMark('syntenic', 'T', hex_to_rgb('#FFFFFF')),  # -
+                       TranslocationMark('inversion', 'A', hex_to_rgb('#E5F3FF')),  # +
+                       TranslocationMark('intrachromosomal', 'A', hex_to_rgb('#EAFFE5')),  # I
+                       TranslocationMark('interchromosomal', 'G', hex_to_rgb('#FFE7E5')),  # O
+                       TranslocationMark('duplicated', 'C', hex_to_rgb('#F8E5FF')),  # D
+                       TranslocationMark('lost_duplicate', 'N', hex_to_rgb('#FFF3E5'))]  # L
+        self.translocation_types = {x.legend: x for x in trans_types}
 
 
     def write_stats_file(self):
@@ -75,29 +85,8 @@ class ChainParser(object):
     def read_query_contigs(self, input_file_path):
         print("Reading contigs... ", input_file_path)
         start_time = datetime.now()
-        self.query_contigs = {}
-        current_name = just_the_name(input_file_path)  # default to filename
-        seq_collection = []
-
-        # Pre-read generates an array of contigs with labels and sequences
-        with open(input_file_path, 'r') as streamFASTAFile:
-            for read in streamFASTAFile:
-                if read == "":
-                    continue
-                if read[0] == ">":
-                    # If we have sequence gathered and we run into a second (or more) block
-                    if len(seq_collection) > 0:
-                        sequence = "".join(seq_collection)
-                        seq_collection = []  # clear
-                        self.query_contigs[current_name] = sequence
-                    current_name = read[1:].strip()  # remove >
-                else:
-                    # collects the sequence to be stored in the contig, constant time performance don't concat strings!
-                    seq_collection.append(read.upper().rstrip())
-
-        # add the last contig to the list
-        sequence = "".join(seq_collection)
-        self.query_contigs[current_name] = sequence
+        contig_list = read_contigs(input_file_path)
+        self.query_contigs = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
         print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
 
@@ -221,16 +210,26 @@ class ChainParser(object):
         return ref_pointer, query_pointer
 
 
-    def create_fasta_from_composite_alignment(self, previous_chr=None, alignment=None):
+    def create_fasta_from_composite_alignment(self, previous_chr=None, alignment=None, translocation_markup=False):
         """self.alignment is a data structure representing the composites of all the relevant
         chain data.  This method turns that data construct into a gapped FASTA file by reading the original
-        FASTA files."""
+        FASTA files.
+
+        Tracking Translocation Colors:
+        What if we just ran this exact same function a second time, to ensure the execution is unchanged.
+        We'd give it generators for FASTA sequence fetch.  Syntenic would be T, inverted would be A,
+        Other chromosomes would always return G.  That leaves C for duplications?  We can set a different
+        'fill' character for filling in gaps and then change the behavior...
+        Let's start with the 3 character experimental generators and see how it goes.  Probably can't keep
+        it from using complementary character for interchromosomal."""
         if alignment is None:
             alignment = self.alignment
+        query_source_annotation = editable_str('')  # only used if translocation_markup
 
         for pair in alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
-                if not self.switch_sequences(pair.query.contig_name, pair.query.strand):  # pair.ref.contig_name could be None
+                # pair.ref.contig_name could be None
+                if not self.switch_sequences(pair.query.contig_name, pair.query.strand, translocation_markup):
                     continue  # skip this pair since it can't be displayed
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
@@ -247,6 +246,7 @@ class ChainParser(object):
             if pair.is_hidden or self.show_translocations_only and pair.is_master_chain:  # main chain
                 ref_snippet = gap_char * len(ref_snippet)
                 query_snippet = gap_char * len(query_snippet)
+            # TODO: set color to translocation
             elif self.separate_translocations and pair.is_first_entry and not pair.is_master_chain:
                 self.add_translocation_header(pair)
             if len(query_snippet) != len(ref_snippet):  # make absolute sure we don't step out of phase with bad lengths
@@ -255,27 +255,49 @@ class ChainParser(object):
                 query_snippet += gap_char * max(0, difference)
 
             assert len(query_snippet) == len(ref_snippet), "Mismatched lengths: " + '\n'.join([ref_snippet, query_snippet])
-            self.query_seq_gapped.extend(query_snippet)
-            self.ref_seq_gapped.extend(ref_snippet)
+            if translocation_markup:
+                query_source_annotation.extend(query_snippet)
+            else:  # normal use case
+                self.query_seq_gapped.extend(query_snippet)
+                self.ref_seq_gapped.extend(ref_snippet)
 
             # else:  # if 'random' not in str(pair) and 'unknown' not in str(pair):  # Only notify me when a
             #     print("Processed bad alignment pair:\n", pair, "\nRef:", ref_snippet, "\nQry:", query_snippet)
 
         print("Done gapping sequence")
-
-
-    def switch_sequences(self, query_name, query_strand):
-        # TODO: self.ref_sequence = self.ref_contigs[ref_name]
-        if query_name in self.query_contigs:  # TODO: capitalization!!!!
-            if query_strand == '-':  # need to load rev_comp
-                if query_name not in self.stored_rev_comps:
-                    self.stored_rev_comps[query_name] = self.rev_comp_contig(query_name)  # caching for performance
-                self.query_sequence = self.stored_rev_comps[query_name]
-            else:
-                self.query_sequence = self.query_contigs[query_name]
+        if translocation_markup:
+            return query_source_annotation
         else:
-            return self.missing_query_sequence(query_name)
-        return True
+            return self.query_seq_gapped
+
+
+    def switch_sequences(self, query_name, query_strand, translocation_markup=False):
+        """Switch self.query_sequence to the current topic of alignment.
+        Returns True if sucessful, False if the sequence is unavailable."""
+
+        query_name = query_name.lower()
+        if translocation_markup:  # Replace actual sequence with fake generators
+            if query_name == self.ref_chr_name.lower():
+                align_type = 'inversion' if query_strand == '-' else 'syntenic'
+            else:  # differently named scaffold, doesn't matter which strand
+                align_type = 'interchromosomal'
+            self.query_sequence = BlankIterator(self.translocation_types[align_type].char)
+
+            if query_name not in self.query_contigs:
+                return False
+            return True
+        else:
+            # TODO: self.ref_sequence = self.ref_contigs[ref_name]
+            if query_name in self.query_contigs:
+                if query_strand == '-':  # need to load rev_comp
+                    if query_name not in self.stored_rev_comps:
+                        self.stored_rev_comps[query_name] = self.rev_comp_contig(query_name)  # caching for performance
+                    self.query_sequence = self.stored_rev_comps[query_name]
+                else:
+                    self.query_sequence = self.query_contigs[query_name]
+            else:
+                return self.missing_query_sequence(query_name)
+            return True
 
 
     def missing_query_sequence(self, query_name):
@@ -285,7 +307,7 @@ class ChainParser(object):
 
 
     def rev_comp_contig(self, query_name):
-        return ReverseComplement(self.query_contigs[query_name])
+        return ReverseComplement(self.query_contigs[query_name.lower()])
 
 
     def setup_chain_start(self, chain, is_master_alignment):
@@ -422,6 +444,7 @@ class ChainParser(object):
                  }  # for collecting all the files names in a modifiable way
         # Reset values from previous iteration
         self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
+        self.ref_chr_name = ref_chr
         self.query_sequence = ''
         self.query_seq_gapped = editable_str('')
         self.ref_seq_gapped = editable_str('')
@@ -437,9 +460,13 @@ class ChainParser(object):
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()
+        translocation_markup =self.create_fasta_from_composite_alignment(translocation_markup=True)
 
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         names['ref_unique'], names['query_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        markup = os.path.join(self.output_folder, just_the_name(names['ref']) + '__translocation_markup.fa')
+        write_complete_fasta(markup, translocation_markup)
+        names['translocation_markup'] = markup
         # sys.exit(0)
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['ref_gapped'])
