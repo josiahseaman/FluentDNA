@@ -12,7 +12,7 @@ from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta, read_con
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_dir_with_suffix
+from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
@@ -64,14 +64,15 @@ class ChainParser(object):
 
         self.read_query_contigs(self.query_source)
         self.chain_list = chain_file_to_list(chain_name)
-        TranslocationMark = namedtuple('TranslocationMark', ['legend', 'char', 'color'])
-        trans_types = [TranslocationMark('syntenic', 'T', hex_to_rgb('#FFFFFF')),  # -
-                       TranslocationMark('inversion', 'A', hex_to_rgb('#E5F3FF')),  # +
-                       TranslocationMark('intrachromosomal', 'A', hex_to_rgb('#EAFFE5')),  # I
-                       TranslocationMark('interchromosomal', 'G', hex_to_rgb('#FFE7E5')),  # O
-                       TranslocationMark('duplicated', 'C', hex_to_rgb('#F8E5FF')),  # D
-                       TranslocationMark('lost_duplicate', 'N', hex_to_rgb('#FFF3E5'))]  # L
-        self.translocation_types = {x.legend: x for x in trans_types}
+
+        TranslocationMark = namedtuple('TranslocationMark', ['char', 'fill', 'legend', 'color'])
+        self.translocation_types = [
+            TranslocationMark('T', '-', 'syntenic', hex_to_rgb('#FFFFFF')),  #
+            TranslocationMark('A', 'J', 'inversion', hex_to_rgb('#E5F3FF')),  #  blue
+            TranslocationMark('C', 'B', 'intrachromosomal', hex_to_rgb('#EAFFE5')),  #  green
+            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFE7E5')),  #  red
+            TranslocationMark('C', 'Z', 'duplicated', hex_to_rgb('#F8E5FF')),  #  purple
+            TranslocationMark('N', 'U', 'lost_duplicate', hex_to_rgb('#FFF3E5'))]  #  orange
 
 
     def write_stats_file(self):
@@ -276,12 +277,14 @@ class ChainParser(object):
         Returns True if sucessful, False if the sequence is unavailable."""
 
         query_name = query_name.lower()
+        type_to_char = {x.legend: x.char for x in self.translocation_types}
+
         if translocation_markup:  # Replace actual sequence with fake generators
             if query_name == self.ref_chr_name.lower():
                 align_type = 'inversion' if query_strand == '-' else 'syntenic'
             else:  # differently named scaffold, doesn't matter which strand
                 align_type = 'interchromosomal'
-            self.query_sequence = BlankIterator(self.translocation_types[align_type].char)
+            self.query_sequence = BlankIterator(type_to_char[align_type])
 
             if query_name not in self.query_contigs:
                 return False
@@ -366,8 +369,11 @@ class ChainParser(object):
         return ref_gap_name, query_gap_name
 
 
-    def print_only_unique(self, query_gapped_name, ref_gapped_name):
-        query_uniq_array, ref_uniq_array = self.compute_unique_sequence()
+    def print_only_unique(self, query_gapped_name, ref_gapped_name, translocation_markup=None):
+        if translocation_markup is not None:
+            query_uniq_array, ref_uniq_array = self.compute_unique_with_markup(translocation_markup)
+        else:
+            query_uniq_array, ref_uniq_array = self.compute_unique_sequence()
 
         query_unique_name = query_gapped_name.replace(self.gapped, '_unique')
         if not query_unique_name.startswith(self.output_folder):  # TODO: this shouldn't happen but it does
@@ -379,6 +385,50 @@ class ChainParser(object):
         write_complete_fasta(ref_unique_name, ref_uniq_array)
 
         return ref_unique_name, query_unique_name
+
+
+    def compute_unique_with_markup(self, translocation_markup):
+        query_uniq_array = editable_str(self.query_seq_gapped)
+        ref_uniq_array = editable_str(self.ref_seq_gapped)
+        print("Done allocating unique array")
+        markup_to_fill_char = keydefaultdict(lambda k: k,
+            {m.char: m.fill for m in self.translocation_types})
+
+        # query_uniq_array is already initialized to contain header characters
+        q = scan_past_header(self.query_seq_gapped, 0)
+        r = scan_past_header(self.ref_seq_gapped, 0)
+        while q < len(self.query_seq_gapped) and r < len(self.ref_seq_gapped):
+            q = scan_past_header(self.query_seq_gapped,
+                                 q)  # query_uniq_array is already initialized to contain header characters
+            r = scan_past_header(self.ref_seq_gapped, r)
+
+            # only overlapping section
+            q_letter = self.query_seq_gapped[q]
+            r_letter = self.ref_seq_gapped[r]
+            fill_char = markup_to_fill_char[translocation_markup[q]]
+            if q_letter == r_letter:
+                query_uniq_array[q] = fill_char
+                ref_uniq_array[r] = fill_char
+                self.stats['Shared seq bp'] += 1
+            else:  # Not equal
+                if q_letter == 'N':
+                    query_uniq_array[q] = gap_char
+                    self.stats['Query N to ref in bp'] += 1
+                elif r_letter == 'N':
+                    ref_uniq_array[r] = gap_char
+                    self.stats['Ref N to query bp'] += 1
+                else:  # No N's involved
+                    if q_letter == gap_char:
+                        self.stats['Ref unique bp'] += 1
+                    elif r_letter == gap_char:
+                        self.stats['Query unique bp'] += 1
+                    else:
+                        self.stats['Aligned Variance in bp'] += 1
+            q += 1
+            r += 1
+
+        return query_uniq_array, ref_uniq_array
+
 
     def compute_unique_sequence(self):
         query_uniq_array = editable_str(self.query_seq_gapped)
@@ -463,7 +513,8 @@ class ChainParser(object):
         translocation_markup =self.create_fasta_from_composite_alignment(translocation_markup=True)
 
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
-        names['ref_unique'], names['query_unique'] = self.print_only_unique(names['query_gapped'], names['ref_gapped'])
+        names['ref_unique'], names['query_unique'] = \
+            self.print_only_unique(names['query_gapped'], names['ref_gapped'], translocation_markup)
         markup = os.path.join(self.output_folder, just_the_name(names['ref']) + '__translocation_markup.fa')
         write_complete_fasta(markup, translocation_markup)
         names['translocation_markup'] = markup

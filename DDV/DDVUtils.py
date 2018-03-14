@@ -9,6 +9,16 @@ from collections import defaultdict
 from PIL import ImageDraw
 
 
+class keydefaultdict(defaultdict):
+    """https://stackoverflow.com/a/2912455/3067894"""
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError( key )
+        else:
+            ret = self[key] = self.default_factory(key)
+            return ret
+
+
 class LayoutLevel(object):
     def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
         self.modulo = modulo

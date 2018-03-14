@@ -81,7 +81,6 @@ class TileLayout(object):
         self.palette['W'] = hex_to_rgb('BF72BF')
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
-        # Characters not covered:  B J O U Z
 
         self.activate_high_contrast_colors()
         if self.low_contrast:
@@ -94,6 +93,14 @@ class TileLayout(object):
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette[gap_char] = (247, 247, 247)  # almost white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
+
+        # Used in translocations, not amino acids:  B J O U Z
+        self.palette['-'] = self.palette[gap_char]
+        self.palette['J'] = hex_to_rgb('#E5F3FF')
+        self.palette['B'] = hex_to_rgb('#EAFFE5')
+        self.palette['O'] = hex_to_rgb('#FFE7E5')
+        self.palette['Z'] = hex_to_rgb('#F8E5FF')
+        self.palette['U'] = hex_to_rgb('#FFF3E5')
 
 
         # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
