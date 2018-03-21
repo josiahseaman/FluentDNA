@@ -288,11 +288,11 @@ class TileLayout(object):
         xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
         for i, level in enumerate(self.levels):
             if index < level.chunk_size:
-                return xy
+                return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
             part = i % 2
             coordinate_in_chunk = int(index / level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
-        return xy
+        return int(xy[0]), int(xy[1])
 
 
     def draw_pixel(self, character, x, y):

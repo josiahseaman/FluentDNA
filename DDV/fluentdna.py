@@ -286,10 +286,10 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name)
-    # try:
-    #     shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
-    # except shutil.SameFileError:
-    #     pass  # not a problem
+    try:
+        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
+    except shutil.SameFileError:
+        pass  # not a problem
     finish_webpage(args, layout, output_dir, output_name)
 
 
@@ -500,6 +500,7 @@ def main():
         else:
             either_name = args.fasta or args.image
             args.output_name = os.path.basename(os.path.splitext(either_name)[0])
+    args.output_name = args.output_name.strip()
 
     ddv(args)
 

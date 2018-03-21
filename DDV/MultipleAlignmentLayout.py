@@ -136,7 +136,7 @@ class MultipleAlignmentLayout(TransposonLayout):
     def set_column_height(self, heights):
         try:
             from statistics import median
-            average_line_count = median(heights)
+            average_line_count = int(median(heights))
         except ImportError:
             average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = min(max(heights), average_line_count * 2)
