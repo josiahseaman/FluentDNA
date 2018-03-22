@@ -161,7 +161,7 @@ def ddv(args):
 
     if args.layout == 'alignment':
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = MultipleAlignmentLayout()
+        layout = MultipleAlignmentLayout(sort_contigs=args.sort_contigs)
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
@@ -500,7 +500,8 @@ def main():
         else:
             either_name = args.fasta or args.image
             args.output_name = os.path.basename(os.path.splitext(either_name)[0])
-    args.output_name = args.output_name.strip()
+    if args.output_name:
+        args.output_name = args.output_name.strip()
 
     ddv(args)
 

@@ -99,11 +99,15 @@ class TransposonLayout(TileLayout):
         print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
-    def layout_based_on_repeat_size(self, consensus_width):
+    def layout_based_on_repeat_size(self, width, height=None):
         """change layout to match dimensions of the repeat"""
+        if height is None:
+            height = self.column_height
+        else:
+            self.column_height = height
         self.levels = [
-            LayoutLevel("X_in_consensus", consensus_width, 1, 0),  # [0]
-            LayoutLevel("Instance_line", self.column_height, consensus_width, 0)  # [1]
+            LayoutLevel("X_in_consensus", width, 1, 0),  # [0]
+            LayoutLevel("Instance_line", height, width, 0)  # [1]
         ]
         if self.using_mixed_widths:
             self.levels.append(LayoutLevel("TypeColumn", 999, padding=20, levels=self.levels))  # [2]
@@ -137,7 +141,7 @@ class TransposonLayout(TileLayout):
                 x, y = self.position_on_screen(contig_progress)
                 if x + contig.consensus_width + 1 >= self.image.width:
                     contig_progress = 0  # reset to beginning of line
-                    self.skip_to_next_mega_row()
+                    self.skip_to_next_mega_row(contig)
                     x, y = self.position_on_screen(contig_progress)
                 if y + self.levels[1].modulo >= self.image.height:
                     print("Ran into bottom of image at", contig.name, x,y)
@@ -158,7 +162,7 @@ class TransposonLayout(TileLayout):
         print('')
 
 
-    def skip_to_next_mega_row(self):
+    def skip_to_next_mega_row(self, current_contig):
         print("Skipping to next row:", self.origin)
         self.origin[0] = self.levels[2].padding  # start at left again
         self.origin[1] += self.levels[3].thickness  # go to next mega row

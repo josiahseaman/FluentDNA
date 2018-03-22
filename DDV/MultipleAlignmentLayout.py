@@ -20,14 +20,16 @@ def collapse_file_to_one_contig(fasta):
     block = Contig(just_the_name(fasta),
                    ''.join([x.seq for x in species]), )
     block.consensus_width = consensus_width
+    block.height = len(species)
     return block
 
 
 class MultipleAlignmentLayout(TransposonLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, sort_contigs=False, **kwargs):
         kwargs['low_contrast'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
+        self.sort_contigs = sort_contigs
 
         #### Rasmol 'Amino' Protein colors
         # self.palette['A'] = hex_to_rgb('C8C8C8')
@@ -104,6 +106,10 @@ class MultipleAlignmentLayout(TransposonLayout):
         for contig in self.contigs:
             assert contig.consensus_width, \
                 "You must set the consensus_width in order to use this layout"
+        if self.sort_contigs:
+            self.contigs.sort(key=lambda x: -x.height)
+            self.layout_based_on_repeat_size(self.contigs[0].consensus_width,
+                                             self.contigs[0].height)
         self.draw_nucleotides_in_variable_column_width()  # uses self.contigs and self.layout to draw
 
 
@@ -121,7 +127,7 @@ class MultipleAlignmentLayout(TransposonLayout):
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
         consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
-        heights = [len(x.seq) // x.consensus_width for x in self.contigs]
+        heights = [x.height for x in self.contigs]
         num_lines = sum(heights)
         self.set_column_height(heights)
         print("Average Width", consensus_width, "Genes", num_lines)
@@ -140,3 +146,9 @@ class MultipleAlignmentLayout(TransposonLayout):
         except ImportError:
             average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = min(max(heights), average_line_count * 2)
+
+    def skip_to_next_mega_row(self, current_contig):
+        super(MultipleAlignmentLayout, self).skip_to_next_mega_row(current_contig)
+        if self.sort_contigs:
+            print("New height:", current_contig.height)
+            self.layout_based_on_repeat_size(current_contig.consensus_width, current_contig.height)
