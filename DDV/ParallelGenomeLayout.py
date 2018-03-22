@@ -129,6 +129,9 @@ class ParallelLayout(TileLayout):
         So padding for their title does not need to be included."""
         # Get original values and level
         reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
+        # no larger than 1 full column or text will overlap
+        if title_padding >= self.tile_label_size:
+            title_padding = self.levels[2].chunk_size
         # Remove first title
         if total_progress == 0:
             tail += title_padding

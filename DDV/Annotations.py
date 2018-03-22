@@ -132,8 +132,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
     FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
     if features is None:
-        features = {'exon':FeatureRep('G', 1),  # 1 priority is the most important
-                    'mRNA':FeatureRep('T', 2),
+        features = {'CDS':FeatureRep('G', 1),  # 1 priority is the most important
+                    'exon':FeatureRep('T', 2),
                     'gene':FeatureRep('C', 3)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
