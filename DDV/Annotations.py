@@ -79,10 +79,9 @@ class GFF(object):
                     frame = int(elements[7])
 
                 if len(elements) >= 9:
-                    attributes = elements[8]
-                    pairs = [pair.strip() for pair in attributes.split(';') if pair]
-                    attributes = {pair.split()[0]: pair.split()[1].replace('"', '') for pair in pairs if
-                                  len(pair.split()) == 2}
+                    pairs = [pair.strip() for pair in elements[8].split(';') if pair]
+                    attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs if
+                                  len(pair.split('=')) == 2}
                 else:
                     attributes = {}
 

@@ -456,7 +456,7 @@ class TileLayout(object):
             traceback.print_exc()
 
 
-    def contig_json(self):
+    def contig_struct(self):
         json = []
         xy_seq_start = 0
         for index, contig in enumerate(self.contigs):
@@ -469,7 +469,12 @@ class TileLayout(object):
                          "xy_title_start": xy_seq_start - contig.title_padding,
                          "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start})
             xy_seq_start += len(contig.seq) + contig.tail_padding
-        return '[' + ',\n'.join([str(x) for x in json]) + ']'
+        return json
+
+    def contig_json(self):
+        json = self.contig_struct()
+        return "[" + ',\n'.join([str(x) for x in json]) + "]"
+
 
     def levels_json(self):
         json = []

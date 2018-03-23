@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
+import traceback
 from datetime import datetime
 from math import floor
 
@@ -57,7 +58,8 @@ class ParallelLayout(TileLayout):
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
         except Exception as e:
-            print('Encountered exception while drawing nucleotides:', '\n', str(e))
+            print('Encountered exception while drawing nucleotides:', '\n')
+            traceback.print_exc()
         self.draw_the_viz_title(fasta_files)
         self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
