@@ -41,3 +41,27 @@ class AnnotatedGenomeLayout(ParallelLayout):
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size
         return reset_padding, title_padding, tail
+
+
+    def draw_labels(self, labels_filename):
+        import json
+        if labels_filename is None:
+            return
+
+        labels = json.loads(open(labels_filename, 'r').read())
+        for gene in labels:
+            start = (int(gene['start']) // 100) * 100 + 2
+            end = int(gene['end'])
+            name = gene['gene_name']
+            upper_left = self.position_on_screen(start)
+            bottom_right = self.position_on_screen(end - 2)
+            height = max(10, bottom_right[1] - upper_left[1])
+            width = 100  # bottom_right[0] - upper_left[0],
+            height = min(100, max(22, bottom_right[1] - upper_left[1]))
+            font_size = 18
+            title_width = 9
+            title_lines = 2  # math.ceil(len(name) / title_width)
+            self.write_title(name, width, height, font_size, title_lines, title_width, upper_left, False)
+
+        print("Done Drawing annotation labels")
+

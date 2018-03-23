@@ -79,15 +79,18 @@ class GFF(object):
                     frame = int(elements[7])
 
                 if len(elements) >= 9:
-                    attribute = elements[8:]
+                    attributes = elements[8]
+                    pairs = [pair.strip() for pair in attributes.split(';') if pair]
+                    attributes = {pair.split()[0]: pair.split()[1].replace('"', '') for pair in pairs if
+                                  len(pair.split()) == 2}
                 else:
-                    attribute = None
+                    attributes = {}
 
                 annotation = self.Annotation(chromosome, ID,
                                              source, feature,
                                              start, end,
                                              score, strand,
-                                             frame, attribute, line)
+                                             frame, attributes, line)
 
                 annotations[chromosome].append(annotation)
                 chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
@@ -97,7 +100,7 @@ class GFF(object):
         return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
 
     class Annotation(object):
-        def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attribute, line):
+        def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attributes, line):
             assert isinstance(chromosome, str)
             assert isinstance(ID, int)
             assert isinstance(source, str)
@@ -107,7 +110,7 @@ class GFF(object):
             assert score is None or isinstance(score, float)
             assert isinstance(strand, str)
             assert frame is None or isinstance(frame, int)
-            assert isinstance(attribute, list)
+            assert isinstance(attributes, dict)
 
             self.chromosome = chromosome
             self.ID = ID
@@ -118,7 +121,7 @@ class GFF(object):
             self.score = score
             self.strand = strand
             self.frame = frame
-            self.attribute = attribute
+            self.attributes = attributes
             self.line = line
 
 
