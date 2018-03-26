@@ -51,6 +51,35 @@ class Ideogram(TileLayout):
         seq_iter = iter(contig.seq)
         x_scale, y_scale = 1, 1
 
+        if x_scale == 1 and y_scale == 1:
+            self.draw_loop_optimized( curr_pos, digits, no_pts, parities, points_visited, prev_pos, radices,
+                                      seq_iter)
+        else:
+            self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file, points_visited,
+                                     prev_pos, prevprev_pos, radices, seq_iter, x_scale, y_scale)
+
+
+    def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, points_visited, prev_pos, radices,
+                            seq_iter):
+        for pts in range(no_pts - 1):
+            place = increment(digits, radices, 0)
+            parities[0:(place // 2 + 1), place % 2] *= -1
+            place += 1
+            prev_pos[:] = curr_pos[:]
+            # assume we move 3 up and 5 across
+            x = int(prev_pos[1] + 2)
+            y = int(prev_pos[0] + 2)
+            curr_pos[place % 2] += parities[place // 2, place % 2]
+            assert (x, y) not in points_visited
+            points_visited.add((x, y))
+            try:
+                self.draw_pixel(next(seq_iter), x, y)
+            except StopIteration:
+                break  # reached end of sequence
+
+
+    def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, points_visited, prev_pos,
+                            prevprev_pos, radices, seq_iter, x_scale, y_scale):
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
@@ -66,15 +95,16 @@ class Ideogram(TileLayout):
             diff = curr_pos - prev_pos
             prev_diff = prev_pos - prevprev_pos
             assert (abs(sum(diff)) == 1)
-            assert (x,y) not in points_visited
-            points_visited.add((x,y))
+            assert (x, y) not in points_visited
+            points_visited.add((x, y))
             try:
-                self.paint_turns(seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos,
-                                 x_scale, y_scale)
+                self.paint_turns(seq_iter, x, y, diff, prev_diff,
+                                 prev_pos, prevprev_pos, x_scale, y_scale)
             except IndexError:
                 print(x, y, "out of range")
             except StopIteration:
                 break  # reached end of sequence
+
 
     def paint_turns(self, seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos, x_scale, y_scale):
         # right-hand rotation at corner when corner==1, left-hand rotation when corner==1, or no turn (corner == 0)
@@ -104,7 +134,6 @@ class Ideogram(TileLayout):
         self.image = Image.new('RGB', (width, height), ui_grey)
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
-
 
 def increment(digits, radices, place):
     if digits[place] < (radices[place] - 1):
