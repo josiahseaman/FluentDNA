@@ -151,6 +151,7 @@ class TileLayout(object):
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         start_time = datetime.now()
+        self.final_output_location = output_folder
         self.image_length = self.read_contigs_and_calc_padding(input_file_path)
         print("Read contigs :", datetime.now() - start_time)
         self.prepare_image(self.image_length)

@@ -12,7 +12,9 @@ try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
 
 
-from DDV.TileLayout import TileLayout
+from DDV.TileLayout import TileLayout, hex_to_rgb
+from PIL import Image, ImageDraw
+import os
 import numpy as np
 
 class Ideogram(TileLayout):
@@ -37,15 +39,17 @@ class Ideogram(TileLayout):
         radices[0:ndim_y, 1] = self.y_radices
 
         no_pts = np.prod(radices)
+        points_visited = set()
         n = np.prod(radices, 0)  # get nx = n[0] and ny = n[1]
         radices.shape = np.prod(radices.shape)  # flatten
 
-        points_file_name = "data/test_ideogram_points.txt"
+        points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
         points_file = open(points_file_name, 'w')
         if points_file:
             print("Saving locations in {}".format(points_file_name))
         contig = self.contigs[0]
         seq_iter = iter(contig.seq)
+        x_scale, y_scale = 2, 2
 
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
@@ -55,36 +59,49 @@ class Ideogram(TileLayout):
             prev_pos[:] = curr_pos[:]
             curr_pos[place % 2] += parities[place // 2, place % 2]
             # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * 3 + 1)
-            y = int(prev_pos[0] * 5 + 2)
+            x = int(prev_pos[1] * x_scale + 2)
+            y = int(prev_pos[0] * y_scale + 2)
             if points_file:
                 print("{} {}".format(x, y), file=points_file)
             diff = curr_pos - prev_pos
             prev_diff = prev_pos - prevprev_pos
             assert (abs(sum(diff)) == 1)
-            self.paint_turns(seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos)
+            assert (x,y) not in points_visited
+            points_visited.add((x,y))
+            try:
+                self.paint_turns(seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos,
+                                 x_scale, y_scale)
+            except IndexError:
+                print(x, y, "out of range")
 
-    def paint_turns(self, seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos):
+    def paint_turns(self, seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos, x_scale, y_scale):
         # right-hand rotation at corner when corner==1, left-hand rotation when corner==1, or no turn (corner == 0)
         turn = prev_diff[0] * diff[1] - prev_diff[1] * diff[0]
         if turn == 0:
             self.draw_pixel(next(seq_iter), x, y)
         if diff[1]:
             # x is changing
-            self.draw_pixel(next(seq_iter), x + int(diff[1]), y)
-            self.draw_pixel(next(seq_iter), x + 2 * int(diff[1]), y)
+            for scale_step in range(1, x_scale):
+                self.draw_pixel(next(seq_iter), x + scale_step * int(diff[1]), y)
         else:
             # y is changing
             # NB: underlines will sometimes overwrite previous ones
             x_nudge = int(prevprev_pos[1] - prev_pos[1])
-            self.draw_pixel(next(seq_iter), x + x_nudge, y + int(diff[0]))
-            self.draw_pixel(next(seq_iter), x + x_nudge, y + 2 * int(diff[0]))
-            self.draw_pixel(next(seq_iter), x + x_nudge, y + 3 * int(diff[0]))
-            self.draw_pixel(next(seq_iter), x + x_nudge, y + 4 * int(diff[0]))
+            for scale_step in range(1, y_scale):
+                self.draw_pixel(next(seq_iter), x + x_nudge, y + scale_step * int(diff[0]))
 
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 11))  # ideogram has low density and mostly square
         return dim, dim
+
+
+    def prepare_image(self, image_length):
+        ui_grey = hex_to_rgb('EEF3FA')  # The contrast isn't quite so bad as white
+        width, height = self.max_dimensions(image_length)
+        print("Image dimensions are", width, "x", height, "pixels")
+        self.image = Image.new('RGB', (width, height), ui_grey)
+        self.draw = ImageDraw.Draw(self.image)
+        self.pixels = self.image.load()
 
 
 def increment(digits, radices, place):
