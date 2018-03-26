@@ -44,12 +44,12 @@ class Ideogram(TileLayout):
         radices.shape = np.prod(radices.shape)  # flatten
 
         points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
-        points_file = open(points_file_name, 'w')
+        points_file = None # open(points_file_name, 'w')
         if points_file:
             print("Saving locations in {}".format(points_file_name))
         contig = self.contigs[0]
         seq_iter = iter(contig.seq)
-        x_scale, y_scale = 2, 2
+        x_scale, y_scale = 1, 1
 
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
@@ -73,17 +73,19 @@ class Ideogram(TileLayout):
                                  x_scale, y_scale)
             except IndexError:
                 print(x, y, "out of range")
+            except StopIteration:
+                break  # reached end of sequence
 
     def paint_turns(self, seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos, x_scale, y_scale):
         # right-hand rotation at corner when corner==1, left-hand rotation when corner==1, or no turn (corner == 0)
         turn = prev_diff[0] * diff[1] - prev_diff[1] * diff[0]
-        if turn == 0:
+        if turn == 0 or (x_scale == 1 and y_scale==1):
             self.draw_pixel(next(seq_iter), x, y)
         if diff[1]:
             # x is changing
             for scale_step in range(1, x_scale):
                 self.draw_pixel(next(seq_iter), x + scale_step * int(diff[1]), y)
-        else:
+        elif diff[0]:
             # y is changing
             # NB: underlines will sometimes overwrite previous ones
             x_nudge = int(prevprev_pos[1] - prev_pos[1])
@@ -91,7 +93,7 @@ class Ideogram(TileLayout):
                 self.draw_pixel(next(seq_iter), x + x_nudge, y + scale_step * int(diff[0]))
 
     def max_dimensions(self, image_length):
-        dim = int(np.sqrt(image_length * 11))  # ideogram has low density and mostly square
+        dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
         return dim, dim
 
 
@@ -114,5 +116,5 @@ def increment(digits, radices, place):
 
 
 if __name__ == "__main__":
-    layout = Ideogram([3,3,3], [3,3,3])
-    layout.process_file("example_data/phiX.fa", 'www-data/dnadata/test ideogram', 'ideogram')
+    layout = Ideogram([3,3,3,3,3,3,3], [5,5,3,3,3,3])
+    layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram')
