@@ -10,7 +10,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 from DNASkittleUtils.Contigs import read_contigs, Contig
 from DNASkittleUtils.DDVUtils import copytree
-from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette
+from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette, \
+    make_output_dir_with_suffix
 from DDV import gap_char
 
 small_title_bp = 10000
@@ -150,6 +151,7 @@ class TileLayout(object):
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name):
+        make_output_dir_with_suffix(output_folder, '')
         start_time = datetime.now()
         self.final_output_location = output_folder
         self.image_length = self.read_contigs_and_calc_padding(input_file_path)

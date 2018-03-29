@@ -16,11 +16,13 @@ from DDV.TileLayout import TileLayout, hex_to_rgb
 from PIL import Image, ImageDraw
 import os
 import numpy as np
+from functools import reduce
 
 class Ideogram(TileLayout):
-    def __init__(self, x_radices, y_radices):
+    def __init__(self, x_radices, y_radices, x_scale=1, y_scale=1):
         self.x_radices = x_radices
         self.y_radices = y_radices
+        self.x_scale, self.y_scale = x_scale, y_scale
         super(Ideogram, self).__init__()
 
 
@@ -49,29 +51,25 @@ class Ideogram(TileLayout):
             print("Saving locations in {}".format(points_file_name))
         contig = self.contigs[0]
         seq_iter = iter(contig.seq)
-        x_scale, y_scale = 1, 1
 
-        if x_scale == 1 and y_scale == 1:
-            self.draw_loop_optimized( curr_pos, digits, no_pts, parities, points_visited, prev_pos, radices,
-                                      seq_iter)
+        if self.x_scale == 1 and self.y_scale == 1:
+            self.draw_loop_optimized(curr_pos, digits, no_pts, parities, radices, seq_iter)
         else:
             self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file, points_visited,
-                                     prev_pos, prevprev_pos, radices, seq_iter, x_scale, y_scale)
+                                     prev_pos, prevprev_pos, radices, seq_iter, self.x_scale, self.y_scale)
 
 
-    def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, points_visited, prev_pos, radices,
-                            seq_iter):
+    def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, seq_iter):
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
-            prev_pos[:] = curr_pos[:]
-            # assume we move 3 up and 5 across
-            x = int(prev_pos[1] + 2)
-            y = int(prev_pos[0] + 2)
+            # if place % 2:  # this is an x increments
+            #     if place // 2 == len(self.x_radices):
+            #         curr_pos[0] += 100  # y coordinates are in [0]
+            x = int(curr_pos[1] + 2)
+            y = int(curr_pos[0] + 2)
             curr_pos[place % 2] += parities[place // 2, place % 2]
-            assert (x, y) not in points_visited
-            points_visited.add((x, y))
             try:
                 self.draw_pixel(next(seq_iter), x, y)
             except StopIteration:
@@ -86,12 +84,12 @@ class Ideogram(TileLayout):
             place += 1
             prevprev_pos[:] = prev_pos[:]
             prev_pos[:] = curr_pos[:]
-            curr_pos[place % 2] += parities[place // 2, place % 2]
             # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * x_scale + 2)
-            y = int(prev_pos[0] * y_scale + 2)
+            x = int(prev_pos[1] * x_scale + 2 + self.origin[0])
+            y = int(prev_pos[0] * y_scale + 2 + self.origin[1])
             if points_file:
                 print("{} {}".format(x, y), file=points_file)
+            curr_pos[place % 2] += parities[place // 2, place % 2]
             diff = curr_pos - prev_pos
             prev_diff = prev_pos - prevprev_pos
             assert (abs(sum(diff)) == 1)
@@ -124,7 +122,18 @@ class Ideogram(TileLayout):
 
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
-        return dim, dim
+        nucleotide_width = reduce(int.__mul__, self.x_radices)
+        y_body = reduce(int.__mul__, self.y_radices[:-1])
+        y_needed = int(np.ceil(image_length / nucleotide_width / y_body))
+        if y_needed % 2 == 0:  # needs to be odd
+            y_needed += 1
+        if self.y_radices[-1] > y_needed:  # taller than it needs to be
+            self.y_radices[-1] = y_needed
+        width = nucleotide_width * self.x_scale + self.origin[0] * 2
+        nuc_height = reduce(int.__mul__, self.y_radices)
+        height = nuc_height * self.y_scale + self.origin[1] + 10
+
+        return width, height
 
 
     def prepare_image(self, image_length):
@@ -136,14 +145,24 @@ class Ideogram(TileLayout):
         self.pixels = self.image.load()
 
 def increment(digits, radices, place):
-    if digits[place] < (radices[place] - 1):
-        digits[place] += 1
+    """Manually counting a number where each digit is in a different based determined
+    by the corresponding radix number."""
+    if digits[place] < (radices[place] - 1):  # still room left in this base
+        digits[place] += 1  # increment digit
         return place
     else:
-        digits[place] = 0
+        digits[place] = 0  # hit max value, roll over to next digit on the right
         return increment(digits,radices,place + 1)
 
 
 if __name__ == "__main__":
-    layout = Ideogram([3,3,3,3,3,3,3], [5,5,3,3,3,3])
-    layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram')
+    # layout = Ideogram([3,3,3,63], [5,5,3,3,21])
+    # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-small')
+
+    # layout = Ideogram([3,3,3,63], [5,5,3,3,21], 2, 2)
+    # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
+
+    layout = Ideogram([3,3,3,3,3,3,9],
+                      [3,3,3,3,3,3,3,53], 2, 2)
+    layout.process_file(r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr20.fa",
+                        'www-data/dnadata/Ideograms', 'chr20-sparse')
