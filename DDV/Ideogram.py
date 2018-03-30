@@ -61,18 +61,12 @@ class Ideogram(TileLayout):
 
     def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, seq_iter):
         max_x = reduce(int.__mul__, self.x_radices) - 1
-        odd = False
+        odd = 0
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
-            if place % 2 == 0:  # this is an y increments
-                if place // 2 == len(self.x_radices) - 1:
-                    if curr_pos[1] == max_x or curr_pos[1] == 0:
-                        if odd:
-                            curr_pos[0] += 10  # y coordinates are in [0]
-                        odd = not odd
-
+            odd = self.hacked_padding(curr_pos, max_x, odd, place)
             x = int(curr_pos[1] + 2)
             y = int(curr_pos[0] + 2)
             curr_pos[place % 2] += parities[place // 2, place % 2]
@@ -81,6 +75,14 @@ class Ideogram(TileLayout):
             except StopIteration:
                 break  # reached end of sequence
 
+    def hacked_padding(self, curr_pos, max_x, odd, place):
+        if place % 2 == 0:  # this is an y increments
+            if place // 2 == len(self.x_radices) - 1:
+                if curr_pos[1] == max_x or curr_pos[1] == 0:
+                    if odd == 1:
+                        curr_pos[0] += 3  # y coordinates are in [0]
+                    odd = (odd + 1) % 2
+        return odd
 
     def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, points_visited, prev_pos,
                             prevprev_pos, radices, seq_iter, x_scale, y_scale):
@@ -162,13 +164,20 @@ def increment(digits, radices, place):
 
 
 if __name__ == "__main__":
-    layout = Ideogram([3,3,3,63], [5,5,3,3,21])
-    layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-padding')
+    # layout = Ideogram([3,3,3,63], [5,5,3,3,21])
+    # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-padding2')
 
     # layout = Ideogram([3,3,3,63], [5,5,3,3,21], 2, 2)
     # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
 
-    # layout = Ideogram([3,3,3,3,3,27],
-    #                   [3,3,3,3,3,3 ,53], 2, 2)
-    # layout.process_file(r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr20.fa",
-    #                     'www-data/dnadata/Ideograms', 'chr20-sparse')
+    # layout = Ideogram([5,5,5,5,11],  # thick, local
+    #                   [5,5,5,5,5 ,53], 1, 1)
+    layout = Ideogram([3,3,3,3,3,27],  # thin layout
+                      [3,3,3,3,3,3 ,53], 1, 1)
+    layout.process_file(r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr1.fa",
+                        'www-data/dnadata/Ideograms', 'chr1-padd-3,3,3,3,3,27')
+
+    import winsound
+    duration = 1000  # millisecond
+    freq = 440  # Hz
+    winsound.Beep(freq, duration)
