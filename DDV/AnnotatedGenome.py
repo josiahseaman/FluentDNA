@@ -11,7 +11,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
         super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, *args, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename)
+        self.annotation = GFF(self.gff_filename) if self.gff_filename is not None else None
 
     def render_genome(self, output_folder, output_file_name):
         annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
@@ -25,17 +25,18 @@ class AnnotatedGenomeLayout(ParallelLayout):
                           output_file_name=output_file_name,
                           fasta_files=[annotation_fasta, self.fasta_file])
 
-
-    def read_contigs_and_calc_padding(self, input_file_path):
-        self.contigs = read_contigs(input_file_path)
-        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
-        return self.calc_all_padding()
+    #
+    # def read_contigs_and_calc_padding(self, input_file_path):
+    #     self.contigs = read_contigs(input_file_path)
+    #     # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
+    #     return self.calc_all_padding()
 
 
     def color_changes_per_genome(self):
-        self.activate_high_contrast_colors()
-        if not self.genome_processed:  # Use softer colors for annotations
-            self.activate_natural_colors()
+        if not self.using_spectrum:
+            self.activate_high_contrast_colors()
+            if not self.genome_processed:  # Use softer colors for annotations
+                self.activate_natural_colors()
 
 
     def calc_padding(self, total_progress, next_segment_length, multipart_file):

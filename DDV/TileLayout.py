@@ -229,8 +229,13 @@ class TileLayout(object):
 
     def read_contigs_and_calc_padding(self, input_file_path):
         try:
+            with open(input_file_path, 'r') as streamFASTAFile:  # TODO: place in Contigs.py
+                c = streamFASTAFile.read(1)
+                if c.upper() not in '>ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                    raise ValueError( 'Not a fasta file')
             self.contigs = read_contigs(input_file_path)
-        except UnicodeDecodeError as e:
+            self.using_spectrum = False
+        except (UnicodeDecodeError, ValueError) as e:
             print(e)
             print("Important: Non-standard characters detected.  Switching to 256 colormap for bytes")
             self.using_spectrum = True

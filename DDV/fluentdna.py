@@ -49,6 +49,7 @@ from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, bas
     hold_console_for_windows
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
+from DDV.TagView import  TagView
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -205,10 +206,19 @@ def ddv(args):
                 create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
                                                 args.output_name, batch.fastas)
             done(args, SERVER_HOME)
+
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = AnnotatedGenomeLayout(args.fasta,
                                        args.ref_annotation)
+        layout.render_genome(output_dir, args.output_name,)
+        finish_webpage(args, layout, output_dir, args.output_name)
+        done(args, output_dir)
+
+    elif args.layout == "tags":
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = TagView(args.fasta,
+                         args.ref_annotation)
         layout.render_genome(output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
@@ -357,7 +367,7 @@ def main():
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
                         choices=["tiled", "parallel", "alignment", "annotated"
-                                 "unique", "transposon", "original" ],
+                                 "unique", "transposon", "original", "tags" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
