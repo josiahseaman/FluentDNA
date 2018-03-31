@@ -93,7 +93,7 @@ class GFF(object):
 
                 annotations[chromosome].append(annotation)
                 chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
-
+        print()
         open_annotation_file.close()
 
         return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
