@@ -1,6 +1,7 @@
-from  os.path import join, basename
+from  os.path import join, basename, exists
 
 import math
+import numpy as np
 from DNASkittleUtils.Contigs import read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
 
@@ -8,13 +9,13 @@ from DDV.Annotations import GFF, create_fasta_from_annotation
 from DDV.AnnotatedGenome import AnnotatedGenomeLayout
 
 class TagView(AnnotatedGenomeLayout):
-    def __init__(self, fasta_file, gff_file, *args, **kwargs):
-        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, *args, **kwargs)  # skipping parent
+    def __init__(self, fasta_file, ref_annotation, **kwargs):
+        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, **kwargs)  # skipping parent
         self.fasta_file = fasta_file
-        self.gff_filename = gff_file
+        self.gff_filename = ref_annotation
         # Important: attribute_sep changed from AnnotatedGenomeLayout
         self.annotation = GFF(self.gff_filename, attribute_sep=' ')
-        self.scan_width = 100
+        self.scan_width = self.base_width
         self.oligomer_size = 9
 
     def scan_reverse_complements(self):
@@ -38,8 +39,7 @@ class TagView(AnnotatedGenomeLayout):
         return match_bytes
 
 
-    def output_tag_byte_sequence(self, output_folder, output_file_name, match_bytes):
-        bytes_file = join(output_folder, output_file_name + '__100.bytes')
+    def output_tag_byte_sequence(self, bytes_file, match_bytes):
 
         with open(bytes_file, 'wb') as out:
             out.write(match_bytes)
@@ -54,9 +54,10 @@ class TagView(AnnotatedGenomeLayout):
         self.contigs = read_contigs(self.fasta_file)
 
         # tags is viridis
-        # match_bytes = self.scan_reverse_complements()
-        # bytes_file = self.output_tag_byte_sequence(output_folder, output_file_name, match_bytes)
-        bytes_file = join(output_folder, output_file_name + '__100.bytes')
+        bytes_file = join(output_folder, output_file_name + '__%i.bytes' % self.scan_width)
+        if not exists(bytes_file):
+            match_bytes = self.scan_reverse_complements()
+            bytes_file = self.output_tag_byte_sequence(bytes_file, match_bytes)
 
         ### AnnotatedGenome temporary code  ###
         annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')

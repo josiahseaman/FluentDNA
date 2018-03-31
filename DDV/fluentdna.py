@@ -218,7 +218,7 @@ def ddv(args):
     elif args.layout == "tags":
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = TagView(args.fasta,
-                         args.ref_annotation)
+                         args.ref_annotation, base_width=args.base_width)
         layout.render_genome(output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
