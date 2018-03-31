@@ -7,13 +7,13 @@ from DNASkittleUtils.DDVUtils import editable_str
 
 
 class GFF(object):
-    def __init__(self, annotation_file):
+    def __init__(self, annotation_file, attribute_sep='='):
         self.specimen, self.gff_version, \
         self.genome_version, self.date, \
         self.file_name, self.annotations, self.chromosome_lengths \
-            = self._import_gff(annotation_file)
+            = self._import_gff(annotation_file, attribute_sep)
 
-    def _import_gff(self, annotation_file):
+    def _import_gff(self, annotation_file, attribute_sep='='):
         assert os.path.isfile(annotation_file)
 
         specimen = None
@@ -80,8 +80,8 @@ class GFF(object):
 
                 if len(elements) >= 9:
                     pairs = [pair.strip() for pair in elements[8].split(';') if pair]
-                    attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs if
-                                  len(pair.split('=')) == 2}
+                    attributes = {pair.split(attribute_sep)[0]: pair.split(attribute_sep)[1].replace('"', '') for pair in pairs if
+                                  len(pair.split(attribute_sep)) == 2}
                 else:
                     attributes = {}
 

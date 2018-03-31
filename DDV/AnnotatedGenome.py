@@ -11,7 +11,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
         super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, *args, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename) if self.gff_filename is not None else None
+        self.annotation = GFF(self.gff_filename)
 
     def render_genome(self, output_folder, output_file_name):
         annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
@@ -65,10 +65,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
                     if entry.feature == 'gene':
                         progress = (int(entry.start) // 100) * 100 + 2 + scaffold["xy_seq_start"]
                         end = int(entry.end) + scaffold["xy_seq_start"]
-                        try:
-                            name = entry.attributes['Name']
-                        except KeyError:
-                            name = ';'.join(['%s=%s' %(key, val) for key, val in entry.attributes.items()])
+                        name = self.name_for_annotation_entry(entry)
                         upper_left = self.position_on_screen(progress)
                         bottom_right = self.position_on_screen(end - 2)
                         width = 100  # bottom_right[0] - upper_left[0],
@@ -81,4 +78,11 @@ class AnnotatedGenomeLayout(ParallelLayout):
                         self.write_title(name, width, height, font_size, title_lines, title_width, upper_left, False)
 
         print("Done Drawing annotation labels")
+
+    def name_for_annotation_entry(self, entry):
+        try:
+            name = entry.attributes['Name']
+        except KeyError:
+            name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+        return name
 

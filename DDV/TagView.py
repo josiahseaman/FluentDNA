@@ -4,12 +4,16 @@ import math
 from DNASkittleUtils.Contigs import read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
 
-from DDV.Annotations import GFF
+from DDV.Annotations import GFF, create_fasta_from_annotation
 from DDV.AnnotatedGenome import AnnotatedGenomeLayout
 
 class TagView(AnnotatedGenomeLayout):
     def __init__(self, fasta_file, gff_file, *args, **kwargs):
-        super(TagView, self).__init__(fasta_file, gff_file, *args, **kwargs)
+        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, *args, **kwargs)  # skipping parent
+        self.fasta_file = fasta_file
+        self.gff_filename = gff_file
+        # Important: attribute_sep changed from AnnotatedGenomeLayout
+        self.annotation = GFF(self.gff_filename, attribute_sep=' ')
         self.scan_width = 100
         self.oligomer_size = 9
 
@@ -31,13 +35,6 @@ class TagView(AnnotatedGenomeLayout):
                     if matches:
                         match_bytes[y * self.scan_width + x] = int(min(len(matches) / observedMax * 255, 255))
 
-        # progress = 0
-        # for y, line in enumerate(oligomer_profiles):
-        #     if y + self.scan_width < len(oligomer_profiles):
-        #         for x in range(1, self.scan_width + 1):
-        #             score = pythonCorrelate(line, oligomer_profiles[y + x])
-        #             match_bytes[progress] = max(0, int(score * 255))  # don't care about negative values
-        #             progress += 1
         return match_bytes
 
 
@@ -57,25 +54,28 @@ class TagView(AnnotatedGenomeLayout):
         self.contigs = read_contigs(self.fasta_file)
 
         # tags is viridis
-        match_bytes = self.scan_reverse_complements()
-        bytes_file = self.output_tag_byte_sequence(output_folder, output_file_name, match_bytes)
+        # match_bytes = self.scan_reverse_complements()
+        # bytes_file = self.output_tag_byte_sequence(output_folder, output_file_name, match_bytes)
+        bytes_file = join(output_folder, output_file_name + '__100.bytes')
 
         ### AnnotatedGenome temporary code  ###
-        # annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
-        # chromosomes = [x.name.split()[0] for x in self.contigs]
-        # lengths = [len(x.seq) for x in self.contigs]
-        # create_fasta_from_annotation(self.annotation, chromosomes,
-        #                              scaffold_lengths=lengths,
-        #                              output_path=annotation_fasta)
+        annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
+        chromosomes = [x.name.split()[0] for x in self.contigs]
+        lengths = [len(x.seq) for x in self.contigs]
+        create_fasta_from_annotation(self.annotation, chromosomes,
+                                     scaffold_lengths=lengths,
+                                     output_path=annotation_fasta,
+                     # TODO: currently default because all entries are "exon" in sample file
+                                     features=None)
         super(TagView, self).process_file(output_folder,
                           output_file_name=output_file_name,
-                          fasta_files=[#annotation_fasta,
+                          fasta_files=[annotation_fasta,
                                        self.fasta_file,
                                        bytes_file])
 
-        pass
-
-
+    def name_for_annotation_entry(self, entry):
+        name = entry.attributes['gene_id']  # based on the RepeatMasker GTF that I have, ' ' separator
+        return name
 
 def hasDepth(listLike):
     try:
@@ -139,74 +139,3 @@ def setOfObservedOligs(seq, lineSize, oligomerSize):
 
 
 
-
-
-#
-# def average(values, start=0, length=-1):
-#     if length == -1:
-#         length = len(values)
-#         assert length > 0
-#         return float(sum(values)) / length
-#     assert length > 0
-#     totalSum = 0
-#     for index in range(start, start + length):
-#         totalSum += values[index]
-#     return float(totalSum) / length
-#
-#
-# def pythonCorrelate(x, y):
-#     n = len(x)
-#     avg_x = average(x)
-#     avg_y = average(y)
-#     diffprod = 0.0
-#     xdiff2 = 0.0
-#     ydiff2 = 0.0
-#     for idx in range(n):
-#         xdiff = float(x[idx]) - avg_x
-#         ydiff = float(y[idx]) - avg_y
-#         diffprod += xdiff * ydiff
-#         xdiff2 += xdiff * xdiff
-#         ydiff2 += ydiff * ydiff
-#
-#     if xdiff2 * ydiff2 == 0.0:
-#         return 0.0
-#
-#     return diffprod / math.sqrt(xdiff2 * ydiff2)
-#
-
-
-# def pearsonCorrelation(x, y):
-#     """Pearson correlation coefficient between signals x and y."""
-#     assert len(x) == len(y), (len(x), " vs. ", len(y))
-#     n = len(x)
-#     assert n > 0, "Array is empty"
-#     assert isinstance(x[0], Number), x[0]
-#
-#     if usingCcode:
-#         arrX = (ctypes.c_double * len(x))(*x)
-#         arrY = (ctypes.c_double * len(y))(*y)
-#
-#         skittleUtils.Correlate.restype = ctypes.c_double
-#         temp = skittleUtils.Correlate(arrX, arrY, n)
-#         return temp
-#     else:
-#         return pythonCorrelate(x, y)
-#
-#
-#
-#
-# BASE_DIR = r'D:\josiah\Projects\DDV\DDV'
-# try:
-#     if sys.platform == 'win32':
-#         skittleUtils = ctypes.CDLL(os.path.join(BASE_DIR, 'libSkittleGraphUtils.dll'))
-#         usingCcode = True
-#         print("Optimized Windows C code for correlations found!")
-#     elif 'linux' in sys.platform:
-#         skittleUtils = ctypes.CDLL(os.path.join(BASE_DIR,'libSkittleGraphUtils.so.1.0.0'))
-#         usingCcode = True
-#         print("Optimized Linux C code for correlations found!")
-#     else:
-#         usingCcode = False
-# except:
-#     usingCcode = False
-#     print("Could not find Optimized Windows C code for correlations!")
