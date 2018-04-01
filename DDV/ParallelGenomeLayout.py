@@ -13,17 +13,24 @@ from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes, **kwargs):
+    def __init__(self, n_genomes, base_widths=None, **kwargs):
         # This layout is best used on one chromosome at a time.
+        if base_widths is not None:
+            kwargs['base_width'] = base_widths[0]
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False, **kwargs)
         # modify layout with an additional bundled column layer
         columns = self.levels[2]
-        new_width = columns.thickness * n_genomes + columns.padding * 2
+        if base_widths is None:
+            base_widths = [self.base_width] * n_genomes
+        assert len(base_widths) == n_genomes
+        new_width = sum(base_widths) + columns.padding * (n_genomes + 2)
         self.levels = self.levels[:2]  # trim off the others
         self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
         self.levels[2].padding = new_width - (columns.thickness - columns.padding)
-        self.column_offset = columns.thickness  # steps inside a column bundle, not exactly the same as bundles steps
+        self.column_offset = columns.thickness
+        # steps inside a column bundle, not exactly the same as bundles steps
         # because of inter bundle padding of 18 pixels
+        # NB: this assumes that all columns except for the last n_genome are the same thickness
         self.levels.append(LayoutLevel("RowInTile", 10, padding=36, levels=self.levels))  # [3]  overwrite padding from previous layer
         self.levels.append(LayoutLevel("TileColumn", 3, padding=36 * 3 * 5, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]

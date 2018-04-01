@@ -1,3 +1,5 @@
+import traceback
+from datetime import datetime
 from  os.path import join, basename, exists
 
 import math
@@ -10,7 +12,8 @@ from DDV.AnnotatedGenome import AnnotatedGenomeLayout
 
 class TagView(AnnotatedGenomeLayout):
     def __init__(self, fasta_file, ref_annotation, **kwargs):
-        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, **kwargs)  # skipping parent
+        base = kwargs.pop('base_width', 100)
+        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, base_widths=[base]*3, **kwargs)  # skipping parent
         self.fasta_file = fasta_file
         self.gff_filename = ref_annotation
         # Important: attribute_sep changed from AnnotatedGenomeLayout
@@ -58,6 +61,8 @@ class TagView(AnnotatedGenomeLayout):
         if not exists(bytes_file):
             match_bytes = self.scan_reverse_complements()
             bytes_file = self.output_tag_byte_sequence(bytes_file, match_bytes)
+        else:
+            match_bytes = bytearray(open(bytes_file, 'rb').read())
 
         ### AnnotatedGenome temporary code  ###
         annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
@@ -68,15 +73,59 @@ class TagView(AnnotatedGenomeLayout):
                                      output_path=annotation_fasta,
                      # TODO: currently default because all entries are "exon" in sample file
                                      features=None)
-        super(TagView, self).process_file(output_folder,
+        self.process_file(output_folder,
                           output_file_name=output_file_name,
                           fasta_files=[annotation_fasta,
-                                       self.fasta_file,
-                                       bytes_file])
+                                       self.fasta_file],
+                          match_bytes=match_bytes)
+
+
+    def process_file(self, output_folder, output_file_name, fasta_files=list(), match_bytes=None):
+        assert len(fasta_files) + 1 == self.n_genomes and match_bytes, \
+            "List of Genome files must be same length as n_genomes"
+        start_time = datetime.now()
+        self.image_length = self.read_contigs_and_calc_padding(fasta_files[0])
+        self.prepare_image(self.image_length)
+        print("Initialized Image:", datetime.now() - start_time)
+
+        try:
+            # Do inner work for two other files
+            for index, filename in enumerate(fasta_files):
+                if index != 0:
+                    self.read_contigs_and_calc_padding(filename)
+                self.color_changes_per_genome()
+                self.draw_nucleotides()
+                self.draw_titles()
+                self.genome_processed += 1
+                print("Drew File:", filename, datetime.now() - start_time)
+        except Exception as e:
+            print('Encountered exception while drawing nucleotides:', '\n')
+            traceback.print_exc()
+        ### New section for Reverse Complement pairs
+        self.draw_revcomp_tags(match_bytes)
+
+        self.draw_the_viz_title(fasta_files + ['Rev Comp %ibp' % self.scan_width])
+        self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable
+        self.output_image(output_folder, output_file_name)
+        print("Output Image in:", datetime.now() - start_time)
+
 
     def name_for_annotation_entry(self, entry):
         name = entry.attributes['gene_id']  # based on the RepeatMasker GTF that I have, ' ' separator
         return name
+
+    def draw_revcomp_tags(self, match_bytes):
+        height = len(match_bytes) // self.scan_width
+        for y in range(height):
+            screen_x, screen_y = self.position_on_screen(y * self.base_width)  # not scan_width
+            for x in range(self.scan_width):
+                try:
+                    score = match_bytes[y * self.scan_width + x]  # TODO: x3
+                    self.pixels[screen_x + x, screen_y] = (0, int(score), 0)
+                except IndexError as e:
+                    print(screen_x + x, screen_y)
+                    break
+
 
 def hasDepth(listLike):
     try:
