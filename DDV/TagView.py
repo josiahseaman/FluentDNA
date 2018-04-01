@@ -9,28 +9,31 @@ from DNASkittleUtils.DDVUtils import rev_comp
 
 from DDV.Annotations import GFF, create_fasta_from_annotation
 from DDV.AnnotatedGenome import AnnotatedGenomeLayout
+from DDV.DDVUtils import beep
+
 
 class TagView(AnnotatedGenomeLayout):
     def __init__(self, fasta_file, ref_annotation, **kwargs):
-        base = kwargs.pop('base_width', 100)
-        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, base_widths=[base]*3, **kwargs)  # skipping parent
+        base = kwargs.pop('base_width') or 50  # default
+        self.scan_width = 2000
+        widths = [base, base, self.scan_width]
+        super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, base_widths=widths, **kwargs)  # skipping parent
         self.fasta_file = fasta_file
         self.gff_filename = ref_annotation
         # Important: attribute_sep changed from AnnotatedGenomeLayout
         self.annotation = GFF(self.gff_filename, attribute_sep=' ')
-        self.scan_width = self.base_width
         self.oligomer_size = 9
 
     def scan_reverse_complements(self):
         assert len(self.contigs) == 1, "Read one sequence first"
         seq = self.contigs[0].seq
-        n_lines = (len(seq) // self.scan_width)
+        n_lines = (len(seq) // self.base_width)
         match_bytes = bytearray(n_lines * self.scan_width)
         # calculate oligomer profiles
         print("Calculating line correlations")
 
-        observedMax = max(self.scan_width / 6.0, 5.0)  # defined by observation of histograms
-        observedOligsPerLine = setOfObservedOligs(seq, self.scan_width, self.oligomer_size)
+        observedMax = max(self.base_width / 6.0, 5.0)  # defined by observation of histograms
+        observedOligsPerLine = setOfObservedOligs(seq, self.base_width, self.oligomer_size)
         observedRevCompOligs = reverseComplementSet(observedOligsPerLine)
         for y in range(min(len(observedOligsPerLine), n_lines)):
             for x in range(1, min(len(observedOligsPerLine) - y - 1, self.scan_width)):
@@ -51,27 +54,25 @@ class TagView(AnnotatedGenomeLayout):
 
 
     def render_genome(self, output_folder, output_file_name):
-        # empty annotation
-
-        # sequence
         self.contigs = read_contigs(self.fasta_file)
-
-        # tags is viridis
-        bytes_file = join(output_folder, output_file_name + '__%i.bytes' % self.scan_width)
+        bytes_file = join(output_folder, output_file_name +
+                          '__line%i__scan%i.bytes' % (self.base_width, self.scan_width))
         if not exists(bytes_file):
             match_bytes = self.scan_reverse_complements()
             bytes_file = self.output_tag_byte_sequence(bytes_file, match_bytes)
         else:
+            print("Found cache file", bytes_file)
             match_bytes = bytearray(open(bytes_file, 'rb').read())
 
         ### AnnotatedGenome temporary code  ###
         annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
         chromosomes = [x.name.split()[0] for x in self.contigs]
         lengths = [len(x.seq) for x in self.contigs]
+        # TODO: change features to repeat class, currently default
+        # because all entries are "gene" in sample file
         create_fasta_from_annotation(self.annotation, chromosomes,
                                      scaffold_lengths=lengths,
                                      output_path=annotation_fasta,
-                     # TODO: currently default because all entries are "exon" in sample file
                                      features=None)
         self.process_file(output_folder,
                           output_file_name=output_file_name,
@@ -108,6 +109,7 @@ class TagView(AnnotatedGenomeLayout):
         self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        beep()
 
 
     def name_for_annotation_entry(self, entry):
@@ -118,10 +120,14 @@ class TagView(AnnotatedGenomeLayout):
         height = len(match_bytes) // self.scan_width
         for y in range(height):
             screen_x, screen_y = self.position_on_screen(y * self.base_width)  # not scan_width
-            for x in range(self.scan_width):
+            for x in range(min(height - y, self.scan_width)):
                 try:
-                    score = match_bytes[y * self.scan_width + x]  # TODO: x3
-                    self.pixels[screen_x + x, screen_y] = (0, int(score), 0)
+                    score = int(match_bytes[y * self.scan_width + x])  # TODO: x3
+                    red_channel = self.pixels[screen_x + x, screen_y][0]
+                    self.pixels[screen_x + x, screen_y] = (red_channel, score, 0)  # trailing green
+                    #set red on lead, don't need to worry about preserving green
+                    reach_x, reach_y = self.position_on_screen((y + x) * self.base_width)  # not scan_width
+                    self.pixels[reach_x + x, reach_y] = (score, 0, 0)  # leading red
                 except IndexError as e:
                     print(screen_x + x, screen_y)
                     break

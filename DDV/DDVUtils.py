@@ -9,6 +9,15 @@ from collections import defaultdict
 from PIL import ImageDraw
 
 
+def beep():
+    try:
+        import winsound
+        duration = 1000  # millisecond
+        freq = 440  # Hz
+        winsound.Beep(freq, duration)
+    except ImportError:
+        pass
+
 class keydefaultdict(defaultdict):
     """https://stackoverflow.com/a/2912455/3067894"""
     def __missing__(self, key):

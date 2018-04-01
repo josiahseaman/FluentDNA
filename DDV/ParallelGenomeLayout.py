@@ -18,22 +18,7 @@ class ParallelLayout(TileLayout):
         if base_widths is not None:
             kwargs['base_width'] = base_widths[0]
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False, **kwargs)
-        # modify layout with an additional bundled column layer
-        columns = self.levels[2]
-        if base_widths is None:
-            base_widths = [self.base_width] * n_genomes
-        assert len(base_widths) == n_genomes
-        new_width = sum(base_widths) + columns.padding * (n_genomes + 2)
-        self.levels = self.levels[:2]  # trim off the others
-        self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
-        self.levels[2].padding = new_width - (columns.thickness - columns.padding)
-        self.column_offset = columns.thickness
-        # steps inside a column bundle, not exactly the same as bundles steps
-        # because of inter bundle padding of 18 pixels
-        # NB: this assumes that all columns except for the last n_genome are the same thickness
-        self.levels.append(LayoutLevel("RowInTile", 10, padding=36, levels=self.levels))  # [3]  overwrite padding from previous layer
-        self.levels.append(LayoutLevel("TileColumn", 3, padding=36 * 3 * 5, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
+        self.modify_parallel_layout(n_genomes, base_widths)
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
@@ -41,6 +26,30 @@ class ParallelLayout(TileLayout):
         self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
         self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
+
+    def modify_parallel_layout(self, n_genomes, base_widths=None):
+        # modify layout with an additional bundled column layer
+        columns = self.levels[2]
+        if base_widths is None:
+            base_widths = [self.base_width] * n_genomes
+        assert len(base_widths) == n_genomes
+        new_width = sum(base_widths) + columns.padding * (n_genomes + 2)
+        # noinspection PyListCreation
+        self.levels = [
+            LayoutLevel("XInColumn", self.base_width, 1, 0),  # [0]
+            LayoutLevel("LineInColumn", max(self.base_width * 10, max(base_widths) * 2), self.base_width, 0)
+            # [1]
+        ]
+        self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
+        self.levels[2].padding = new_width - (columns.thickness - columns.padding)
+        self.column_offset = columns.thickness
+        # steps inside a column bundle, not exactly the same as bundles steps
+        # because of inter bundle padding of 18 pixels
+        # NB: this assumes that all columns except for the last n_genome are the same thickness
+        self.levels.append(LayoutLevel("RowInTile", 10, padding=36,
+                                       levels=self.levels))  # [3]  overwrite padding from previous layer
+        self.levels.append(LayoutLevel("TileColumn", 3, padding=36 * 3 * 5, levels=self.levels))  # [4]
+        self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
 
     def enable_fat_headers(self):
         pass  # just don't
