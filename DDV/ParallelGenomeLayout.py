@@ -90,7 +90,7 @@ class ParallelLayout(TileLayout):
         genome as it is processed separately.
         """
         x, y = super(ParallelLayout, self).position_on_screen(index)
-        return [x + self.column_offset * self.genome_processed, y]
+        return (x + self.column_offset * self.genome_processed, y)
 
 
     def fill_in_colored_borders(self):
