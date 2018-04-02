@@ -15,7 +15,7 @@ from DDV.DDVUtils import beep
 class TagView(AnnotatedGenomeLayout):
     def __init__(self, fasta_file, ref_annotation, **kwargs):
         base = kwargs.pop('base_width') or 50  # default
-        self.scan_width = 200
+        self.scan_width = 1000
         widths = [base, base, self.scan_width]
         super(AnnotatedGenomeLayout, self).__init__(n_genomes=3, base_widths=widths, **kwargs)  # skipping parent
         self.fasta_file = fasta_file
@@ -46,7 +46,6 @@ class TagView(AnnotatedGenomeLayout):
 
 
     def output_tag_byte_sequence(self, bytes_file, match_bytes):
-
         with open(bytes_file, 'wb') as out:
             out.write(match_bytes)
         print("Done with line correlations")
@@ -124,27 +123,32 @@ class TagView(AnnotatedGenomeLayout):
                 self.pixels[screen_x + x, screen_y] = (0, 0, 0)  # all black
         print("Drew Black Rectangles")
 
-        for y in range(height):
-            screen_x, screen_y = self.position_on_screen(y * self.base_width)  # not scan_width
-            best_in_row = 0
-            for x in range(min(height - y, self.scan_width)):
-                # try:
-                    score = int(match_bytes[y * self.scan_width + x])  # TODO: x3
-                    red_channel = self.pixels[screen_x + x, screen_y][0]
-                    # Green and red channel suppression based on max score for row (in order)
-                    best_in_row = max(red_channel, best_in_row)  # red suppression
-                    if score > best_in_row:
-                        best_in_row = score
-                    else:
-                        score = 0
+        best_per_row = [0] * height
+        for x in range(self.scan_width):
+            for y in range(height):
+                if height - y > self.scan_width:
+                    try:
+                        screen_x, screen_y = self.position_on_screen(y * self.base_width)  # not scan_width
+                        score = int(match_bytes[y * self.scan_width + x])  # TODO: x3
+                        red_channel = self.pixels[screen_x + x, screen_y][0]
+                        # Blue channel suppression based on max score for row (in order)
+                        best_in_row = best_per_row[y]
+                        if score > best_in_row:
+                            best_in_row = score
+                        else:
+                            score = 0
+                        self.pixels[screen_x + x, screen_y] = (red_channel, score, best_per_row[y])  # trailing green
+                        best_per_row[y] = best_in_row
+                        #set red on lead, don't need to worry about preserving green
+                        if score:
+                            reach_x, reach_y = self.position_on_screen((y + x) * self.base_width)  # not scan_width
+                            self.pixels[reach_x + x, reach_y] = (score, 0, 0)  # leading red
 
-                    self.pixels[screen_x + x, screen_y] = (red_channel, score, 0)  # trailing green
-                    #set red on lead, don't need to worry about preserving green
-                    reach_x, reach_y = self.position_on_screen((y + x) * self.base_width)  # not scan_width
-                    self.pixels[reach_x + x, reach_y] = (score, 0, 0)  # leading red
-                # except IndexError as e:
-                #     print(screen_x + x, screen_y)
-                #     break
+                            for span_y in range(y + 1, y + x + 1):  # blue connecting line
+                                best_per_row[span_y] = max(best_per_row[span_y], score)
+                    except IndexError as e:
+                        print(screen_x + x, screen_y)
+                        break
         print("Finished drawing reverse complement map")
 
 def hasDepth(listLike):
