@@ -179,7 +179,7 @@ class ChainParser(object):
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
             new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
 
-            if is_master_alignment or self.separate_translocations:
+            if is_master_alignment or self.separate_translocations or self.aligned_only:
                 self.alignment.append(new_alignment)
             else:
                 # Remove old unaligned query location
