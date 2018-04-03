@@ -18,6 +18,7 @@ class Span(object):
         self.end = end
         self.contig_name = contig_name
         self.strand = strand
+        assert self.strand in '+-'
 
 
     def __lt__(self, other_int):
@@ -76,6 +77,8 @@ class Span(object):
                 return None, self
             if self.size():
                 raise IndexError("Remove_this doesn't overlap self at all %s %s" % (str(remove_this), str(self)))
+            else:  # self has no size, just throw it away
+                return None, None
 
         first = Span(self.begin, remove_this.begin, self.contig_name, self.strand)
         second = Span(remove_this.end, self.end, self.contig_name, self.strand)
@@ -149,11 +152,15 @@ class AlignedSpans(object):
         new_me = AlignedSpans(self.ref, self.query, query_tail_size=self.query_tail_size, ref_tail_size=size,
                               is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
         your_tail_size = your_tail.size() if your_tail is not None else 0
-        you = AlignedSpans(new_alignment.ref, new_alignment.query,
-                           query_tail_size=new_alignment.query_tail_size,
-                           ref_tail_size=new_alignment.ref_tail_size + your_tail_size,
-                           is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
-        return new_me, you
+        try:
+            you = AlignedSpans(new_alignment.ref, new_alignment.query,
+                               query_tail_size=new_alignment.query_tail_size,
+                               ref_tail_size=new_alignment.ref_tail_size + your_tail_size,
+                               is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
+            return new_me, you
+        except AssertionError as e:
+            print(e)
+            return new_me, None
 
 
     def align_query_unique(self, new_alignment):
