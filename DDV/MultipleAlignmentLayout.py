@@ -127,6 +127,7 @@ class MultipleAlignmentLayout(TransposonLayout):
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
         consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
+        consensus_width = max(consensus_width, max([x.consensus_width for x in self.contigs]))
         heights = [x.height for x in self.contigs]
         num_lines = sum(heights)
         self.set_column_height(heights)
