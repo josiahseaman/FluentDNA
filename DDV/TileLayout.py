@@ -345,6 +345,7 @@ class TileLayout(object):
 
 
     def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label):
+        upper_left = list(upper_left)  # to make it mutable
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
