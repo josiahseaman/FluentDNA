@@ -31,8 +31,8 @@ class GFF(object):
             if line.startswith("#"):
                 if "gff-version" in line:
                     gff_version = line.split(' ')[1]
-                    # if gff_version != 2:
-                    #     raise ValueError("GFF version %s is not currently supported!" % gff_version)
+                    if gff_version != 2:
+                        raise ValueError("GFF version %s is not currently supported!" % gff_version)
                 elif "genome-build" in line:
                     specimen = line.split(' ')[1]
                 elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
