@@ -108,9 +108,9 @@ class ChainParser(object):
             if not self.trial_run and self.query_sequence and self.ref_sequence:  # include unaligned ends
                 ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
                 query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
-                self.alignment.append(AlignedSpans(ref_end, query_end,
-                                                   len(self.query_sequence) - query_pointer,
-                                                   len(self.ref_sequence) - ref_pointer),)
+                self.alignment.append(AlignedSpans(ref_end, query_end, len(self.ref_sequence) - ref_pointer,
+                                                   0))  # len(self.query_sequence) - query_pointer))
+                #Not including the unaligned end of query chromosome because it might not be related at all
 
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
@@ -177,7 +177,8 @@ class ChainParser(object):
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
+            new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_query, gap_ref, is_master_alignment,
+                                         first_in_chain)
 
             if is_master_alignment or self.separate_translocations or self.aligned_only:
                 self.alignment.append(new_alignment)
@@ -230,7 +231,8 @@ class ChainParser(object):
         for pair in alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
                 # pair.ref.contig_name could be None
-                if not self.switch_sequences(pair.query.contig_name, pair.query.strand, translocation_markup):
+                if not self.switch_sequences(pair.query.contig_name, pair.query.strand, translocation_markup,
+                                             pair.is_master_chain):
                     continue  # skip this pair since it can't be displayed
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
@@ -272,7 +274,7 @@ class ChainParser(object):
             return self.query_seq_gapped
 
 
-    def switch_sequences(self, query_name, query_strand, translocation_markup=False):
+    def switch_sequences(self, query_name, query_strand, translocation_markup=False, is_master_chain=False):
         """Switch self.query_sequence to the current topic of alignment.
         Returns True if sucessful, False if the sequence is unavailable."""
 
@@ -280,7 +282,7 @@ class ChainParser(object):
         type_to_char = {x.legend: x.char for x in self.translocation_types}
 
         if translocation_markup:  # Replace actual sequence with fake generators
-            if query_name == self.ref_chr_name.lower():
+            if query_name == self.ref_chr_name.lower() or is_master_chain:
                 align_type = 'inversion' if query_strand == '-' else 'syntenic'
             else:  # differently named scaffold, doesn't matter which strand
                 align_type = 'interchromosomal'
@@ -319,10 +321,9 @@ class ChainParser(object):
         if chain.tEnd - chain.tStart > 100 * 1000:
             print('>>>>', chain)
         if is_master_alignment and not self.trial_run:  # include the unaligned beginning of the sequence
-            self.alignment.append(AlignedSpans(Span(0, 0, chain.tName, chain.tStrand),
-                                               Span(0, 0, chain.qName, chain.qStrand),
-                                               query_pointer,
-                                               ref_pointer))
+            self.alignment.append(
+                AlignedSpans(Span(0, 0, chain.tName, chain.tStrand), Span(0, 0, chain.qName, chain.qStrand),
+                             ref_pointer, 0))
         return ref_pointer, query_pointer
 
 
