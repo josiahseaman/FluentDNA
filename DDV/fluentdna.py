@@ -260,7 +260,7 @@ def ddv(args):
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
-    layout = ParallelLayout(n_genomes=n_genomes)
+    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(output_dir, output_name, fastas)
     final_output_location = layout.final_output_location
     del layout

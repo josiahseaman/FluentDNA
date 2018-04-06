@@ -13,9 +13,10 @@ from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes):
+    def __init__(self, n_genomes, low_contrast=False, base_width=None):
         # This layout is best used on one chromosome at a time.
-        super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False)
+        super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
+                                             low_contrast=low_contrast, base_width=base_width)
         # modify layout with an additional bundled column layer
         columns = self.levels[2]
         new_width = columns.thickness * n_genomes + columns.padding * 2

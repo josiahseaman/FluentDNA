@@ -32,5 +32,6 @@ if __name__ == "__main__":
     path = r"D:\Genomes\Ash BATG-0.5-CLCbioSSPACE\Ash Tree BATG-0.5.png"
     path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Poster\Gene Families.png"
     path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Poster\example block.png"
-    reduction_factor = 1/3
-    save_resized(path, "resized.png", reduction_factor)
+    path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Bioinformatics Application Note\Figure 1 - manual colors.png"
+    reduction_factor = 1/2
+    save_resized(path, "F1 - resized.png", reduction_factor)
