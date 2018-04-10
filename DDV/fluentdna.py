@@ -55,6 +55,7 @@ from DDV.AnnotatedAlignment import AnnotatedAlignment
 from DDV.TileLayout import TileLayout
 from DDV.TransposonLayout import TransposonLayout
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
+from DDV.DivergencePlot import DivergencePlot
 
 
 if sys.platform == 'win32':
@@ -177,7 +178,6 @@ def ddv(args):
             del layout
         print("Done with Alignments")
         done(args, output_dir)
-
     if args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
@@ -205,6 +205,13 @@ def ddv(args):
                 create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
                                                 args.output_name, batch.fastas)
             done(args, SERVER_HOME)
+    elif args.layout == 'divergence':
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = DivergencePlot(low_contrast=args.low_contrast,
+                                base_width=args.base_width)
+        layout.show_divergence(output_dir, args.output_name,
+                               ref_fasta=args.fasta, query_unique_fasta=args.extra_fastas[0])
+        done(args, output_dir)
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = AnnotatedGenomeLayout(args.fasta,
@@ -357,7 +364,7 @@ def main():
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
                         choices=["tiled", "parallel", "alignment", "annotated"
-                                 "unique", "transposon", "original" ],
+                                 "unique", "transposon", "original", "divergence" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
