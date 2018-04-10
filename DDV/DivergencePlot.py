@@ -23,6 +23,7 @@ def collect_divergence_snips(ref_seq, uniq_seq, olig):
     length = len(olig)
     matches = tuple(find_all(ref_seq, olig))
     if len(matches) > 40:  # actual examples found
+        snips.append(olig*10)  # header with ten copies of the target olig
         for pos in matches:
             snips.append(uniq_seq[pos:pos + length])
         return snips
@@ -68,7 +69,7 @@ class DivergencePlot(TileLayout):
         ref_contigs = read_contigs(ref_fasta)
         seq = ref_contigs[0].seq
         oligs = set()
-        for i in numpy.random.randint(0, len(seq), 10000):
+        for i in numpy.random.randint(0, len(seq), 100000):
             x = seq[ i : i + self.base_width]
             if '-' not in x:
                 oligs.add(x)
