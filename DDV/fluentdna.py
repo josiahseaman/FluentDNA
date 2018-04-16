@@ -356,7 +356,7 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated"
+                        choices=["tiled", "parallel", "alignment", "annotated",
                                  "unique", "transposon", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
