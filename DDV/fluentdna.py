@@ -13,8 +13,9 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
-
-
+#############################################################################
+# IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
+#############################################################################
 print("Setting up Python...")
 
 if getattr(sys, 'frozen', False):
@@ -55,7 +56,7 @@ from DDV.AnnotatedAlignment import AnnotatedAlignment
 from DDV.TileLayout import TileLayout
 from DDV.TransposonLayout import TransposonLayout
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
-
+from DNASkittleUtils.Contigs import write_contigs_to_file, read_contigs
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
@@ -227,8 +228,9 @@ def ddv(args):
         batches = unique_chain_parser.parse_chain(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
-        for batch in batches:
-            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
+        combine_files(batches, args, args.output_name)
+        # for batch in batches:
+        #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
 
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
@@ -291,6 +293,15 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     except shutil.SameFileError:
         pass  # not a problem
     finish_webpage(args, layout, output_dir, output_name)
+
+
+
+def combine_files(batches, args, output_name):
+    from itertools import chain
+    contigs = list(chain([read_contigs(batch.fastas[0]) for batch in batches]))
+    fasta_output = output_name + '.fa'
+    write_contigs_to_file(fasta_output, contigs)
+    create_tile_layout_viz_from_fasta(args, fasta_output, output_name, output_name)
 
 
 def finish_webpage(args, layout, output_dir, output_name):

@@ -17,9 +17,9 @@ class UniqueOnlyChainParser(ChainParser):
         self.uncovered_areas = []  # Absolute coordinates.  highly mutable: better as a blist
 
 
-    def find_zero_coverage_areas(self, ref_chr):
+    def find_zero_coverage_areas(self, ref_chr, combining_genomes=False):
         """Start with whole chromosome, subtract coverage from there"""
-        if not self.uncovered_areas:
+        if not combining_genomes:
             self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
         all_chains = fetch_all_chains(ref_chr, None, None, self.chain_list)
         for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
@@ -92,7 +92,8 @@ class UniqueOnlyChainParser(ChainParser):
         #Now compound it with a second alignment  # --second_chain=data/Hg38ToGorGor5.over.chain
         # fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         # self.chain_list = chain_file_to_list('data/Hg38ToGorGor5.over.chain')
-        # self.find_zero_coverage_areas(ref_chr)  # self.uncovered_areas is preserved from previous
+        # self.find_zero_coverage_areas(ref_chr,
+        #                          combining_genomes=True)  # self.uncovered_areas is preserved from previous
 
         fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
 

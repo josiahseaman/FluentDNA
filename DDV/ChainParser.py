@@ -502,6 +502,7 @@ class ChainParser(object):
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)
+        # self.chain_list = chain_file_to_list(chain_name)
 
         return names, ref_chr
 
