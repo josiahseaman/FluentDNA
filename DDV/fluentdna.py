@@ -298,7 +298,7 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
 
 def combine_files(batches, args, output_name):
     from itertools import chain
-    contigs = list(chain([read_contigs(batch.fastas[0]) for batch in batches]))
+    contigs = list(chain(*[read_contigs(batch.fastas[0]) for batch in batches]))
     fasta_output = output_name + '.fa'
     write_contigs_to_file(fasta_output, contigs)
     create_tile_layout_viz_from_fasta(args, fasta_output, output_name, output_name)
@@ -483,7 +483,7 @@ def main():
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout not in ["parallel", "unique"]:
         parser.error("The 'chainfile' argument is only used when doing a Parallel or Unique layout!")
-    if args.chain_file and len(args.extra_fastas) > 1:
+    if args.chain_file and args.extra_fastas and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
     if args.layout == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")

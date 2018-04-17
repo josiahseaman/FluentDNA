@@ -12,7 +12,7 @@ from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta, read_con
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict
+from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict, read_contigs_to_dict
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
@@ -62,7 +62,9 @@ class ChainParser(object):
         self.gapped = '_gapped'
         self.stats = DefaultOrderedDict(lambda: 0)
 
-        self.read_query_contigs(self.query_source)
+        if self.query_source:
+            self.query_contigs = read_contigs_to_dict(self.query_source)
+        self.ref_contigs = read_contigs_to_dict(self.ref_source)
         self.chain_list = chain_file_to_list(chain_name)
 
         TranslocationMark = namedtuple('TranslocationMark', ['char', 'fill', 'legend', 'color'])
@@ -81,14 +83,6 @@ class ChainParser(object):
             for key in self.stats:
                 stats.write('%s\t%i\n' % (key, self.stats[key]))
             stats.write('\n====================================\n')
-
-
-    def read_query_contigs(self, input_file_path):
-        print("Reading contigs... ", input_file_path)
-        start_time = datetime.now()
-        contig_list = read_contigs(input_file_path)
-        self.query_contigs = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
-        print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
 
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
@@ -494,7 +488,6 @@ class ChainParser(object):
                  'query': '%s_to_%s_%s.fa' % (q_name, ref_name, ref_chr)
                  }  # for collecting all the files names in a modifiable way
         # Reset values from previous iteration
-        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.ref_chr_name = ref_chr
         self.query_sequence = ''
         self.query_seq_gapped = editable_str('')
@@ -502,6 +495,10 @@ class ChainParser(object):
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)
+        if ref_chr in self.ref_contigs:
+            self.ref_sequence = self.ref_contigs[ref_chr]  # only need the reference chromosome read, skip the others
+        else:
+            self.ref_sequence = pluck_contig(ref_chr, self.ref_source)
         # self.chain_list = chain_file_to_list(chain_name)
 
         return names, ref_chr
