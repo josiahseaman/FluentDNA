@@ -91,16 +91,15 @@ class TileLayout(object):
         # self.palette['G'] = (77, 205, 74)  # Green
         # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
-        self.palette[gap_char] = (247, 247, 247)  # almost white
+        self.palette[gap_char] = (255, 255, 255)  # perfect white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
 
         # Used in translocations, not amino acids:  B J O U Z
-        self.palette['-'] = self.palette[gap_char]
         self.palette['J'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
         self.palette['B'] = hex_to_rgb('#FFF0EF')  #EAFFE5 green
         self.palette['O'] = hex_to_rgb('#FFEBEA')  #FFE7E5 red
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
-        self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
+        self.palette['U'] = (247, 247, 247)  # off white  #FFF3E5 orange
 
 
         # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
@@ -108,8 +107,11 @@ class TileLayout(object):
         # self.palette['G'] = (173, 20, 25)  # G/C is green, purines are dark colors
         # self.palette['C'] = (152, 78, 163)  # light green
 
+        self.levels = []
+        self.calculate_layout()
 
-        # noinspection PyListCreation
+
+    def calculate_layout(self):
         self.levels = [
             LayoutLevel("XInColumn", self.base_width, 1, 0),  # [0]
             LayoutLevel("LineInColumn", self.base_width * 10, self.base_width, 0)  # [1]
@@ -119,11 +121,11 @@ class TileLayout(object):
         self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
         self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
         self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
-
         self.tile_label_size = self.levels[3].chunk_size * 2
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
             self.enable_fat_headers()
+
 
     def activate_high_contrast_colors(self):
         # Original DDV Colors
