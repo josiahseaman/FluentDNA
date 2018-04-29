@@ -7,7 +7,7 @@ from DNASkittleUtils.DDVUtils import Batch
 from DDV import gap_char
 from DDV.ChainParser import ChainParser
 from DDV.Span import Span
-from DDV.ChainFiles import fetch_all_chains, chain_file_to_list
+from DDV.ChainFiles import fetch_all_chains
 
 
 class UniqueOnlyChainParser(ChainParser):
