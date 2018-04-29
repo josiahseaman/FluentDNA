@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 
 import numpy
 from DNASkittleUtils.Contigs import read_contigs, write_contigs_to_file, Contig
@@ -68,10 +69,13 @@ class DivergencePlot(TileLayout):
     def collect_1000_oligs(self, ref_fasta):
         ref_contigs = read_contigs(ref_fasta)
         seq = ref_contigs[0].seq
-        oligs = set()
-        for i in numpy.random.randint(0, len(seq), 100000):
+        oligs = defaultdict(lambda: 0)
+        for i in numpy.random.randint(0, len(seq), 200000):
             x = seq[ i : i + self.base_width]
             if '-' not in x:
-                oligs.add(x)
+                oligs[x] += 1  # increase count
         print("Found Oligs: ", len(oligs))
-        self.target_oligs = list(oligs)
+        threshold = 4
+        candidates = [x for x in oligs if oligs[x] >= threshold]
+        print(len(candidates), "Qualify for Threshold of", threshold, )
+        self.target_oligs = list(candidates)
