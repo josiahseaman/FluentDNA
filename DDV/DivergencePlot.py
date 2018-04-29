@@ -1,11 +1,13 @@
 import os
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 import numpy
 from DNASkittleUtils.Contigs import read_contigs, write_contigs_to_file, Contig
 
 from DDV.TileLayout import TileLayout
 
+OligSites = namedtuple("OligSites", ['seq', 'indices'])
+MIN_COPIES = 40
 
 def find_all(a_str, sub):
     """Written by Karl Knechtel  https://stackoverflow.com/a/4665027/3067894"""
@@ -19,31 +21,52 @@ def find_all(a_str, sub):
     #list(find_all('spam spam spam spam', 'spam')) # [0, 5, 10, 15]
 
 
-def collect_divergence_snips(ref_seq, uniq_seq, olig):
+def collect_divergence_snips(uniq_seq, hit):
     snips = []
-    length = len(olig)
-    matches = tuple(find_all(ref_seq, olig))
-    if len(matches) > 40:  # actual examples found
-        snips.append(olig*10)  # header with ten copies of the target olig
-        for pos in matches:
-            snips.append(uniq_seq[pos:pos + length])
-        return snips
-    else:
-        return None
+    length = len(hit.seq)
+    matches = hit.indices  # tuple(find_all(ref_seq, olig))
+    snips.append(hit.seq * 10)  # header with ten copies of the target olig
+    for pos in matches:
+        snips.append(uniq_seq[pos:pos + length])
+    return snips
 
 
-def contig_for_each_olig(ref_fasta, query_unique_fasta, oligs):
+def contig_for_each_oligsite(query_unique_fasta, oligsites):
     """Create FASTA based on clipping out differences"""
-    assert all([len(oligs[0]) == len(olig) for olig in oligs]),  "All need to be the same length"
-    ref_contigs = read_contigs(ref_fasta)
+    assert all([len(oligsites[0].seq) == len(olig.seq) for olig in oligsites]),  "All need to be the same length"
     uniq_contigs = read_contigs(query_unique_fasta)
     divergence_contigs = []
-    for olig in oligs:
-        divergence_snips = collect_divergence_snips(ref_contigs[0].seq, uniq_contigs[0].seq, olig)
+    for hit in oligsites:
+        divergence_snips = collect_divergence_snips(uniq_contigs[0].seq, hit)
         if divergence_snips is not None:  # actual examples found
-            divergence_contigs.append(Contig(olig, ''.join(divergence_snips)))
+            divergence_contigs.append(Contig(hit.seq, ''.join(divergence_snips)))
     return divergence_contigs
 
+
+def collect_likely_repeat_oligs(ref_fasta, base_width):
+    ref_contigs = read_contigs(ref_fasta)
+    seq = ref_contigs[0].seq
+    oligs = defaultdict(lambda: 0)
+    for i in numpy.random.randint(0, len(seq), len(seq) // 20):
+        x = seq[ i : i + base_width]
+        if '-' not in x:
+            oligs[x] += 1  # increase count
+    print("Found Oligs: ", len(oligs))
+    threshold = 4
+    candidates = [x for x in oligs if oligs[x] >= threshold]
+    print(len(candidates), "Qualify for Threshold of", threshold, )
+    return candidates
+
+
+def collect_repeat_oligsites(seq, base_width):
+    oligs = defaultdict(lambda: list())
+    for i in range(len(seq) - base_width + 1):
+        x = seq[i: i + base_width]
+        if '-' not in x and 'N' not in x:
+            oligs[x].append(i)
+    passing = [OligSites(kmer, indices) for kmer, indices in oligs.items() if len(indices) >= MIN_COPIES]
+    print(len(passing), "out of", len(seq), "passed")
+    return passing
 
 
 
@@ -59,23 +82,11 @@ class DivergencePlot(TileLayout):
                          base_width=base_width)
 
     def show_divergence(self, output_dir, output_name, ref_fasta, query_unique_fasta):
-        self.collect_1000_oligs(ref_fasta)
-        divergence_contigs = contig_for_each_olig(ref_fasta, query_unique_fasta, self.target_oligs)
+        # self.target_oligs = collect_likely_repeat_oligs(ref_fasta, self.base_width)
+        ref_seq = read_contigs(ref_fasta)[0].seq
+        self.target_oligs = collect_repeat_oligsites(ref_seq, self.base_width)
+        divergence_contigs = contig_for_each_oligsite(query_unique_fasta, self.target_oligs)
         divergence_file_path = os.path.join(output_dir, 'divergence.fa')
         write_contigs_to_file(divergence_file_path, divergence_contigs)
         # Display generated fasta normally
         super().process_file(divergence_file_path, output_dir, output_name)
-
-    def collect_1000_oligs(self, ref_fasta):
-        ref_contigs = read_contigs(ref_fasta)
-        seq = ref_contigs[0].seq
-        oligs = defaultdict(lambda: 0)
-        for i in numpy.random.randint(0, len(seq), 200000):
-            x = seq[ i : i + self.base_width]
-            if '-' not in x:
-                oligs[x] += 1  # increase count
-        print("Found Oligs: ", len(oligs))
-        threshold = 4
-        candidates = [x for x in oligs if oligs[x] >= threshold]
-        print(len(candidates), "Qualify for Threshold of", threshold, )
-        self.target_oligs = list(candidates)
