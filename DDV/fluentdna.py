@@ -493,7 +493,7 @@ def main():
         args.layout = "NONE"
 
     if not args.chromosomes and args.chain_file and args.layout != 'unique':
-        args.chromosomes = ['chr21']
+        args.chromosomes = 'chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY'.split()
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore
@@ -509,7 +509,7 @@ def main():
             args.output_name = os.path.basename(os.path.splitext(either_name)[0])
     if args.output_name:
         args.output_name = args.output_name.strip()
-
+    hold_console_for_windows
     ddv(args)
 
 
