@@ -72,7 +72,7 @@ class ChainParser(object):
             TranslocationMark('T', '-', 'syntenic', hex_to_rgb('#FFFFFF')),  #
             TranslocationMark('A', 'J', 'inversion', hex_to_rgb('#E5F3FF')),  #  blue
             TranslocationMark('C', 'B', 'intrachromosomal', hex_to_rgb('#EAFFE5')),  #  green
-            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFE7E5')),  #  red
+            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFEEED')),  #  red
             TranslocationMark('C', 'Z', 'duplicated', hex_to_rgb('#F8E5FF')),  #  purple
             TranslocationMark('N', 'U', 'lost_duplicate', hex_to_rgb('#FFF3E5'))]  #  orange
 
@@ -97,12 +97,13 @@ class ChainParser(object):
                 success = self.switch_sequences(chain.qName, chain.qStrand)
                 if not success:
                     print("Fasta source for contig", chain.qName,
-                          "not found.  No matching sequence will be displayed!", file=sys.stderr)
-                    return  # skip this pair since it can't be displayed
-            if not self.trial_run and self.query_sequence and self.ref_sequence:  # include unaligned ends
+                          "not found.  No matching sequence will be displayed!")
+                    #return  # skip this pair since it can't be displayed
+            if not self.trial_run and self.ref_sequence:  # include unaligned ends
                 ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
                 query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
-                self.alignment.append(AlignedSpans(ref_end, query_end, len(self.ref_sequence) - ref_pointer,
+                self.alignment.append(AlignedSpans(ref_end, query_end,
+                                                   len(self.ref_sequence) - ref_pointer,
                                                    0))  # len(self.query_sequence) - query_pointer))
                 #Not including the unaligned end of query chromosome because it might not be related at all
 
@@ -462,12 +463,14 @@ class ChainParser(object):
 
         return query_uniq_array, ref_uniq_array
 
-    def create_alignment_from_relevant_chains(self, ref_chr, relevant_chains=None):
+
+    def create_alignment_from_relevant_chains(self, ref_chr):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
         # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
-        if relevant_chains is None:
-            relevant_chains = [chain for chain in self.chain_list if match(chain.tName, ref_chr)]
+        relevant_chains = [chain for chain in self.chain_list if match(chain.tName, ref_chr)]
+        if not relevant_chains:
+            raise ValueError("Unable to find any chain matches for %s" % ref_chr)
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None

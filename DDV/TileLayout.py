@@ -82,31 +82,21 @@ class TileLayout(object):
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
-        self.activate_high_contrast_colors()
-        if self.low_contrast:
-            self.activate_natural_colors()
-
-        # self.palette['T'] = (173, 20, 25)  # Red
-        # self.palette['A'] = (219, 113, 74)  # Orange
-        # self.palette['G'] = (77, 205, 74)  # Green
-        # self.palette['C'] = (55, 113, 184)  # Blue
         self.palette['N'] = (61, 61, 61)  # charcoal grey
         self.palette[gap_char] = (247, 247, 247)  # almost white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
+
+        self.activate_high_contrast_colors()
+        if self.low_contrast:
+            self.activate_natural_colors()
 
         # Used in translocations, not amino acids:  B J O U Z
         self.palette['-'] = self.palette[gap_char]
         self.palette['J'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
         self.palette['B'] = hex_to_rgb('#FFF0EF')  #EAFFE5 green
-        self.palette['O'] = hex_to_rgb('#FFEBEA')  #FFE7E5 red
+        self.palette['O'] = hex_to_rgb('#FFEEED')  #FFE7E5 red
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
-
-
-        # self.palette['T'] = (55, 126, 184)  # light blue, pyrimidines are light colors
-        # self.palette['A'] = (77, 175, 74)  # A/T is blue
-        # self.palette['G'] = (173, 20, 25)  # G/C is green, purines are dark colors
-        # self.palette['C'] = (152, 78, 163)  # light green
 
 
         # noinspection PyListCreation

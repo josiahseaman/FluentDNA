@@ -58,7 +58,7 @@ def chain_file_to_list(chain_name):
                 new_chain.add_entry(line)
     if new_chain is not None:
         all_chains.append(new_chain)
-    # all_chains.sort(key=lambda chain: -chain.score)  # biggest score first
+    all_chains.sort(key=lambda chain: -chain.score)  # biggest score first
     return all_chains
 
 
@@ -78,4 +78,5 @@ def match(target, current):
     """Returns true if current satisfies the target requirements"""
     if target is None:
         return True
-    return target.upper() == current.upper()
+    scrubbed = current.upper().replace(';', '').replace('=', '')
+    return target.upper() == current.upper() or target.upper() == scrubbed
