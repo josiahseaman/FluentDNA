@@ -105,7 +105,7 @@ class MultipleAlignmentLayout(TransposonLayout):
     def draw_nucleotides(self):
         for contig in self.contigs:
             assert contig.consensus_width, \
-                "You must set the consensus_width in order to use this layout"
+                "Error while reading: %s\n No consensus_width was set." % contig.name
         if self.sort_contigs:
             self.contigs.sort(key=lambda x: -x.height)
             self.layout_based_on_repeat_size(self.contigs[0].consensus_width,
