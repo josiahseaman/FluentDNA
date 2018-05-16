@@ -103,9 +103,10 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def draw_nucleotides(self):
-        for contig in self.contigs:
-            assert contig.consensus_width, \
-                "Error while reading: %s\n No consensus_width was set." % contig.name
+        bad_contigs = [c for c in self.contigs if not c.consensus_width]
+        for contig in bad_contigs:
+            print("Error while reading: %s\n Skipping the file." % contig.name)
+            self.contigs.remove(contig)
         if self.sort_contigs:
             self.contigs.sort(key=lambda x: -x.height)
             self.layout_based_on_repeat_size(self.contigs[0].consensus_width,
