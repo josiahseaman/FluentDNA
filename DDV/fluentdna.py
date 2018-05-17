@@ -50,6 +50,7 @@ from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, bas
     hold_console_for_windows
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
+from DDV.Ideogram import Ideogram
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -151,7 +152,7 @@ def ddv(args):
         done(args, output_dir)
 
     # ==========TODO: separate views that support batches of chromosomes============= #
-    if args.layout == 'transposon':
+    elif args.layout == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
         # if len(args.chromosomes) != 1:
@@ -160,7 +161,7 @@ def ddv(args):
         print("Done with Transposons")
         done(args, output_dir)
 
-    if args.layout == 'alignment':
+    elif args.layout == 'alignment':
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = MultipleAlignmentLayout(sort_contigs=args.sort_contigs)
         layout.process_all_alignments(args.fasta,
@@ -179,7 +180,7 @@ def ddv(args):
         print("Done with Alignments")
         done(args, output_dir)
 
-    if args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
+    elif args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
             # TODO: allow batch of tiling layout by chromosome
             # TODO: support drag and drop
@@ -233,6 +234,20 @@ def ddv(args):
         #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
 
+    elif args.layout == 'ideogram':
+        assert args.radix, "You must provide a --radix argument for Ideograms."
+        radix_settings = eval(args.radix)
+        if len(radix_settings) == 4 and \
+            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
+            type(radix_settings[2]) == type(radix_settings[3]) == type(1):
+            output_dir = make_output_dir_with_suffix(base_path, '')
+            layout = Ideogram(radix_settings, low_contrast=args.low_contrast)
+            create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, layout)
+        else:
+            print("Invalid radix settings.  Follow the example.")
+        done(args, output_dir)
+
+
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
@@ -267,8 +282,9 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     final_output_location = layout.final_output_location
     del layout
     try:
-        for extra_fasta in fastas:
-            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
+        if not args.no_webpage:
+            for fa in fastas:
+                shutil.copy(fa, os.path.join(output_dir, os.path.basename(fa)))
     except shutil.Error:
         pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
     print("Done creating Large Image and HTML.")
@@ -289,7 +305,8 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
                             low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name)
     try:
-        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
+        if not args.no_webpage:
+            shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     except shutil.SameFileError:
         pass  # not a problem
     finish_webpage(args, layout, output_dir, output_name)
@@ -368,7 +385,7 @@ def main():
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
                         choices=["tiled", "parallel", "alignment", "annotated",
-                                 "unique", "transposon", "original" ],
+                                 "unique", "transposon", "ideogram", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
@@ -438,6 +455,12 @@ def main():
                         help="Path to already computed big image to process with DeepZoom. "
                              "No layout will be performed if an image is passed in.",
                         dest="image")
+    parser.add_argument("-rx", "--radix",
+                        type=str,
+                        help="String that is a python literal for the radix settings. "
+                             "x and y radices, and scale\n"
+                             "Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'",
+                        dest="radix")
     parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
@@ -459,6 +482,8 @@ def main():
     if not args.layout:
         if args.ref_annotation and args.fasta:
             args.layout = "annotated"
+        elif args.radix:
+            args.layout = 'ideogram'
         # elif args.ref_annotation:
         #     args.layout = "annotation_only"
 

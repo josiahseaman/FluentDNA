@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Plot a DNA sequence along a murray space filling curve.
 
 This FluentDNA Python class is based on Yan Wong's code (unpublished) which is in turn
@@ -20,11 +21,12 @@ import numpy as np
 from functools import reduce
 
 class Ideogram(TileLayout):
-    def __init__(self, x_radices, y_radices, x_scale=1, y_scale=1):
+    def __init__(self, radix_settings, **kwargs):
+        x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
         self.x_radices = x_radices
         self.y_radices = y_radices
         self.x_scale, self.y_scale = x_scale, y_scale
-        super(Ideogram, self).__init__()
+        super(Ideogram, self).__init__(**kwargs)
 
 
     def draw_nucleotides(self):
@@ -135,10 +137,10 @@ class Ideogram(TileLayout):
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
         nucleotide_width = reduce(int.__mul__, self.x_radices)
-        y_body = reduce(int.__mul__, self.y_radices[:-1])
+        padding_remainder = 12
+        y_body = reduce(int.__mul__, self.y_radices[:-1]) + padding_remainder
         n_coils = np.ceil(image_length / nucleotide_width )
-        padding_remainder = 1
-        y_needed = int(np.ceil(n_coils / y_body)) + padding_remainder
+        y_needed = int(np.ceil(n_coils / y_body))
         if y_needed % 2 == 0:  # needs to be odd
             y_needed += 1
         if self.y_radices[-1] > y_needed:  # taller than it needs to be
@@ -158,6 +160,12 @@ class Ideogram(TileLayout):
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
+    def levels_json(self):
+        return '[]'  # There's no reasonable way to encode mouse position in rectangles
+    def contig_json(self):
+        return '[]'  # There's no reasonable way to encode mouse position in rectangles
+
+
 def increment(digits, radices, place):
     """Manually counting a number where each digit is in a different based determined
     by the corresponding radix number."""
@@ -169,18 +177,25 @@ def increment(digits, radices, place):
         return increment(digits,radices,place + 1)
 
 
+
 if __name__ == "__main__":
     # layout = Ideogram([3,3,3,63], [5,5,3,3,21])
     # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-padding2')
 
     # layout = Ideogram([3,3,3,63], [5,5,3,3,21], 2, 2)
     # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
-
-    layout = Ideogram([5,5,5,5,11],  # thick, local
-                      [5,5,5,5,5 ,53], 1, 1)
+    # layout = Ideogram(([5,5,5,5,11],  # thick, local
+    #                    [5,5,5,5,5 ,53], 1, 1))
     # layout = Ideogram([3,3,3,3,3,27],  # thin layout
     #                   [3,3,3,3,3,3 ,53], 1, 1)
-    input = r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr12.fa"  #sys.argv[1]  #
+
+    radix_settings = eval(sys.argv[2])
+    assert len(radix_settings) == 4 and \
+            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
+            type(radix_settings[2]) == type(radix_settings[3]) == type(1), \
+        "Wrong types: Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'"
+    layout = Ideogram(radix_settings)
+    input = sys.argv[1]  #r"D:\Genomes\Human\hg38_chr1.fa"  #
     layout.process_file(input,
                         'www-data/dnadata/Ideograms/5,5,5,5,11/',
                         os.path.splitext(input.split('_')[-1])[0])
