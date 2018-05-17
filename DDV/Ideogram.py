@@ -10,8 +10,9 @@ than 3:5 = 0.6) see https://arxiv.org/pdf/0806.4787.pdf
 
 try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
+import sys
 
-
+from DDV.DDVUtils import beep
 from DDV.TileLayout import TileLayout, hex_to_rgb
 from PIL import Image, ImageDraw
 import os
@@ -74,6 +75,9 @@ class Ideogram(TileLayout):
                 self.draw_pixel(next(seq_iter), x, y)
             except StopIteration:
                 break  # reached end of sequence
+            except IndexError:
+                print("Ran out of room at (%i,%i)" % (x,y))
+                break
 
     def hacked_padding(self, curr_pos, max_x, odd, place):
         if place % 2 == 0:  # this is an y increments
@@ -132,7 +136,9 @@ class Ideogram(TileLayout):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
         nucleotide_width = reduce(int.__mul__, self.x_radices)
         y_body = reduce(int.__mul__, self.y_radices[:-1])
-        y_needed = int(np.ceil(image_length / nucleotide_width / y_body))
+        n_coils = np.ceil(image_length / nucleotide_width )
+        padding_remainder = 1
+        y_needed = int(np.ceil(n_coils / y_body)) + padding_remainder
         if y_needed % 2 == 0:  # needs to be odd
             y_needed += 1
         if self.y_radices[-1] > y_needed:  # taller than it needs to be
@@ -170,14 +176,13 @@ if __name__ == "__main__":
     # layout = Ideogram([3,3,3,63], [5,5,3,3,21], 2, 2)
     # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
 
-    # layout = Ideogram([5,5,5,5,11],  # thick, local
-    #                   [5,5,5,5,5 ,53], 1, 1)
-    layout = Ideogram([3,3,3,3,3,27],  # thin layout
-                      [3,3,3,3,3,3 ,53], 1, 1)
-    layout.process_file(r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr1.fa",
-                        'www-data/dnadata/Ideograms', 'chr1-padd-3,3,3,3,3,27')
+    layout = Ideogram([5,5,5,5,11],  # thick, local
+                      [5,5,5,5,5 ,53], 1, 1)
+    # layout = Ideogram([3,3,3,3,3,27],  # thin layout
+    #                   [3,3,3,3,3,3 ,53], 1, 1)
+    input = r"D:\Genomes\Human\Animalia_Mammalia_Homo_Sapiens_GRCH38_chr12.fa"  #sys.argv[1]  #
+    layout.process_file(input,
+                        'www-data/dnadata/Ideograms/5,5,5,5,11/',
+                        os.path.splitext(input.split('_')[-1])[0])
 
-    import winsound
-    duration = 1000  # millisecond
-    freq = 440  # Hz
-    winsound.Beep(freq, duration)
+    beep(200)
