@@ -267,8 +267,9 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     final_output_location = layout.final_output_location
     del layout
     try:
-        for extra_fasta in fastas:
-            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
+        if not args.no_webpage:
+            for extra_fasta in fastas:
+                shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
     except shutil.Error:
         pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
     print("Done creating Large Image and HTML.")
@@ -289,7 +290,8 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
                             low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name)
     try:
-        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
+        if not args.no_webpage:
+          shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
     except shutil.SameFileError:
         pass  # not a problem
     finish_webpage(args, layout, output_dir, output_name)
