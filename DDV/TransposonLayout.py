@@ -138,24 +138,26 @@ class TransposonLayout(TileLayout):
             seq_length = len(contig.seq)
             line_width = contig.consensus_width
             for cx in range(0, seq_length, line_width):
-                x, y = self.position_on_screen(contig_progress)
-                if x + contig.consensus_width + 1 >= self.image.width:
-                    contig_progress = 0  # reset to beginning of line
-                    self.skip_to_next_mega_row(contig)
+                try:
                     x, y = self.position_on_screen(contig_progress)
-                if y + self.levels[1].modulo >= self.image.height:
-                    print("Ran into bottom of image at", contig.name, x,y)
-                    return contig  # can't fit anything more
-                if y == self.origin[1]:  # first line in a column
-                    self.draw_repeat_title(contig, x, y)
+                    if x + contig.consensus_width + 1 >= self.image.width:
+                        contig_progress = 0  # reset to beginning of line
+                        self.skip_to_next_mega_row(contig)
+                        x, y = self.position_on_screen(contig_progress)
+                    if y + self.levels[1].modulo >= self.image.height:
+                        print("Ran into bottom of image at", contig.name, x,y)
+                        return contig  # can't fit anything more
+                    if y == self.origin[1]:  # first line in a column
+                        self.draw_repeat_title(contig, x, y)
 
-                remaining = min(line_width, seq_length - cx)
-                contig_progress += remaining
-                for i in range(remaining):
-                    nuc = contig.seq[cx + i]
-                    # if nuc != gap_char:
-                    self.draw_pixel(nuc, x + i, y)
-
+                    remaining = min(line_width, seq_length - cx)
+                    contig_progress += remaining
+                    for i in range(remaining):
+                        nuc = contig.seq[cx + i]
+                        # if nuc != gap_char:
+                        self.draw_pixel(nuc, x + i, y)
+                except IndexError as e:
+                    print("(%i, %i)" % (x,y), "is off the canvas")
             print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
             columns_consumed = int(math.ceil(contig_progress / self.levels[2].chunk_size))
             self.origin[0] += columns_consumed * self.levels[2].thickness

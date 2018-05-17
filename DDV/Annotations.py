@@ -31,8 +31,8 @@ class GFF(object):
             if line.startswith("#"):
                 if "gff-version" in line:
                     gff_version = line.split(' ')[1]
-                    # if gff_version != 2:
-                    #     raise ValueError("GFF version %s is not currently supported!" % gff_version)
+                    if int(gff_version) != 2:
+                        print("WARNING: Expecting GFF Version 2, not  %s!" % gff_version)
                 elif "genome-build" in line:
                     specimen = line.split(' ')[1]
                 elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
@@ -136,7 +136,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
     if features is None:
         features = {'CDS':FeatureRep('G', 1),  # 1 priority is the most important
                     'exon':FeatureRep('T', 2),
-                    'gene':FeatureRep('C', 3)}
+                    'gene':FeatureRep('C', 3),
+                    'transcript':FeatureRep('A', 4)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename

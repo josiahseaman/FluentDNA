@@ -12,7 +12,7 @@ from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta, read_con
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict
+from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict, read_contigs_to_dict
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
@@ -62,7 +62,9 @@ class ChainParser(object):
         self.gapped = '_gapped'
         self.stats = DefaultOrderedDict(lambda: 0)
 
-        self.read_query_contigs(self.query_source)
+        if self.query_source:
+            self.query_contigs = read_contigs_to_dict(self.query_source)
+        self.ref_contigs = read_contigs_to_dict(self.ref_source)
         self.chain_list = chain_file_to_list(chain_name)
 
         TranslocationMark = namedtuple('TranslocationMark', ['char', 'fill', 'legend', 'color'])
@@ -70,7 +72,7 @@ class ChainParser(object):
             TranslocationMark('T', '-', 'syntenic', hex_to_rgb('#FFFFFF')),  #
             TranslocationMark('A', 'J', 'inversion', hex_to_rgb('#E5F3FF')),  #  blue
             TranslocationMark('C', 'B', 'intrachromosomal', hex_to_rgb('#EAFFE5')),  #  green
-            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFE7E5')),  #  red
+            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFEEED')),  #  red
             TranslocationMark('C', 'Z', 'duplicated', hex_to_rgb('#F8E5FF')),  #  purple
             TranslocationMark('N', 'U', 'lost_duplicate', hex_to_rgb('#FFF3E5'))]  #  orange
 
@@ -81,14 +83,6 @@ class ChainParser(object):
             for key in self.stats:
                 stats.write('%s\t%i\n' % (key, self.stats[key]))
             stats.write('\n====================================\n')
-
-
-    def read_query_contigs(self, input_file_path):
-        print("Reading contigs... ", input_file_path)
-        start_time = datetime.now()
-        contig_list = read_contigs(input_file_path)
-        self.query_contigs = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
-        print("Read %i FASTA Contigs in:" % len(self.query_contigs), datetime.now() - start_time)
 
 
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
@@ -103,14 +97,15 @@ class ChainParser(object):
                 success = self.switch_sequences(chain.qName, chain.qStrand)
                 if not success:
                     print("Fasta source for contig", chain.qName,
-                          "not found.  No matching sequence will be displayed!", file=sys.stderr)
-                    return  # skip this pair since it can't be displayed
-            if not self.trial_run and self.query_sequence and self.ref_sequence:  # include unaligned ends
+                          "not found.  No matching sequence will be displayed!")
+                    #return  # skip this pair since it can't be displayed
+            if not self.trial_run and self.ref_sequence:  # include unaligned ends
                 ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
                 query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
                 self.alignment.append(AlignedSpans(ref_end, query_end,
-                                                   len(self.query_sequence) - query_pointer,
-                                                   len(self.ref_sequence) - ref_pointer),)
+                                                   len(self.ref_sequence) - ref_pointer,
+                                                   0))  # len(self.query_sequence) - query_pointer))
+                #Not including the unaligned end of query chromosome because it might not be related at all
 
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
@@ -177,9 +172,10 @@ class ChainParser(object):
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
-            new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_ref, gap_query, is_master_alignment, first_in_chain)
+            new_alignment = AlignedSpans(aligned_ref, aligned_query, gap_query, gap_ref, is_master_alignment,
+                                         first_in_chain)
 
-            if is_master_alignment or self.separate_translocations:
+            if is_master_alignment or self.separate_translocations or self.aligned_only:
                 self.alignment.append(new_alignment)
             else:
                 # Remove old unaligned query location
@@ -230,7 +226,8 @@ class ChainParser(object):
         for pair in alignment:
             if previous_chr != (pair.query.contig_name, pair.query.strand):
                 # pair.ref.contig_name could be None
-                if not self.switch_sequences(pair.query.contig_name, pair.query.strand, translocation_markup):
+                if not self.switch_sequences(pair.query.contig_name, pair.query.strand, translocation_markup,
+                                             pair.is_master_chain):
                     continue  # skip this pair since it can't be displayed
             previous_chr = (pair.query.contig_name, pair.query.strand)
 
@@ -272,7 +269,7 @@ class ChainParser(object):
             return self.query_seq_gapped
 
 
-    def switch_sequences(self, query_name, query_strand, translocation_markup=False):
+    def switch_sequences(self, query_name, query_strand, translocation_markup=False, is_master_chain=False):
         """Switch self.query_sequence to the current topic of alignment.
         Returns True if sucessful, False if the sequence is unavailable."""
 
@@ -280,7 +277,7 @@ class ChainParser(object):
         type_to_char = {x.legend: x.char for x in self.translocation_types}
 
         if translocation_markup:  # Replace actual sequence with fake generators
-            if query_name == self.ref_chr_name.lower():
+            if query_name == self.ref_chr_name.lower() or is_master_chain:
                 align_type = 'inversion' if query_strand == '-' else 'syntenic'
             else:  # differently named scaffold, doesn't matter which strand
                 align_type = 'interchromosomal'
@@ -319,10 +316,9 @@ class ChainParser(object):
         if chain.tEnd - chain.tStart > 100 * 1000:
             print('>>>>', chain)
         if is_master_alignment and not self.trial_run:  # include the unaligned beginning of the sequence
-            self.alignment.append(AlignedSpans(Span(0, 0, chain.tName, chain.tStrand),
-                                               Span(0, 0, chain.qName, chain.qStrand),
-                                               query_pointer,
-                                               ref_pointer))
+            self.alignment.append(
+                AlignedSpans(Span(0, 0, chain.tName, chain.tStrand), Span(0, 0, chain.qName, chain.qStrand),
+                             ref_pointer, 0))
         return ref_pointer, query_pointer
 
 
@@ -467,12 +463,14 @@ class ChainParser(object):
 
         return query_uniq_array, ref_uniq_array
 
-    def create_alignment_from_relevant_chains(self, ref_chr, relevant_chains=None):
+
+    def create_alignment_from_relevant_chains(self, ref_chr):
         """In panTro4ToHg38.over.chain there are ZERO chains that have a negative strand on the reference 'tStrand'.
         I think it's a rule that you always flip the query strand instead."""
         # This assumes the chains have been sorted by score, so the highest score is the matching query_chr
-        if relevant_chains is None:
-            relevant_chains = [chain for chain in self.chain_list if match(chain.tName, ref_chr)]
+        relevant_chains = [chain for chain in self.chain_list if match(chain.tName, ref_chr)]
+        if not relevant_chains:
+            raise ValueError("Unable to find any chain matches for %s" % ref_chr)
         previous = None
         for chain in relevant_chains:
             is_master_alignment = previous is None
@@ -493,7 +491,6 @@ class ChainParser(object):
                  'query': '%s_to_%s_%s.fa' % (q_name, ref_name, ref_chr)
                  }  # for collecting all the files names in a modifiable way
         # Reset values from previous iteration
-        self.ref_sequence = pluck_contig(ref_chr, self.ref_source)  # only need the reference chromosome read, skip the others
         self.ref_chr_name = ref_chr
         self.query_sequence = ''
         self.query_seq_gapped = editable_str('')
@@ -501,6 +498,11 @@ class ChainParser(object):
         self.output_fastas = []
         self.alignment = blist.blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)
+        if ref_chr in self.ref_contigs:
+            self.ref_sequence = self.ref_contigs[ref_chr]  # only need the reference chromosome read, skip the others
+        else:
+            self.ref_sequence = pluck_contig(ref_chr, self.ref_source)
+        # self.chain_list = chain_file_to_list(chain_name)
 
         return names, ref_chr
 

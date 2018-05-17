@@ -13,8 +13,9 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
-
-
+#############################################################################
+# IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
+#############################################################################
 print("Setting up Python...")
 
 if getattr(sys, 'frozen', False):
@@ -55,7 +56,7 @@ from DDV.AnnotatedAlignment import AnnotatedAlignment
 from DDV.TileLayout import TileLayout
 from DDV.TransposonLayout import TransposonLayout
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
-
+from DNASkittleUtils.Contigs import write_contigs_to_file, read_contigs
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
@@ -227,8 +228,9 @@ def ddv(args):
         batches = unique_chain_parser.parse_chain(args.chromosomes)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
-        for batch in batches:
-            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
+        combine_files(batches, args, args.output_name)
+        # for batch in batches:
+        #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
 
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
@@ -260,7 +262,7 @@ def ddv(args):
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
-    layout = ParallelLayout(n_genomes=n_genomes)
+    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(output_dir, output_name, fastas)
     final_output_location = layout.final_output_location
     del layout
@@ -291,6 +293,15 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     except shutil.SameFileError:
         pass  # not a problem
     finish_webpage(args, layout, output_dir, output_name)
+
+
+
+def combine_files(batches, args, output_name):
+    from itertools import chain
+    contigs = list(chain(*[read_contigs(batch.fastas[0]) for batch in batches]))
+    fasta_output = output_name + '.fa'
+    write_contigs_to_file(fasta_output, contigs)
+    create_tile_layout_viz_from_fasta(args, fasta_output, output_name, output_name)
 
 
 def finish_webpage(args, layout, output_dir, output_name):
@@ -356,7 +367,7 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated"
+                        choices=["tiled", "parallel", "alignment", "annotated",
                                  "unique", "transposon", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
@@ -472,7 +483,7 @@ def main():
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout not in ["parallel", "unique"]:
         parser.error("The 'chainfile' argument is only used when doing a Parallel or Unique layout!")
-    if args.chain_file and len(args.extra_fastas) > 1:
+    if args.chain_file and args.extra_fastas and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
     if args.layout == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")

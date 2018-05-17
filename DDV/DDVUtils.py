@@ -5,7 +5,9 @@ import re as regex
 import sys
 import textwrap
 from collections import defaultdict
+from datetime import datetime
 
+from DNASkittleUtils.Contigs import read_contigs
 from PIL import ImageDraw
 
 
@@ -64,6 +66,16 @@ def pretty_contig_name(contig_name, title_width, title_lines):
     else:  # this is the only case that correctly bottom justifies one line titles
         pretty_name = '\n'.join(textwrap.wrap(pretty_name, title_width)[:title_lines])  # approximate width
     return pretty_name
+
+
+
+def read_contigs_to_dict(input_file_path):
+    print("Reading contigs... ", input_file_path)
+    start_time = datetime.now()
+    contig_list = read_contigs(input_file_path)
+    contig_dict = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
+    print("Read %i FASTA Contigs in:" % len(contig_dict), datetime.now() - start_time)
+    return contig_dict
 
 
 def create_deepzoom_stack(input_image, output_dzi):

@@ -18,6 +18,7 @@ class Span(object):
         self.end = end
         self.contig_name = contig_name
         self.strand = strand
+        assert self.strand in '+-'
 
 
     def __lt__(self, other_int):
@@ -76,6 +77,8 @@ class Span(object):
                 return None, self
             if self.size():
                 raise IndexError("Remove_this doesn't overlap self at all %s %s" % (str(remove_this), str(self)))
+            else:  # self has no size, just throw it away
+                return None, None
 
         first = Span(self.begin, remove_this.begin, self.contig_name, self.strand)
         second = Span(remove_this.end, self.end, self.contig_name, self.strand)
@@ -102,7 +105,8 @@ class Span(object):
 
 
 class AlignedSpans(object):
-    def __init__(self, ref_span, query_span, query_tail_size, ref_tail_size, is_master_chain=True, is_first_entry=False, is_hidden=False):
+    def __init__(self, ref_span, query_span, ref_tail_size, query_tail_size,
+                 is_master_chain=True, is_first_entry=False, is_hidden=False):
         """ref_span or query_span can be None to indicate an unaligned area."""
         assert ref_span.end - ref_span.begin == query_span.end - query_span.begin, "The size of the spans should be the same"
         assert query_tail_size >= 0 and ref_tail_size >= 0, "Bad tail sizes %i and %i" % (ref_tail_size, query_tail_size)
@@ -146,24 +150,28 @@ class AlignedSpans(object):
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         my_tail, your_tail = self.ref_unique_span().remove_from_range(new_alignment.ref)
         size = my_tail.size() if my_tail is not None else 0
-        new_me = AlignedSpans(self.ref, self.query, query_tail_size=self.query_tail_size, ref_tail_size=size,
+        new_me = AlignedSpans(self.ref, self.query, ref_tail_size=size, query_tail_size=self.query_tail_size,
                               is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
         your_tail_size = your_tail.size() if your_tail is not None else 0
-        you = AlignedSpans(new_alignment.ref, new_alignment.query,
-                           query_tail_size=new_alignment.query_tail_size,
-                           ref_tail_size=new_alignment.ref_tail_size + your_tail_size,
-                           is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
-        return new_me, you
+        try:
+            you = AlignedSpans(new_alignment.ref, new_alignment.query,
+                               ref_tail_size=new_alignment.ref_tail_size + your_tail_size,
+                               query_tail_size=new_alignment.query_tail_size, is_master_chain=False,
+                               is_first_entry=new_alignment.is_first_entry)
+            return new_me, you
+        except AssertionError as e:
+            print(e)
+            return new_me, None
 
 
     def align_query_unique(self, new_alignment):
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         my_tail, your_tail = self.query_unique_span().remove_from_range(new_alignment.query)
-        new_me = AlignedSpans(self.ref, self.query, query_tail_size=my_tail.size(), ref_tail_size=self.ref_tail_size,
-                              is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
-        you = AlignedSpans(new_alignment.ref, new_alignment.query,
+        new_me = AlignedSpans(self.ref, self.query, ref_tail_size=self.ref_tail_size,
+                              query_tail_size=my_tail.size(), is_master_chain=self.is_master_chain,
+                              is_first_entry=self.is_first_entry)
+        you = AlignedSpans(new_alignment.ref, new_alignment.query, ref_tail_size=new_alignment.ref_tail_size,
                            query_tail_size=new_alignment.query_tail_size + your_tail.size(),
-                           ref_tail_size=new_alignment.ref_tail_size,
                            is_master_chain=False, is_first_entry=new_alignment.is_first_entry)
         return new_me, you
 
@@ -179,20 +187,19 @@ class AlignedSpans(object):
         assert isinstance(new_alignment, AlignedSpans), "This method is meant for AlignedPairs, not Spans"
         if new_alignment.query.begin in self.query_unique_span():
             my_tail, your_tail = self.query_unique_span().remove_from_range(new_alignment.query)
-            new_me = AlignedSpans(self.ref, self.query,
-                                  query_tail_size=my_tail.size(), ref_tail_size=0,
+            new_me = AlignedSpans(self.ref, self.query, ref_tail_size=0, query_tail_size=my_tail.size(),
                                   is_master_chain=self.is_master_chain, is_first_entry=self.is_first_entry)
             progress = my_tail.size()
             you = AlignedSpans(Span(self.ref.end, self.ref.end, self.ref.contig_name, self.ref.strand),
-                               Span(self.query.end + progress, self.query.end + progress, self.query.contig_name, self.query.strand),
-                               query_tail_size=new_alignment.query.size(),
-                               ref_tail_size=0)
+                               Span(self.query.end + progress, self.query.end + progress,
+                                    self.query.contig_name, self.query.strand), ref_tail_size=0,
+                               query_tail_size=new_alignment.query.size())
             you.is_hidden = True  # This will appear as white space in the alignment
             progress += new_alignment.query.size()
-            visible_tail = AlignedSpans(Span(self.ref.end, self.ref.end, self.ref.contig_name, self.ref.strand),
-                                        Span(self.query.end + progress, self.query.end + progress, self.query.contig_name, self.query.strand),
-                                        query_tail_size=your_tail.size(),
-                                        ref_tail_size=self.ref_tail_size)
+            visible_tail = AlignedSpans(
+                Span(self.ref.end, self.ref.end, self.ref.contig_name, self.ref.strand),
+                Span(self.query.end + progress, self.query.end + progress, self.query.contig_name,
+                     self.query.strand), ref_tail_size=self.ref_tail_size, query_tail_size=your_tail.size())
             return new_me, you, visible_tail
         else:
             raise IndexError(str(new_alignment.query) + " not in " + str(self.query_unique_span()))

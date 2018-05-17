@@ -7,7 +7,7 @@ from DNASkittleUtils.DDVUtils import Batch
 from DDV import gap_char
 from DDV.ChainParser import ChainParser
 from DDV.Span import Span
-from DDV.ChainFiles import fetch_all_chains, chain_file_to_list
+from DDV.ChainFiles import fetch_all_chains
 
 
 class UniqueOnlyChainParser(ChainParser):
@@ -17,9 +17,9 @@ class UniqueOnlyChainParser(ChainParser):
         self.uncovered_areas = []  # Absolute coordinates.  highly mutable: better as a blist
 
 
-    def find_zero_coverage_areas(self, ref_chr):
+    def find_zero_coverage_areas(self, ref_chr, combining_genomes=False):
         """Start with whole chromosome, subtract coverage from there"""
-        if not self.uncovered_areas:
+        if not combining_genomes:
             self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
         all_chains = fetch_all_chains(ref_chr, None, None, self.chain_list)
         for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
@@ -81,20 +81,19 @@ class UniqueOnlyChainParser(ChainParser):
         return ref_unique_name
 
 
-    def read_query_contigs(self, fasta_file):
-        pass  # don't read the query contigs, we don't need them
-
-
     def main(self, chromosome_name):# -> Batch:
         fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-        self.find_zero_coverage_areas(ref_chr)  # actual work
+        output_file = os.path.join(self.output_folder, os.path.splitext(fasta_names['ref'])[0] + '_unique.fa')
+        if not os.path.exists(output_file):
+            self.find_zero_coverage_areas(ref_chr)  # actual work
 
-        #Now compound it with a second alignment  # --second_chain=data/Hg38ToGorGor5.over.chain
-        # fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
-        # self.chain_list = chain_file_to_list('data/Hg38ToGorGor5.over.chain')
-        # self.find_zero_coverage_areas(ref_chr)  # self.uncovered_areas is preserved from previous
+            #Now compound it with a second alignment  # --second_chain=data/Hg38ToGorGor5.over.chain
+            # fasta_names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
+            # self.chain_list = chain_file_to_list('data/Hg38ToGorGor5.over.chain')
+            # self.find_zero_coverage_areas(ref_chr,
+            #                          combining_genomes=True)  # self.uncovered_areas is preserved from previous
 
-        fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
+            fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
 
         if True:  #self.trial_run:  # these files are never used in the viz
             del fasta_names['ref']

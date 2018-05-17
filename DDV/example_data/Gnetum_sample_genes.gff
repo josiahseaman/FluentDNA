@@ -1,3 +1,4 @@
+# Downloaded from https://datadryad.org//resource/doi:10.5061/dryad.0vm37
 scaffold830595	.	gene	607185	608811	.	+	.	ID=TnS000830595g08;Name=TnS000830595g08
 scaffold830595	.	mRNA	607185	608811	.	+	.	ID=TnS000830595t08;Name=TnS000830595t08;Parent=TnS000830595g08
 scaffold830595	.	five_prime_UTR	607185	607363	.	+	.	ID=TnS000830595t08.utr5p1;Name=TnS000830595t08.utr5p1;Parent=TnS000830595t08
