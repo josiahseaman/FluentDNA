@@ -2,7 +2,7 @@
 
 block_cipher = None
 
-
+# Icons: https://stackoverflow.com/questions/9946760/add-image-to-spec-file-in-pyinstaller
 a = Analysis(['DDV\\fluentdna.py'],
              pathex=['D:\\josiah\\Projects\\DDV'],
              binaries=[],
@@ -24,7 +24,8 @@ exe = EXE(pyz,
           debug=False,
           strip=False,
           upx=True,
-          console=True )
+          console=True,
+          icon='D:\\josiah\\Projects\\DDV\\favicon.ico')
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
