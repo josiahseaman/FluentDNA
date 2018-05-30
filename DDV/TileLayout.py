@@ -251,6 +251,8 @@ class TileLayout(object):
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
+        print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
+              "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
         self.image = Image.new('RGB', (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
