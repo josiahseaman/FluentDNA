@@ -84,9 +84,9 @@ six (1.10.0)
 /Python365/Scripts/pip install PyInstaller
 cd <your FluentDNA directory>
 /Python365/Scripts/pip install -r Requirements.txt
-PyInstaller fluentdna.mac.spec
+PyInstaller fluentdna.spec
 ```
-You may need to troubleshoot the contents of fluentdna.mac.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
+You may need to troubleshoot the contents of fluentdna.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
 
 ### Linux using cx_freeze:
 This documentation may be out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
