@@ -42,24 +42,54 @@ It was developed by Newline Technical Innovations and can be found at:
 https://github.com/josiahseaman/DDV/tree/python-master
 
 
-# Compile Instructions
-Intended for developers:
+# Compile Instructions for Developers:
+PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run 
+```
+pip install pyinstaller   
+PyInstaller fluentdna.spec
+``` 
+to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
 
-### Windows:
+### Windows with PyInstaller
+* Requires Python 3.6.5, earlier versions are not compatible with pywin32
+    * pypiwin32 is an alternative
+* Earlier mentions of pip and setuptools versions were for cx_freeze.  For PyInstaller, just install the latest
+* blist wouldn't compile because of a C++ dependency
+* Download blist "wheel" from https://www.lfd.uci.edu/~gohlke/pythonlibs/#blist
+* D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
+* `pip install PyInstaller`
+* `PyInstaller fluentdna.spec`
+Troubleshooting: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.  
+`D:\python365\Scripts\pip.exe list`
+altgraph (0.15)
+blist (1.3.6)
+DNASkittleUtils (1.0.10)
+future (0.16.0)
+macholib (1.9)
+natsort (5.1.1)
+pefile (2017.11.5)
+Pillow (5.1.0)
+pip (9.0.3)
+psutil (5.4.5)
+PyInstaller (3.3.1)
+pypiwin32 (223)
+pywin32 (223)
+setuptools (39.0.1)
+six (1.10.0)
 
-  - Install Mercurial so it is properly on your path
-  - Download PyWin32 from: http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win-amd64-py3.4.exe/download
-  - Using the easy_install in your new Virtual Environment (/path/to/adsm_venv/Scripts/easy_install), install PyWin32:
 
-        `easy_install pywin32-219.win-amd64-py3.4.exe`
+### Mac with PyInstaller
+* Start by [downloading Python 3.6.5](https://www.python.org/downloads/release/python-365/) and use that as your fresh environment
+```
+/Python365/Scripts/pip install PyInstaller
+cd <your FluentDNA directory>
+/Python365/Scripts/pip install -r Requirements.txt
+PyInstaller fluentdna.mac.spec
+```
+You may need to troubleshoot the contents of fluentdna.mac.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
 
-  - Using /path/to/adsm_venv/Scripts/pip install cx_freeze:
-
-        `pip install hg+https://bitbucket.org/BryanHurst/cx_freeze`
-
-    > Note: this currently does not work; instead, install cx_freeze 4.3.4 using pip, then manually apply [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/eba6cb644d390f69f07adbf9fdcead71ec0feebf?at=default) and [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/22d73fe6386d92834339bdea30b3786a3543b2de?at=default) to the cx_freeze files that pip installed in your site-packages folder.
-
-### Linux:
+### Linux using cx_freeze:
+This documentation may be out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
 
   - Requires ldd and objdump installed (probably already on your system)
   - Install Mercurial `sudo apt-get install mercurial`
