@@ -43,7 +43,12 @@ https://github.com/josiahseaman/DDV/tree/python-master
 
 
 # Compile Instructions for Developers:
-PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run `PyInstaller fluentdna.spec` to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
+PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run 
+```
+pip install pyinstaller   
+PyInstaller fluentdna.spec
+``` 
+to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
 
 ### Windows with PyInstaller
 * Requires Python 3.6.5, earlier versions are not compatible with pywin32
@@ -54,7 +59,34 @@ PyInstaller is our platform for generating binary files for each release.  This 
 * D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
 * `pip install PyInstaller`
 * `PyInstaller fluentdna.spec`
+Troubleshooting: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.  
+`D:\python365\Scripts\pip.exe list`
+altgraph (0.15)
+blist (1.3.6)
+DNASkittleUtils (1.0.10)
+future (0.16.0)
+macholib (1.9)
+natsort (5.1.1)
+pefile (2017.11.5)
+Pillow (5.1.0)
+pip (9.0.3)
+psutil (5.4.5)
+PyInstaller (3.3.1)
+pypiwin32 (223)
+pywin32 (223)
+setuptools (39.0.1)
+six (1.10.0)
 
+
+### Mac with PyInstaller
+* Start by [downloading Python 3.6.5](https://www.python.org/downloads/release/python-365/) and use that as your fresh environment
+```
+/Python365/Scripts/pip install PyInstaller
+cd <your FluentDNA directory>
+/Python365/Scripts/pip install -r Requirements.txt
+PyInstaller fluentdna.mac.spec
+```
+You may need to troubleshoot the contents of fluentdna.mac.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
 
 ### Linux:
 
