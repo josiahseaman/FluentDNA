@@ -18,13 +18,7 @@ The following software is included in the distribution under its own respective 
 
 OpenSeadragon <http://openseadragon.codeplex.com > 
 
-DeepZoomTools.dll "Distributable Code" from Deep Zoom Composer <http://www.microsoft.com/en-ca/download/details.aspx?id=24819 > 
-
-php software freely available from <http://www.php.net/software/ > 
-
-Civetweb <https://github.com/sunsetbrew/civetweb > 
-
-jQuery <http://jquery.com > 
+jQuery <http://jquery.com >
 
 BioJS <https://github.com/biojs/biojs>
 
