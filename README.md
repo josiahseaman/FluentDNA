@@ -42,22 +42,19 @@ It was developed by Newline Technical Innovations and can be found at:
 https://github.com/josiahseaman/DDV/tree/python-master
 
 
-# Compile Instructions
-Intended for developers:
+# Compile Instructions for Developers:
+PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run `PyInstaller fluentdna.spec` to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
 
-### Windows:
+### Windows with PyInstaller
+* Requires Python 3.6.5, earlier versions are not compatible with pywin32
+    * pypiwin32 is an alternative
+* Earlier mentions of pip and setuptools versions were for cx_freeze.  For PyInstaller, just install the latest
+* blist wouldn't compile because of a C++ dependency
+* Download blist "wheel" from https://www.lfd.uci.edu/~gohlke/pythonlibs/#blist
+* D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
+* `pip install PyInstaller`
+* `PyInstaller fluentdna.spec`
 
-  - Install Mercurial so it is properly on your path
-  - Download PyWin32 from: http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win-amd64-py3.4.exe/download
-  - Using the easy_install in your new Virtual Environment (/path/to/adsm_venv/Scripts/easy_install), install PyWin32:
-
-        `easy_install pywin32-219.win-amd64-py3.4.exe`
-
-  - Using /path/to/adsm_venv/Scripts/pip install cx_freeze:
-
-        `pip install hg+https://bitbucket.org/BryanHurst/cx_freeze`
-
-    > Note: this currently does not work; instead, install cx_freeze 4.3.4 using pip, then manually apply [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/eba6cb644d390f69f07adbf9fdcead71ec0feebf?at=default) and [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/22d73fe6386d92834339bdea30b3786a3543b2de?at=default) to the cx_freeze files that pip installed in your site-packages folder.
 
 ### Linux:
 
