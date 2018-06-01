@@ -88,7 +88,8 @@ PyInstaller fluentdna.mac.spec
 ```
 You may need to troubleshoot the contents of fluentdna.mac.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
 
-### Linux:
+### Linux using cx_freeze:
+This documentation may be out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
 
   - Requires ldd and objdump installed (probably already on your system)
   - Install Mercurial `sudo apt-get install mercurial`
