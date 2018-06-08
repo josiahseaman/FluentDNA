@@ -405,7 +405,7 @@ def main():
     parser.add_argument("-ch", "--chromosomes",
                         nargs='+',
                         type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
+                        help="Chromosome to parse from Chain File. REQUIRED for alignments.",
                         dest="chromosomes")
     parser.add_argument("-t", "--separate_translocations",
                         action='store_true',
@@ -499,7 +499,8 @@ def main():
         args.layout = "NONE"
 
     if not args.chromosomes and args.chain_file and args.layout != 'unique':
-        args.chromosomes = ['chr21']
+        print("Error: you must list the name of a scaffold you wish to display for an alignment.\n"
+              "Example: --chromosomes chrM chrX --chain_file=input.chain.liftover", file=sys.stderr)
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore
