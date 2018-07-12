@@ -211,8 +211,8 @@ class TileLayout(object):
         seq_start = 0  # pointer in text
         multipart_file = len(self.contigs) > 1
 
-        if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
-            self.enable_fat_headers()  # first contig is huge and there's more contigs coming
+        # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
+        #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True

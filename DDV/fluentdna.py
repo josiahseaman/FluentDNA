@@ -47,7 +47,7 @@ import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
-    hold_console_for_windows
+    hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
 from DDV.ChainParser import ChainParser
@@ -119,6 +119,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
+    beep()
     hold_console_for_windows()
     sys.exit(0)
 

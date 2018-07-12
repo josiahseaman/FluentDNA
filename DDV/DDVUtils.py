@@ -152,6 +152,16 @@ def hold_console_for_windows():
     except BaseException:
         pass  # probably not windows, so it doesn't matter
 
+
+def beep(duration=300):
+    try:
+        import winsound
+        freq = 440  # Hz
+        winsound.Beep(freq, duration)
+    except ImportError:
+        pass  # not a windows machine
+
+
 def viridis_palette():
     """Hard coded copy of Matplotlib's default color palette.  It is
     perceptually uniform and color blind safe."""
