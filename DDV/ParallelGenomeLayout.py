@@ -20,27 +20,29 @@ class ParallelLayout(TileLayout):
         if column_widths is not None:
             assert len(column_widths) == n_genomes, \
                 "Provide the same number of display widths as data sources."
+        if column_widths is None:  # just copies the TileLayout levels several times
+            self.each_layout = [self.levels] * n_genomes  # one layout per genome (or data source)
+        else:
+            self.each_layout = []  # one layout per genome (or data source)
+            all_columns_height = self.base_width * 10
+            columns = self.levels[2]
+            cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
+            cluster_width += columns.padding * 2  # double up on padding between super columns
+            column_clusters_per_mega_row = floor(10600 / cluster_width)
 
-        self.each_layout = []  # one layout per genome (or data source)
-        all_columns_height = self.base_width * 10
-        columns = self.levels[2]
-        cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
-        cluster_width += columns.padding * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = floor(10600 / cluster_width)
+            annotation_modulos = [column_widths[0], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+            annotation_step_pad = cluster_width - annotation_modulos[0] + 6
+            annotation_padding = [0, 0, annotation_step_pad, 6 * 3,
+                                  6 * (3 ** 2),  # needs modification?
+                                  6 * (3 ** 3), 6 * (3 ** 4)]
+            self.each_layout.append(level_layout_factory(annotation_modulos, annotation_padding))
 
-        annotation_modulos = [column_widths[0], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
-        annotation_step_pad = cluster_width - annotation_modulos[0] + 6
-        annotation_padding = [0, 0, annotation_step_pad, 6 * 3,
-                              6 * (3 ** 2),  # needs modification?
-                              6 * (3 ** 3), 6 * (3 ** 4)]
-        self.each_layout.append(level_layout_factory(annotation_modulos, annotation_padding))
+            standard_modulos = [column_widths[1], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+            standard_step_pad = cluster_width - standard_modulos[0] + 6
+            standard_padding = [0, 0, standard_step_pad, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
+            self.each_layout.append(level_layout_factory(standard_modulos, standard_padding))
 
-        standard_modulos = [column_widths[1], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
-        standard_step_pad = cluster_width - standard_modulos[0] + 6
-        standard_padding = [0, 0, standard_step_pad, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
-        self.each_layout.append(level_layout_factory(standard_modulos, standard_padding))
-
-        self.levels = self.each_layout[0]
+            self.levels = self.each_layout[0]
 
         # steps inside a column bundle, not exactly the same as bundles steps
         thicknesses = [self.each_layout[i][0].modulo + 6 for i in range(n_genomes)]
@@ -66,7 +68,7 @@ class ParallelLayout(TileLayout):
         print("Initialized Image:", datetime.now() - start_time)
 
         try:
-            # Do inner work for two other files
+            # Do inner work for each file
             for index, filename in enumerate(fasta_files):
                 self.changes_per_genome()
                 if index != 0:
