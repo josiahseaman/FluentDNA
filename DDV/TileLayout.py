@@ -497,6 +497,7 @@ class TileLayout(object):
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""
+            html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
@@ -562,4 +563,8 @@ class TileLayout(object):
         for y in range(column_height):
             coords.extend([(x, y, y * self.levels[0].modulo + x) for x in line])
         return coords
+
+
+    def additional_html_content(self, html_content):
+        return {}  # override in children
 
