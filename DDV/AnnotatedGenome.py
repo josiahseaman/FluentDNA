@@ -100,3 +100,10 @@ class AnnotatedGenomeLayout(ParallelLayout):
 
         print("Done Drawing annotation labels")
 
+    def additional_html_content(self, html_content):
+        return {'legend': html_content['legend'] +
+                """<p><span><strong>Annotation Colors:</strong>
+                <p>Gene = Blue, Exon = Yellow, CDS = Green. Gene components are stacked in a hierarchy: 
+                 CDS in exons, exons in genes. Only the most exclusive category (CDS) is visible. 
+                 Visible blue regions are introns.  Visible yellow (exon, but not CDS) are 3' and 5' UTR.</p></span></p>
+                """}  # override in children
