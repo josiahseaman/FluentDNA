@@ -31,6 +31,21 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
+def level_layout_factory(modulos, padding=None):
+    if padding is None:
+        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+    # noinspection PyListCreation
+    levels = [
+        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
+        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
+    ]
+    for i in range(2, len(modulos)):
+        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
+    # levels.append(LayoutLevel("RowInTile", modulos[3], levels=levels))  # [3]
+    # levels.append(LayoutLevel("TileColumn", modulos[4], levels=levels))  # [4]
+    # levels.append(LayoutLevel("TileRow", modulos[5], levels=levels))  # [5]
+    # levels.append(LayoutLevel("PageColumn", modulos[6], levels=levels))  # [6]
+    return levels
 
 
 class TileLayout(object):
@@ -98,22 +113,16 @@ class TileLayout(object):
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
-
-        # noinspection PyListCreation
-        self.levels = [
-            LayoutLevel("XInColumn", self.base_width, 1, 0),  # [0]
-            LayoutLevel("LineInColumn", self.base_width * 10, self.base_width, 0)  # [1]
-        ]
-        self.levels.append(LayoutLevel("ColumnInRow", 100, padding=6, levels=self.levels))  # [2]
-        self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
-        self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
+        padding = [0, 0, 6, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
+        self.levels = level_layout_factory(modulos, padding=padding)
 
         self.tile_label_size = self.levels[3].chunk_size * 2
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
             self.enable_fat_headers()
+
+
 
     def activate_high_contrast_colors(self):
         # Original DDV Colors
