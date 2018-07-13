@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
 from collections import namedtuple, defaultdict
+from itertools import chain
 
 from DNASkittleUtils.Contigs import Contig
 
@@ -136,11 +137,16 @@ def handle_tail(seq_array, scaffold_lengths, sc_index):
 def squish_fasta(scaffolds, annotation_width, base_width):
     print("Squishing annotation by %i / %i" % (base_width, annotation_width))
     squished_versions = []
+    skip_size = base_width // annotation_width
+    remainder = base_width - (skip_size * annotation_width)
+    skips = list(chain([skip_size] * (annotation_width - 1), [skip_size + remainder]))
     for contig in scaffolds:
-        skip_size = base_width // annotation_width
         work = editable_str('')
-        for i in range(0, len(contig.seq), skip_size):
+        i = 0; x = 0
+        while i < len(contig.seq):
             work.append(contig.seq[i])
+            i += skips[x % annotation_width]
+            x += 1
         squished_versions.append(Contig(contig.name, ''.join(work)))
     return squished_versions
 

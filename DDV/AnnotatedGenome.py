@@ -8,6 +8,7 @@ from DDV.ParallelGenomeLayout import ParallelLayout
 
 class AnnotatedGenomeLayout(ParallelLayout):
     def __init__(self, fasta_file, gff_file, annotation_width=None, *args, **kwargs):
+        self.annotation_phase = 0  # Means annotations are first, on the left
         self.annotation_width = annotation_width if annotation_width is not None else 100
         columns = [annotation_width, 100]  # TODO: or base_width
         super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, column_widths=columns, *args, **kwargs)
@@ -16,18 +17,18 @@ class AnnotatedGenomeLayout(ParallelLayout):
         self.annotation = GFF(self.gff_filename)
 
     def render_genome(self, output_folder, output_file_name):
-        annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
+        self.annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
         self.contigs = read_contigs(self.fasta_file)
         chromosomes = [x.name.split()[0] for x in self.contigs]
         lengths = [len(x.seq) for x in self.contigs]
         create_fasta_from_annotation(self.annotation, chromosomes,
                                      scaffold_lengths=lengths,
-                                     output_path=annotation_fasta,
+                                     output_path=self.annotation_fasta,
                                      annotation_width=self.annotation_width,
                                      base_width=self.base_width)
         super(AnnotatedGenomeLayout, self).process_file(output_folder,
                           output_file_name=output_file_name,
-                          fasta_files=[annotation_fasta, self.fasta_file])
+                          fasta_files=[self.annotation_fasta, self.fasta_file])
 
 
     def read_contigs_and_calc_padding(self, input_file_path):
@@ -39,7 +40,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def changes_per_genome(self):
         self.levels = self.each_layout[self.genome_processed]
         self.activate_high_contrast_colors()
-        if not self.genome_processed:  # Use softer colors for annotations
+        if self.genome_processed == self.annotation_phase:  # Use softer colors for annotations
             self.activate_natural_colors()
 
 
@@ -54,20 +55,33 @@ class AnnotatedGenomeLayout(ParallelLayout):
 
 
     def draw_titles(self):
-        super(AnnotatedGenomeLayout, self).draw_titles()  # scaffold names
-        if not self.genome_processed:  # only draw on the annotation fasta pass, not sequence
+        if self.genome_processed == self.annotation_phase:
+            pass
+        else:
+            super(AnnotatedGenomeLayout, self).draw_titles()  # scaffold names
+            self.levels = self.each_layout[self.annotation_phase]
+            self.genome_processed = 0
+            self.read_contigs_and_calc_padding(self.annotation_fasta)
             self.draw_annotation_labels()
+
+
+
+    def draw_the_viz_title(self, fasta_files):
+        super(AnnotatedGenomeLayout, self).draw_the_viz_title(fasta_files)
+        # only draw on the annotation pass, not sequence
+        # self.draw_annotation_labels()
 
     def draw_annotation_labels(self):
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
         for sc_index, scaffold in enumerate(layout):  # Exact match required (case sensitive)
-            scaff_name = scaffold["name"]
+            scaff_name = scaffold["name"].split()[0]
             if scaff_name in labels.keys():
                 for entry in labels[scaff_name]:
                     assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
                     if entry.feature == 'gene':
-                        progress = (int(entry.start) // 100) * 100 + 2 + scaffold["xy_seq_start"]
+                        progress = (int(entry.start) // self.base_width) * self.annotation_width + \
+                                   2 + scaffold["xy_seq_start"]
                         end = int(entry.end) + scaffold["xy_seq_start"]
                         try:
                             name = entry.attributes['Name']
