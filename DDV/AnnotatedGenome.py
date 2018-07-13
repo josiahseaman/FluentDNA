@@ -7,8 +7,10 @@ from DDV.Annotations import create_fasta_from_annotation, GFF
 from DDV.ParallelGenomeLayout import ParallelLayout
 
 class AnnotatedGenomeLayout(ParallelLayout):
-    def __init__(self, fasta_file, gff_file, *args, **kwargs):
-        super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, *args, **kwargs)
+    def __init__(self, fasta_file, gff_file, annotation_width=None, *args, **kwargs):
+        self.annotation_width = annotation_width if annotation_width is not None else 100
+        columns = [annotation_width, 100]  # TODO: or base_width
+        super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, column_widths=columns, *args, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
@@ -20,7 +22,9 @@ class AnnotatedGenomeLayout(ParallelLayout):
         lengths = [len(x.seq) for x in self.contigs]
         create_fasta_from_annotation(self.annotation, chromosomes,
                                      scaffold_lengths=lengths,
-                                     output_path=annotation_fasta)
+                                     output_path=annotation_fasta,
+                                     annotation_width=self.annotation_width,
+                                     base_width=self.base_width)
         super(AnnotatedGenomeLayout, self).process_file(output_folder,
                           output_file_name=output_file_name,
                           fasta_files=[annotation_fasta, self.fasta_file])
@@ -32,7 +36,8 @@ class AnnotatedGenomeLayout(ParallelLayout):
         return self.calc_all_padding()
 
 
-    def color_changes_per_genome(self):
+    def changes_per_genome(self):
+        self.levels = self.each_layout[self.genome_processed]
         self.activate_high_contrast_colors()
         if not self.genome_processed:  # Use softer colors for annotations
             self.activate_natural_colors()

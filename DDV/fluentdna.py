@@ -208,8 +208,7 @@ def ddv(args):
             done(args, SERVER_HOME)
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = AnnotatedGenomeLayout(args.fasta,
-                                       args.ref_annotation)
+        layout = AnnotatedGenomeLayout(args.fasta, args.ref_annotation, args.annotation_width)
         layout.render_genome(output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
@@ -417,6 +416,12 @@ def main():
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
+    parser.add_argument("-aw", "--annotation_width",
+                        help="Overrides the default 100 pixel column width for annotations. "
+                        "annotation_width=1 will only sample one pixel per display line, "
+                        "skipping intermediate intervals.  If annotated features are less than"
+                        "base_width / annotation_width bp in length it's possible they won't be visible.",
+                        dest="annotation_width")
 
     ### Other
     parser.add_argument("-i", "--image",
@@ -440,6 +445,8 @@ def main():
     # Errors
     if args.base_width:
         args.base_width = int(args.base_width)
+    if args.annotation_width:
+        args.annotation_width = int(args.annotation_width)
     if args.layout == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
     if not args.layout:

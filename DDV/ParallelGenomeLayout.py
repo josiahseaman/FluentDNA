@@ -8,26 +8,43 @@ from math import floor
 from PIL import ImageFont
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, font_name
+from DDV.TileLayout import TileLayout, font_name, level_layout_factory
 from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes, low_contrast=False, base_width=None):
+    def __init__(self, n_genomes, low_contrast=False, base_width=None, column_widths=None):
         # This layout is best used on one chromosome at a time.
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
-        # modify layout with an additional bundled column layer
+        if column_widths is not None:
+            assert len(column_widths) == n_genomes, \
+                "Provide the same number of display widths as data sources."
+
+        self.each_layout = []  # one layout per genome (or data source)
+        all_columns_height = self.base_width * 10
         columns = self.levels[2]
-        new_width = columns.thickness * n_genomes + columns.padding * 2
-        self.levels = self.levels[:2]  # trim off the others
-        self.levels.append(LayoutLevel("ColumnInRow", floor(10600 / new_width), levels=self.levels))  # [2]
-        self.levels[2].padding = new_width - (columns.thickness - columns.padding)
-        self.column_offset = columns.thickness  # steps inside a column bundle, not exactly the same as bundles steps
-        # because of inter bundle padding of 18 pixels
-        self.levels.append(LayoutLevel("RowInTile", 10, padding=36, levels=self.levels))  # [3]  overwrite padding from previous layer
-        self.levels.append(LayoutLevel("TileColumn", 3, padding=36 * 3 * 5, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("TileRow", 999, levels=self.levels))  # [5]
+        cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
+        cluster_width += columns.padding * 2  # double up on padding between super columns
+        column_clusters_per_mega_row = floor(10600 / cluster_width)
+
+        annotation_modulos = [column_widths[0], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+        annotation_step_pad = cluster_width - annotation_modulos[0] + 6
+        annotation_padding = [0, 0, annotation_step_pad, 6 * 3,
+                              6 * (3 ** 2),  # needs modification?
+                              6 * (3 ** 3), 6 * (3 ** 4)]
+        self.each_layout.append(level_layout_factory(annotation_modulos, annotation_padding))
+
+        standard_modulos = [column_widths[1], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+        standard_step_pad = cluster_width - standard_modulos[0] + 6
+        standard_padding = [0, 0, standard_step_pad, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
+        self.each_layout.append(level_layout_factory(standard_modulos, standard_padding))
+
+        self.levels = self.each_layout[0]
+
+        # steps inside a column bundle, not exactly the same as bundles steps
+        thicknesses = [self.each_layout[i][0].modulo + 6 for i in range(n_genomes)]
+        self.column_offsets = [sum(thicknesses[:i]) for i in range(n_genomes)]
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
@@ -52,9 +69,9 @@ class ParallelLayout(TileLayout):
         try:
             # Do inner work for two other files
             for index, filename in enumerate(fasta_files):
+                self.changes_per_genome()
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename, extract_contigs)
-                self.color_changes_per_genome()
                 self.draw_nucleotides()
                 self.draw_titles()
                 self.genome_processed += 1
@@ -68,7 +85,8 @@ class ParallelLayout(TileLayout):
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
-    def color_changes_per_genome(self):
+    def changes_per_genome(self):
+        self.levels = self.each_layout[self.genome_processed]
         if self.using_background_colors:
             self.change_background_color(self.genome_processed)
 
@@ -77,8 +95,7 @@ class ParallelLayout(TileLayout):
         genome as it is processed separately.
         """
         x, y = super(ParallelLayout, self).position_on_screen(index)
-        return [x + self.column_offset * self.genome_processed, y]
-
+        return [x + self.column_offsets[self.genome_processed], y]
 
     def fill_in_colored_borders(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.

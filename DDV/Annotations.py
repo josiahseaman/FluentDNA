@@ -2,6 +2,9 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
 from collections import namedtuple, defaultdict
+
+from DNASkittleUtils.Contigs import Contig
+
 from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
 
@@ -130,7 +133,20 @@ def handle_tail(seq_array, scaffold_lengths, sc_index):
         seq_array.extend( gap_char * remaining)
 
 
-def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None):
+def squish_fasta(scaffolds, annotation_width, base_width):
+    print("Squishing annotation by %i / %i" % (base_width, annotation_width))
+    squished_versions = []
+    for contig in scaffolds:
+        skip_size = base_width // annotation_width
+        work = editable_str('')
+        for i in range(0, len(contig.seq), skip_size):
+            work.append(contig.seq[i])
+        squished_versions.append(Contig(contig.name, ''.join(work)))
+    return squished_versions
+
+
+def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
+                                 annotation_width=100, base_width=100):
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
     FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
     if features is None:
@@ -165,6 +181,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
         print("Done", gff.file_name, "Found %i features" % count, "on %i scaffolds" % len(scaffolds))
     else:
         print("WARNING: No matching scaffold names were found between the annotation and the request.")
+    if annotation_width != base_width:
+        scaffolds = squish_fasta(scaffolds, annotation_width, base_width)
     if output_path is not None:
         write_contigs_to_file(output_path, scaffolds)
     return scaffolds
