@@ -218,7 +218,6 @@ def ddv(args):
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = OutlinedAnnotation(args.fasta, args.ref_annotation)
         layout.process_file(args.fasta, output_dir, args.output_name,)
-        beep(100)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
 

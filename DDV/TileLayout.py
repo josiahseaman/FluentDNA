@@ -73,6 +73,7 @@ class TileLayout(object):
         self.image = None
         self.draw = None
         self.pixels = None
+        self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
         self.image_length = 0
         #Natural, color blind safe Colors
@@ -262,7 +263,7 @@ class TileLayout(object):
         print("Image dimensions are", width, "x", height, "pixels")
         print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
               "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
-        self.image = Image.new('RGB', (width, height), "white")
+        self.image = Image.new(self.pil_mode, (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
