@@ -34,7 +34,7 @@ class OutlinedAnnotation(TileLayout):
             for radius, layer in enumerate(region.outline_points):
                 c = outline_colors[radius]
                 for pt in layer:
-                    self.pixels[pt.x, pt.y] = c
+                    self.pixels[pt[0], pt[1]] = c
 
     def find_annotated_regions(self):
         print("Collecting points in annotated regions")
@@ -44,12 +44,13 @@ class OutlinedAnnotation(TileLayout):
             scaff_name = coordinate_frame["name"].split()[0]
             if scaff_name in self.annotation.annotations.keys():
                 for entry in self.annotation.annotations[scaff_name]:
-                    annotation_points = []  # this became too complex for a list comprehension
-                    for i in range(entry.start):
-                        # important to include title and reset padding in coordinate frame
-                        progress = i + coordinate_frame["xy_seq_start"]
-                        annotation_points.append(Point(*self.position_on_screen(progress)))
-                    regions.append(AnnotatedRegion(entry, annotation_points))
+                    if entry.feature == 'gene':
+                        annotation_points = []  # this became too complex for a list comprehension
+                        for i in range(entry.start, entry.end):
+                            # important to include title and reset padding in coordinate frame
+                            progress = i + coordinate_frame["xy_seq_start"]
+                            annotation_points.append(self.position_on_screen(progress))
+                        regions.append(AnnotatedRegion(entry, annotation_points))
         return regions
 
 
@@ -58,11 +59,11 @@ class OutlinedAnnotation(TileLayout):
 
 
 def getNeighbors(pt):
-    return {Point(pt.x + 1, pt.y), Point(pt.x - 1, pt.y), Point(pt.x, pt.y + 1), Point(pt.x, pt.y - 1)}
+    return {(pt[0] + 1, pt[1]), (pt[0] - 1, pt[1]), (pt[0], pt[1] + 1), (pt[0], pt[1] - 1)}
 
 def allNeighbors(pt):
-    return getNeighbors(pt).union({Point(pt.x + 1, pt.y + 1), Point(pt.x - 1, pt.y - 1),
-                                   Point(pt.x - 1, pt.y + 1), Point(pt.x + 1, pt.y - 1)})
+    return getNeighbors(pt).union({(pt[0] + 1, pt[1] + 1), (pt[0] - 1, pt[1] - 1),
+                                   (pt[0] - 1, pt[1] + 1), (pt[0] + 1, pt[1] - 1)})
 
 def outlines(annotation_points, radius, square_corners=False):
     workingSet = set()
@@ -77,7 +78,7 @@ def outlines(annotation_points, radius, square_corners=False):
         for block in activeEdge:
             neighbors = allNeighbors(block) if square_corners else getNeighbors(block)
             for n in neighbors:
-                if n not in workingSet and n.x > 0 and n.y > 0:  # TODO: check in bounds
+                if n not in workingSet and n[0] > 0 and n[1] > 0:  # TODO: check in bounds
                     workingSet.add(n)
                     nextEdge.add(n)
         layers.append(nextEdge)
@@ -92,4 +93,4 @@ class AnnotatedRegion(GFF.Annotation):
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
         self.points = set(annotation_points)
-        self.outline_points = outlines(annotation_points, 1)
+        self.outline_points = outlines(annotation_points, 4)
