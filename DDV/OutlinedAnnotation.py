@@ -7,9 +7,20 @@ from DNASkittleUtils.Contigs import read_contigs
 from PIL import Image
 
 from DDV.Annotations import GFF
+from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
 from collections import namedtuple
 Point = namedtuple('Point', ['x', 'y'])
+
+
+def blend_pixel(markup_canvas, pt, c):
+    if markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
+        markup_canvas[pt[0], pt[1]] = c
+    else:
+        remaining_light = 1.0 - (markup_canvas[pt[0], pt[1]][3] / 256)
+        combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
+        markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
+
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, fasta_file, gff_file, **kwargs):
@@ -40,18 +51,18 @@ class OutlinedAnnotation(TileLayout):
                           (58, 20, 84, 162),
                           (58, 20, 84, 128),
                           (58, 20, 84, 84),
-                          (58, 20, 84, 39),
+                          (58, 20, 84, 49),
                           (58, 20, 84, 15)]
+        intron_color = outline_colors[4]
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
-                c = outline_colors[radius]
+                darkness = 6 - len(region.outline_points) + radius  # softer line for small features
+                c = outline_colors[darkness]
                 for pt in layer:
-                    if markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
-                        markup_canvas[pt[0], pt[1]] = c
-                    else:
-                        remaining_light = 1.0 - (markup_canvas[pt[0], pt[1]][3] / 256)
-                        combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
-                        markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
+                    blend_pixel(markup_canvas, pt, c)
+
+            for point in region.dark_region_points():
+                blend_pixel(markup_canvas, point, intron_color)
 
     def find_annotated_regions(self):
         print("Collecting points in annotated regions")
@@ -61,13 +72,18 @@ class OutlinedAnnotation(TileLayout):
             scaff_name = coordinate_frame["name"].split()[0]
             if scaff_name in self.annotation.annotations.keys():
                 for entry in self.annotation.annotations[scaff_name]:
-                    if entry.feature == 'gene':
+                    if entry.feature == 'mRNA':
                         annotation_points = []  # this became too complex for a list comprehension
                         for i in range(entry.start, entry.end):
                             # important to include title and reset padding in coordinate frame
                             progress = i + coordinate_frame["xy_seq_start"]
                             annotation_points.append(self.position_on_screen(progress))
                         regions.append(AnnotatedRegion(entry, annotation_points))
+                    if entry.feature == 'CDS':
+                        # hopefully mRNA comes first in the file
+                        if regions[-1].attributes['Name'] == entry.attributes['Parent']:
+                            regions[-1].add_cds_region(entry)
+
         return regions
 
 
@@ -109,5 +125,20 @@ class AnnotatedRegion(GFF.Annotation):
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
-        self.points = set(annotation_points)
-        self.outline_points = outlines(annotation_points, 6)
+        self.points = list(annotation_points)
+        radius = 6 if self.feature == 'mRNA' else 3
+        self.outline_points = outlines(annotation_points, radius)
+        self.protein_spans = []
+
+    def dark_region_points(self):
+        intron_indices = []
+        for i in range(self.start, self.end):
+            if all([i not in exon for exon in self.protein_spans]):
+                intron_indices.append(i)
+        intron_points = [self.points[i - self.start] for i in intron_indices]
+        # introns = [i for span in self.non_protein_spans for i in range(span.begin, span.end)]
+        return intron_points
+
+    def add_cds_region(self, annotation_entry):
+        """ :type annotation_entry: GFF.Annotation """
+        self.protein_spans.append(Span(annotation_entry.start, annotation_entry.end))
