@@ -92,11 +92,11 @@ class ParallelLayout(TileLayout):
         if self.using_background_colors:
             self.change_background_color(self.genome_processed)
 
-    def position_on_screen(self, index):
+    def position_on_screen(self, progress):
         """ In ParallelLayout, each genome is given a constant x offset in order to interleave the results of each
         genome as it is processed separately.
         """
-        x, y = super(ParallelLayout, self).position_on_screen(index)
+        x, y = super(ParallelLayout, self).position_on_screen(progress)
         return [x + self.column_offsets[self.genome_processed], y]
 
     def fill_in_colored_borders(self):

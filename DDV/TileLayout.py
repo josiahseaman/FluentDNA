@@ -334,15 +334,15 @@ class TileLayout(object):
         return 0, 0, 0
 
 
-    def position_on_screen(self, index):
+    def position_on_screen(self, progress):
         """ Readable unoptimized version:
         Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
         xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
         for i, level in enumerate(self.levels):
-            if index < level.chunk_size:
+            if progress < level.chunk_size:
                 return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
             part = i % 2
-            coordinate_in_chunk = int(index / level.chunk_size) % level.modulo
+            coordinate_in_chunk = int(progress / level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
         return int(xy[0]), int(xy[1])
 
