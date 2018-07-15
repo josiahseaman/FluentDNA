@@ -50,6 +50,7 @@ from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, bas
     hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
+from DDV.OutlinedAnnotation import OutlinedAnnotation
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -213,6 +214,13 @@ def ddv(args):
         layout.render_genome(output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
+    elif args.layout == "outlines":
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = OutlinedAnnotation(args.fasta, args.ref_annotation)
+        layout.process_file(args.fasta, output_dir, args.output_name,)
+        beep(100)
+        finish_webpage(args, layout, output_dir, args.output_name)
+        done(args, output_dir)
 
     elif args.layout == "unique":
         """UniqueOnlyChainParser(chain_name='data\\hg38ToPanTro4.over.chain',
@@ -369,7 +377,7 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated",
+                        choices=["tiled", "parallel", "alignment", "annotated", "outlines",
                                  "unique", "transposon", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
