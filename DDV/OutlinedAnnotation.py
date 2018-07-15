@@ -53,7 +53,7 @@ class OutlinedAnnotation(TileLayout):
                           (58, 20, 84, 84),
                           (58, 20, 84, 49),
                           (58, 20, 84, 15)]
-        intron_color = outline_colors[4]
+        exon_color = (255,255,255,135)  # white highlighter.  This is less disruptive overall
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
                 darkness = 6 - len(region.outline_points) + radius  # softer line for small features
@@ -62,7 +62,7 @@ class OutlinedAnnotation(TileLayout):
                     blend_pixel(markup_canvas, pt, c)
 
             for point in region.dark_region_points():
-                blend_pixel(markup_canvas, point, intron_color)
+                blend_pixel(markup_canvas, point, exon_color)
 
     def find_annotated_regions(self):
         print("Collecting points in annotated regions")
@@ -131,13 +131,13 @@ class AnnotatedRegion(GFF.Annotation):
         self.protein_spans = []
 
     def dark_region_points(self):
-        intron_indices = []
+        exon_indices = []
         for i in range(self.start, self.end):
-            if all([i not in exon for exon in self.protein_spans]):
-                intron_indices.append(i)
-        intron_points = [self.points[i - self.start] for i in intron_indices]
+            if any([i in exon for exon in self.protein_spans]):
+                exon_indices.append(i)
+        exon_points = [self.points[i - self.start] for i in exon_indices]
         # introns = [i for span in self.non_protein_spans for i in range(span.begin, span.end)]
-        return intron_points
+        return exon_points
 
     def add_cds_region(self, annotation_entry):
         """ :type annotation_entry: GFF.Annotation """
