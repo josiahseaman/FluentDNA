@@ -4,6 +4,7 @@ from  os.path import join, basename
 
 import math
 from DNASkittleUtils.Contigs import read_contigs
+from PIL import Image
 
 from DDV.Annotations import GFF
 from DDV.TileLayout import TileLayout, hex_to_rgb
@@ -16,6 +17,8 @@ class OutlinedAnnotation(TileLayout):
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
+        self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
+
 
     def process_file(self, input_file_path, output_folder, output_file_name):
         super(OutlinedAnnotation, self).process_file(input_file_path, output_folder, output_file_name)
@@ -23,18 +26,32 @@ class OutlinedAnnotation(TileLayout):
 
     def draw_titles(self):
         super(OutlinedAnnotation, self).draw_titles()
-        self.draw_annotation_outlines()
-        self.draw_annotation_labels()
+        markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
+        markup_canvas = markup_image.load()
 
-    def draw_annotation_outlines(self):
+        self.draw_annotation_outlines(markup_canvas)
+        self.draw_annotation_labels(markup_canvas)
+        self.image = Image.alpha_composite(self.image, markup_image)
+
+    def draw_annotation_outlines(self, markup_canvas):
         regions = self.find_annotated_regions()
         print("Drawing annotation outlines")
-        outline_colors = [hex_to_rgb(h) for h in ('#775385', "825d8b", 'a37eab', 'ba92b5', '#c08eb8') ]  # purple desaturated
+        outline_colors = [(58, 20, 84, 197),  # desaturated purple drop shadow, decreasing opacity
+                          (58, 20, 84, 162),
+                          (58, 20, 84, 128),
+                          (58, 20, 84, 84),
+                          (58, 20, 84, 39),
+                          (58, 20, 84, 15)]
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
                 c = outline_colors[radius]
                 for pt in layer:
-                    self.pixels[pt[0], pt[1]] = c
+                    if markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
+                        markup_canvas[pt[0], pt[1]] = c
+                    else:
+                        remaining_light = 1.0 - (markup_canvas[pt[0], pt[1]][3] / 256)
+                        combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
+                        markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
     def find_annotated_regions(self):
         print("Collecting points in annotated regions")
@@ -54,7 +71,7 @@ class OutlinedAnnotation(TileLayout):
         return regions
 
 
-    def draw_annotation_labels(self):
+    def draw_annotation_labels(self, markup_canvas):
         print("Drawing annotation labels")
 
 
@@ -93,4 +110,4 @@ class AnnotatedRegion(GFF.Annotation):
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
         self.points = set(annotation_points)
-        self.outline_points = outlines(annotation_points, 4)
+        self.outline_points = outlines(annotation_points, 6)
