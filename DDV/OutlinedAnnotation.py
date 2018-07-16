@@ -75,7 +75,8 @@ class OutlinedAnnotation(TileLayout):
                             # important to include title and reset padding in coordinate frame
                             progress = i + coordinate_frame["xy_seq_start"]
                             annotation_points.append(self.position_on_screen(progress))
-                        regions.append(AnnotatedRegion(entry, annotation_points))
+                        regions.append(AnnotatedRegion(entry, annotation_points,
+                                                       coordinate_frame["xy_seq_start"]))
                     if entry.feature == 'CDS':
                         # hopefully mRNA comes first in the file
                         if regions[-1].attributes['Name'] == entry.attributes['Parent']:
@@ -89,29 +90,34 @@ class OutlinedAnnotation(TileLayout):
         print("Drawing annotation labels")
         self.fonts = {}  # clear font cache, this may be a different font
         for region in annotated_regions:
-            xs = [pt[0] for pt in region.points]
-            left_most, right_most = min(xs), max(xs)
-            ys = [pt[1] for pt in region.points]
-            top, bottom = min(ys), max(ys)
-            multi_column = abs(right_most - left_most) > self.base_width
-            if multi_column:
-                median_point = region.points[len(region.points) // 2]
+            pts = [pt for pt in region.points]
+            left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
+            top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
+
+            multi_column = abs(right - left) > self.base_width
+            if multi_column:  # pick the biggest column to contain the label, ignore others
+                median_point = len(region.points) // 2 + region.xy_seq_start + min(region.start, region.end)
+                s = median_point // self.base_width * self.base_width  # beginning of the line holding median
+                left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
+                right = self.position_on_screen(s + self.base_width - 1)[0]  # end of one line
+                filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
+                top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
+                height = len(filtered) // self.base_width
+            else:
+                height = len(region.points) // self.base_width
             width = self.base_width
-            height = len(region.points) // self.base_width
             vertical_label = height > width
-
-            upper_left = (left_most, top)
-            bottom_right = (right_most, bottom)
-            # width, height = bottom_right[0] - upper_left[0], bottom_right[1] - upper_left[1]
-
-            title_width = 18
+            upper_left = [left, top]
 
             # Title orientation and size
             if vertical_label:
                 width, height = height, width  # swap
             font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
+            if height < 11:
+                height = 11  # don't make the area so small it clips the text
+                upper_left[1] -= 2
 
-            self.write_label(region.attributes["Name"], width, height, font_size, title_width, upper_left,
+            self.write_label(region.attributes["Name"], width, height, font_size, 18, upper_left,
                              vertical_label, region.strand, markup_image)
 
 
@@ -129,7 +135,9 @@ class OutlinedAnnotation(TileLayout):
             vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
             if strand == "+":
                 vertically_centered = 0  # top of the box
-        text_color = (0, 0, 0, 255) if font_size < 14 else (100, 100, 100, 200)
+        text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 220)
+        if font_size > 20:
+            text_color = (100, 100, 100, 200)
         ImageDraw.Draw(txt).multiline_text((0, max(0, vertically_centered)), shortened, font=font,
                                            fill=text_color)
         if vertical_label:
@@ -166,13 +174,14 @@ def outlines(annotation_points, radius, square_corners=False):
 
 
 class AnnotatedRegion(GFF.Annotation):
-    def __init__(self, GFF_annotation, annotation_points):
+    def __init__(self, GFF_annotation, annotation_points, xy_seq_start):
         assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
         g = GFF_annotation  # short name
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
         self.points = list(annotation_points)
+        self.xy_seq_start = xy_seq_start
         radius = 6 if self.feature == 'mRNA' else 3
         self.outline_points = outlines(annotation_points, radius)
         self.protein_spans = []
