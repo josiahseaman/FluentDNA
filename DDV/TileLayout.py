@@ -67,9 +67,10 @@ class TileLayout(object):
         self.title_skip_padding = self.base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
+        self.font_name = font_name
         sizes = [9, 38, 380, 380 * 2]
-        if font_name is not None:
-            self.fonts = {size: ImageFont.truetype(font_name, size) for size in sizes}
+        if self.font_name is not None:
+            self.fonts = {size: ImageFont.truetype(self.font_name, size) for size in sizes}
         else:
             self.fonts = {size: ImageFont.load_default() for size in sizes}
         self.final_output_location = None
@@ -401,10 +402,7 @@ class TileLayout(object):
     def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left,
                     vertical_label, canvas):
         upper_left = list(upper_left)  # to make it mutable
-        if font_size in self.fonts:
-            font = self.fonts[font_size]
-        else:
-            font = ImageFont.truetype(font_filename, font_size)
+        font = self.get_font(self.font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
@@ -415,6 +413,12 @@ class TileLayout(object):
             upper_left[0] += 8  # adjusts baseline for more polish
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
+    def get_font(self, font_name, font_size):
+        if font_size in self.fonts:
+            font = self.fonts[font_size]
+        else:
+            font = ImageFont.truetype(font_name, font_size)
+        return font
 
     def output_image(self, output_folder, output_file_name):
         del self.pixels
