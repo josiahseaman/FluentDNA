@@ -209,7 +209,8 @@ class TransposonLayout(TileLayout):
                          title_lines=2,
                          title_width=chars_per_line,
                          upper_left=[x, y - height],
-                         vertical_label=False)
+                         vertical_label=False,
+                         canvas=self.image)
 
     def set_column_height(self):
         counts = defaultdict(lambda: 0)

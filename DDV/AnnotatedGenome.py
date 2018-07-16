@@ -96,7 +96,8 @@ class AnnotatedGenomeLayout(ParallelLayout):
                         # most gene names aren't unique at 9 characters
                         min_height = 13 if title_lines == 1 else 26
                         height = max(min_height, bottom_right[1] - upper_left[1])
-                        self.write_title(name, width, height, font_size, title_lines, title_width, upper_left, False)
+                        self.write_title(name, width, height, font_size, title_lines, title_width, upper_left,
+                                         False, self.image)
 
         print("Done Drawing annotation labels")
 

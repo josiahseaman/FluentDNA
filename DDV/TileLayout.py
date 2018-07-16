@@ -14,15 +14,15 @@ from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, vir
 from DDV import gap_char
 
 small_title_bp = 10000
-font_name = "Arial.ttf"
+font_filename = "Arial.ttf"
 try:
-    ImageFont.truetype(font_name, 10)
+    ImageFont.truetype(font_filename, 10)
 except IOError:
     try:
-        font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
-        ImageFont.truetype(font_name, 10)
+        font_filename = font_filename.lower()  # windows and mac are both case sensitive in opposite directions
+        ImageFont.truetype(font_filename, 10)
     except IOError:
-        font_name = None
+        font_filename = None
 
 
 
@@ -51,7 +51,7 @@ def level_layout_factory(modulos, padding=None):
 class TileLayout(object):
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None):
+                 low_contrast=False, base_width=None, font_name=font_filename):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
@@ -312,7 +312,7 @@ class TileLayout(object):
             if progress < level.chunk_size:
                 return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
             part = i % 2
-            coordinate_in_chunk = int(progress / level.chunk_size) % level.modulo
+            coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
         return int(xy[0]), int(xy[1])
 
@@ -363,15 +363,17 @@ class TileLayout(object):
                 width = self.levels[4].thickness * tiles_spanned  # spans 3 full Tiles, or one full Page width
 
         contig_name = contig.name
-        self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label)
+        self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left,
+                         vertical_label, self.image)
 
 
-    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label):
+    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left,
+                    vertical_label, canvas):
         upper_left = list(upper_left)  # to make it mutable
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            font = ImageFont.truetype(font_name, font_size)
+            font = ImageFont.truetype(font_filename, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
@@ -380,7 +382,7 @@ class TileLayout(object):
         if vertical_label:
             txt = txt.rotate(90, expand=True)
             upper_left[0] += 8  # adjusts baseline for more polish
-        self.image.paste(txt, (upper_left[0], upper_left[1]), txt)
+        canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 
     def output_image(self, output_folder, output_file_name):
