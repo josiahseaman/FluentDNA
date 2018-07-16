@@ -1,12 +1,7 @@
-import traceback
-from datetime import datetime
-from  os.path import join, basename
-
-import math
-from DNASkittleUtils.Contigs import read_contigs
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 
 from DDV.Annotations import GFF
+from DDV.DDVUtils import multi_line_height
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
 from collections import namedtuple
@@ -24,12 +19,12 @@ def blend_pixel(markup_canvas, pt, c):
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, fasta_file, gff_file, **kwargs):
-        kwargs['font_name'] ="ariblk.ttf"
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
+        self.font_name = "ariblk.ttf"
 
 
     def process_file(self, input_file_path, output_folder, output_file_name):
@@ -92,6 +87,7 @@ class OutlinedAnnotation(TileLayout):
     def draw_annotation_labels(self, markup_image, annotated_regions):
         """ :type annotated_regions: list(AnnotatedRegion) """
         print("Drawing annotation labels")
+        self.fonts = {}  # clear font cache, this may be a different font
         for region in annotated_regions:
             xs = [pt[0] for pt in region.points]
             left_most, right_most = min(xs), max(xs)
@@ -103,7 +99,6 @@ class OutlinedAnnotation(TileLayout):
             width = self.base_width
             height = len(region.points) // self.base_width
             vertical_label = height > width
-            rotation_direction = -90 if region.strand == '-' else 90
 
             upper_left = (left_most, top)
             bottom_right = (right_most, bottom)
@@ -114,10 +109,33 @@ class OutlinedAnnotation(TileLayout):
             # Title orientation and size
             if vertical_label:
                 width, height = height, width  # swap
-            font_size = max(9, int((width * .03222) + 6))  # found eq with two reference points
+            font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
 
-            self.write_title(region.attributes["Name"], width, height, font_size, 1, title_width,
-                             upper_left, vertical_label, markup_image)
+            self.write_label(region.attributes["Name"], width, height, font_size, title_width, upper_left,
+                             vertical_label, region.strand, markup_image)
+
+
+    def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
+                    strand, canvas):
+        """write_label() made to nicely draw single line gene labels from annotation"""
+        font = self.get_font(self.font_name, font_size)
+        upper_left = list(upper_left)  # to make it mutable
+        shortened = contig_name[-title_width:]  # max length 18.  Last characters are most unique
+        txt = Image.new('RGBA', (width, height))
+        if vertical_label:  # Large labels are centered in the column to look nice,
+            # rotation indicates strand in big text
+            vertically_centered = (height // 2) - multi_line_height(font, shortened, txt)//2
+        else:  # Place label at the beginning of gene based on strand
+            vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
+            if strand == "+":
+                vertically_centered = 0  # top of the box
+        text_color = (0, 0, 0, 255) if font_size < 14 else (100, 100, 100, 200)
+        ImageDraw.Draw(txt).multiline_text((0, max(0, vertically_centered)), shortened, font=font,
+                                           fill=text_color)
+        if vertical_label:
+            rotation_direction = 90 if strand == '-' else -90
+            txt = txt.rotate(rotation_direction, expand=True)
+        canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 
 def getNeighbors(pt):
