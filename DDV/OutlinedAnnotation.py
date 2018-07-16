@@ -24,6 +24,7 @@ def blend_pixel(markup_canvas, pt, c):
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, fasta_file, gff_file, **kwargs):
+        kwargs['font_name'] ="ariblk.ttf"
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
@@ -40,8 +41,8 @@ class OutlinedAnnotation(TileLayout):
         markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
         markup_canvas = markup_image.load()
 
-        self.draw_annotation_outlines(markup_canvas)
-        self.draw_annotation_labels(markup_canvas)
+        annotated_regions = self.draw_annotation_outlines(markup_canvas)
+        self.draw_annotation_labels(markup_image, annotated_regions)
         self.image = Image.alpha_composite(self.image, markup_image)
 
     def draw_annotation_outlines(self, markup_canvas):
@@ -63,6 +64,7 @@ class OutlinedAnnotation(TileLayout):
 
             for point in region.dark_region_points():
                 blend_pixel(markup_canvas, point, exon_color)
+        return regions
 
     def find_annotated_regions(self):
         print("Collecting points in annotated regions")
@@ -87,8 +89,35 @@ class OutlinedAnnotation(TileLayout):
         return regions
 
 
-    def draw_annotation_labels(self, markup_canvas):
+    def draw_annotation_labels(self, markup_image, annotated_regions):
+        """ :type annotated_regions: list(AnnotatedRegion) """
         print("Drawing annotation labels")
+        for region in annotated_regions:
+            xs = [pt[0] for pt in region.points]
+            left_most, right_most = min(xs), max(xs)
+            ys = [pt[1] for pt in region.points]
+            top, bottom = min(ys), max(ys)
+            multi_column = abs(right_most - left_most) > self.base_width
+            if multi_column:
+                median_point = region.points[len(region.points) // 2]
+            width = self.base_width
+            height = len(region.points) // self.base_width
+            vertical_label = height > width
+            rotation_direction = -90 if region.strand == '-' else 90
+
+            upper_left = (left_most, top)
+            bottom_right = (right_most, bottom)
+            # width, height = bottom_right[0] - upper_left[0], bottom_right[1] - upper_left[1]
+
+            title_width = 18
+
+            # Title orientation and size
+            if vertical_label:
+                width, height = height, width  # swap
+            font_size = max(9, int((width * .03222) + 6))  # found eq with two reference points
+
+            self.write_title(region.attributes["Name"], width, height, font_size, 1, title_width,
+                             upper_left, vertical_label, markup_image)
 
 
 def getNeighbors(pt):
