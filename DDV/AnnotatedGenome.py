@@ -80,14 +80,15 @@ class AnnotatedGenomeLayout(ParallelLayout):
                 for entry in labels[scaff_name]:
                     assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
                     if entry.feature == 'gene':
-                        progress = (int(entry.start) // self.base_width) * self.annotation_width + \
-                                   2 + scaffold["xy_seq_start"]
-                        end = int(entry.end) + scaffold["xy_seq_start"]
+                        progress = (entry.start ) // self.base_width *\
+                                   self.annotation_width + scaffold["xy_seq_start"]
+                        end = (entry.end) // self.base_width *\
+                                   self.annotation_width + scaffold["xy_seq_start"]
                         try:
                             name = entry.attributes['Name']
                         except KeyError:
                             name = ';'.join(['%s=%s' %(key, val) for key, val in entry.attributes.items()])
-                        upper_left = self.position_on_screen(progress)
+                        upper_left = self.position_on_screen(progress + 2)
                         bottom_right = self.position_on_screen(end - 2)
                         width = 100  # bottom_right[0] - upper_left[0],
                         font_size = 9

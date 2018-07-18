@@ -68,6 +68,7 @@ class TileLayout(object):
         sizes = [9, 38, 380, 380 * 2]
         if self.font_name is not None:
             self.fonts = {size: ImageFont.truetype(self.font_name, size) for size in sizes}
+            self.fonts[sizes[0]] = ImageFont.load_default()
         else:
             self.fonts = {size: ImageFont.load_default() for size in sizes}
         self.final_output_location = None

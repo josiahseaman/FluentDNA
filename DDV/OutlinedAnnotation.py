@@ -24,7 +24,7 @@ class OutlinedAnnotation(TileLayout):
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
-        self.font_name = "ariblk.ttf"
+        self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
 
 
     def process_file(self, input_file_path, output_folder, output_file_name):
@@ -88,7 +88,7 @@ class OutlinedAnnotation(TileLayout):
     def draw_annotation_labels(self, markup_image, annotated_regions):
         """ :type annotated_regions: list(AnnotatedRegion) """
         print("Drawing annotation labels")
-        self.fonts = {}  # clear font cache, this may be a different font
+        self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
         for region in annotated_regions:
             pts = [pt for pt in region.points]
             left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
@@ -112,6 +112,7 @@ class OutlinedAnnotation(TileLayout):
             # Title orientation and size
             if vertical_label:
                 width, height = height, width  # swap
+
             font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
             if height < 11:
                 height = 11  # don't make the area so small it clips the text
@@ -136,13 +137,14 @@ class OutlinedAnnotation(TileLayout):
             if strand == "+":
                 vertically_centered = 0  # top of the box
         text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 220)
-        if font_size > 20:
+        if font_size > 30:
             text_color = (100, 100, 100, 200)
         ImageDraw.Draw(txt).multiline_text((0, max(0, vertically_centered)), shortened, font=font,
                                            fill=text_color)
         if vertical_label:
             rotation_direction = 90 if strand == '-' else -90
             txt = txt.rotate(rotation_direction, expand=True)
+            upper_left[1] += -4 if strand == '-' else 4
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 
