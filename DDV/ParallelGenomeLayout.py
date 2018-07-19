@@ -39,10 +39,11 @@ class ParallelLayout(TileLayout):
     def enable_fat_headers(self):
         pass  # just don't
 
-    def process_file(self, output_folder, output_file_name, fasta_files=list()):
+    def process_file(self, output_folder, output_file_name, fasta_files=list(),
+                     no_webpage=False, extract_contigs=None):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
-        self.image_length = self.read_contigs_and_calc_padding(fasta_files[0])
+        self.image_length = self.read_contigs_and_calc_padding(fasta_files[0], extract_contigs)
         self.prepare_image(self.image_length)
         if self.using_background_colors:
             self.fill_in_colored_borders()
@@ -52,12 +53,13 @@ class ParallelLayout(TileLayout):
             # Do inner work for two other files
             for index, filename in enumerate(fasta_files):
                 if index != 0:
-                    self.read_contigs_and_calc_padding(filename)
+                    self.read_contigs_and_calc_padding(filename, extract_contigs)
                 self.color_changes_per_genome()
                 self.draw_nucleotides()
                 self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
+                self.output_fasta(output_folder, filename, False, extract_contigs)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()

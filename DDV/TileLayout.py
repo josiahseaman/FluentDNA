@@ -3,12 +3,15 @@ from __future__ import print_function, division, absolute_import, \
 
 import math
 import os
+import shutil
 import traceback
 from collections import defaultdict
 from datetime import datetime
+
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
-from DNASkittleUtils.Contigs import read_contigs, Contig
+from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette
 from DDV import gap_char
@@ -159,9 +162,10 @@ class TileLayout(object):
             self.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
-    def process_file(self, input_file_path, output_folder, output_file_name):
+    def process_file(self, input_file_path, output_folder, output_file_name,
+                     no_webpage=False, extract_contigs=None):
         start_time = datetime.now()
-        self.image_length = self.read_contigs_and_calc_padding(input_file_path)
+        self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
         print("Read contigs :", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time, "\n")
@@ -181,6 +185,10 @@ class TileLayout(object):
             traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
+        if extract_contigs:
+            print("Rendered sequence:", fasta_destination)
+
 
     def draw_nucleotides(self):
         total_progress = 0
@@ -205,6 +213,22 @@ class TileLayout(object):
                           end="")  # pseudo progress bar
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
         print('')
+
+
+    def output_fasta(self, output_folder, fasta, no_webpage=False, extract_contigs=None, ):
+        fasta_destination = os.path.join(output_folder, os.path.basename(fasta))
+        if extract_contigs:
+            length_sum = sum([len(c.seq) for c in self.contigs])
+            fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+            write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+        else:
+            try:
+                if not no_webpage:
+                    shutil.copy(fasta, fasta_destination)
+            except shutil.SameFileError:
+                pass  # not a problem
+        return fasta_destination
+
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
@@ -237,7 +261,7 @@ class TileLayout(object):
         return total_progress  # + reset + title + tail + length
 
 
-    def read_contigs_and_calc_padding(self, input_file_path):
+    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
         try:
             self.contigs = read_contigs(input_file_path)
         except UnicodeDecodeError as e:
@@ -246,6 +270,13 @@ class TileLayout(object):
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
+        if extract_contigs is not None:  # winnow down to only extracted contigs
+            filtered_contigs = [c for c in self.contigs if c.name.split()[0] in set(extract_contigs)]
+            if filtered_contigs:
+                self.contigs = filtered_contigs
+            else:
+                print("Warning: No matching contigs were found, so the whole file is being used:",
+                      extract_contigs, file=sys.stderr)
         return self.calc_all_padding()
 
     def prepare_image(self, image_length):
