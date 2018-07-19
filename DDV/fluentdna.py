@@ -210,13 +210,14 @@ def ddv(args):
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = AnnotatedGenomeLayout(args.fasta, args.ref_annotation, args.annotation_width)
-        layout.render_genome(output_dir, args.output_name,)
+        layout.render_genome(output_dir, args.output_name, args.contigs)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
     elif args.layout == "outlines":
         output_dir = make_output_dir_with_suffix(base_path, '')
         layout = OutlinedAnnotation(args.fasta, args.ref_annotation)
-        layout.process_file(args.fasta, output_dir, args.output_name,)
+        layout.process_file(args.fasta, output_dir, args.output_name,
+                            args.no_webpage, args.contigs)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
 

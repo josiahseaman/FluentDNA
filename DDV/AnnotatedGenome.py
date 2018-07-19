@@ -16,25 +16,23 @@ class AnnotatedGenomeLayout(ParallelLayout):
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
 
-    def render_genome(self, output_folder, output_file_name):
-        self.annotation_fasta = join(output_folder, basename(self.gff_filename) + '.fa')
+    def render_genome(self, output_folder, output_file_name, extract_contigs=None):
+        self.annotation_fasta = join(output_folder, basename(self.gff_filename) +
+                                     ('.fa' if extract_contigs is None else '_extracted.fa'))
         self.contigs = read_contigs(self.fasta_file)
-        chromosomes = [x.name.split()[0] for x in self.contigs]
+        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
+        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
+        extract_contigs = [x.name.split()[0] for x in self.contigs]
         lengths = [len(x.seq) for x in self.contigs]
-        create_fasta_from_annotation(self.annotation, chromosomes,
+        create_fasta_from_annotation(self.annotation, extract_contigs,
                                      scaffold_lengths=lengths,
                                      output_path=self.annotation_fasta,
                                      annotation_width=self.annotation_width,
                                      base_width=self.base_width)
         super(AnnotatedGenomeLayout, self).process_file(output_folder,
                           output_file_name=output_file_name,
-                          fasta_files=[self.annotation_fasta, self.fasta_file])
-
-
-    def read_contigs_and_calc_padding(self, input_file_path):
-        self.contigs = read_contigs(input_file_path)
-        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
-        return self.calc_all_padding()
+                          fasta_files=[self.annotation_fasta, self.fasta_file],
+                          no_webpage=False, extract_contigs=extract_contigs)
 
 
     def changes_per_genome(self):

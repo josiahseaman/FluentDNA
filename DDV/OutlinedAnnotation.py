@@ -27,8 +27,10 @@ class OutlinedAnnotation(TileLayout):
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
 
 
-    def process_file(self, input_file_path, output_folder, output_file_name):
-        super(OutlinedAnnotation, self).process_file(input_file_path, output_folder, output_file_name)
+    def process_file(self, input_file_path, output_folder, output_file_name,
+                     no_webpage=False, extract_contigs=None):
+        super(OutlinedAnnotation, self).process_file(input_file_path, output_folder, output_file_name,
+                                                     no_webpage, extract_contigs)
         # nothing extra
 
     def draw_titles(self):

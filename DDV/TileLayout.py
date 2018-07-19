@@ -282,14 +282,18 @@ class TileLayout(object):
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
+        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
+        return self.calc_all_padding()
+
+    def filter_by_contigs(self, unfiltered, extract_contigs):
         if extract_contigs is not None:  # winnow down to only extracted contigs
-            filtered_contigs = [c for c in self.contigs if c.name.split()[0] in set(extract_contigs)]
+            filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
             if filtered_contigs:
-                self.contigs = filtered_contigs
+                return filtered_contigs
             else:
                 print("Warning: No matching contigs were found, so the whole file is being used:",
                       extract_contigs, file=sys.stderr)
-        return self.calc_all_padding()
+        return unfiltered
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
