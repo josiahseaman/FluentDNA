@@ -9,7 +9,7 @@ You will need:
 2. Git: [Download Link](https://git-scm.com/downloads)
 
 **Installation**
-From a command line in your python virtual environment:
+From a command line in your python virtual environment:  
 `pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
 
 **Running**
