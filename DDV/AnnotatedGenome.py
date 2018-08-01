@@ -35,6 +35,12 @@ class AnnotatedGenomeLayout(ParallelLayout):
                           no_webpage=False, extract_contigs=extract_contigs)
 
 
+    def read_contigs_and_calc_padding(self, input_file_path):
+        self.contigs = read_contigs(input_file_path)
+        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
+        return self.calc_all_padding()
+
+
     def changes_per_genome(self):
         self.levels = self.each_layout[self.genome_processed]
         self.activate_high_contrast_colors()
