@@ -131,11 +131,17 @@ class TileLayout(object):
 
 
     def activate_high_contrast_colors(self):
+        # # -----Nucleotide Colors! Paletton Stark ------
+        #Base RGB: FF4100, Dist 40
+        self.palette['A'] = hex_to_rgb('FF4100')  # Red
+        self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
+        self.palette['C'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
+        self.palette['G'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
         # Original DDV Colors
-        self.palette['A'] = (255, 0, 0)
-        self.palette['G'] = (0, 255, 0)
-        self.palette['T'] = (250, 240, 114)
-        self.palette['C'] = (0, 0, 255)
+        # self.palette['A'] = (255, 0, 0)
+        # self.palette['G'] = (0, 255, 0)
+        # self.palette['T'] = (250, 240, 114)
+        # self.palette['C'] = (0, 0, 255)
 
     def activate_natural_colors(self):
         # -----Nucleotide Colors! Paletton Quadrapole colors------
@@ -153,11 +159,6 @@ class TileLayout(object):
         # self.palette['T'] = hex_to_rgb('ECBC6C')  # Yellow
         # self.palette['G'] = hex_to_rgb('4CA47A')  # Green
         # self.palette['C'] = hex_to_rgb('4F6F9B')  # Blue
-        # # -----Nucleotide Colors! Paletton Stark ------
-        # self.palette['A'] = hex_to_rgb('FF4100')  # Red
-        # self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
-        # self.palette['G'] = hex_to_rgb('00C566')  # Green
-        # self.palette['C'] = hex_to_rgb('0B56BE')  # Blue
         # -----Manually Adjusted Colors from Paletton plus contrast------
         self.palette['A'] = hex_to_rgb('D4403C')  # Red
         self.palette['T'] = hex_to_rgb('E2AE5B')  # Yellow

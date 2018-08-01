@@ -27,6 +27,7 @@ def collapse_file_to_one_contig(fasta):
 class MultipleAlignmentLayout(TransposonLayout):
     def __init__(self, sort_contigs=False, **kwargs):
         kwargs['low_contrast'] = True
+        kwargs['sort_contigs'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.sort_contigs = sort_contigs

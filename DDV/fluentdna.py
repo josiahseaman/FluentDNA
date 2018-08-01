@@ -168,16 +168,7 @@ def ddv(args):
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
-        if not args.no_webpage:
-            layout.generate_html(output_dir, args.output_name)
-            final_output_location = layout.final_output_location
-            del layout
-            print("Creating Deep Zoom Structure from Generated Image...")
-            create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                                  os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-            print("Done creating Deep Zoom Structure.")
-        else:
-            del layout
+        finish_webpage(args, layout, output_dir, args.output_name)
         print("Done with Alignments")
         done(args, output_dir)
 
@@ -187,7 +178,7 @@ def ddv(args):
             output_dir = make_output_dir_with_suffix(base_path, '')
             create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, args.output_name,
                                             [args.fasta] + args.extra_fastas)
-            sys.exit(0)
+            done(args, output_dir)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
                                        first_source=args.fasta,

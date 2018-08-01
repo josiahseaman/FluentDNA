@@ -35,7 +35,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
                           no_webpage=False, extract_contigs=extract_contigs)
 
 
-    def read_contigs_and_calc_padding(self, input_file_path):
+    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
         self.contigs = read_contigs(input_file_path)
         # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
         return self.calc_all_padding()
