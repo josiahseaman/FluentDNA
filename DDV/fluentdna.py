@@ -348,6 +348,8 @@ def main():
                              "This can be used to pluck out your contig of interest from a large file. "
                              "REQUIRED for Chain File alignments.",
                         dest="contigs")
+    parser.add_argument("-cc", "--chromosomes", nargs='+', type=str,
+                        help="Synonym for --contigs for backwards compatibility.", dest="contigs")
 
     parser.add_argument('-s', '--sort_contigs',
                         action='store_true',

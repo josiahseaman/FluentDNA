@@ -8,18 +8,7 @@ individual genome elements visible even without an annotation.  Add your annotat
 they align with the sequence features.
 ![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/Test%20Simple.png)
 
-## Table of Contents
-* [Generating Visualizations](#generating-visualizations)
-  * [Simple FASTA file (DNA)](#simple-fasta-file-dna)
-  * [Multi-part FASTA file (DNA)](#multi-part-fasta-file-dna)
-  * [Annotated Genomes](#annotated-genomes)
-  * [Multiple Sequence Alignment Families](#multiple-sequence-alignment-families)
-  * [Alignment of two Genomes](#alignment-of-two-genomes)
-  * [History](#history)
-
-
 ***
-
 ## FluentDNA Quick Start
 
 You can start using FluentDNA:
@@ -29,6 +18,18 @@ You can start using FluentDNA:
  4. Once your private server has started, all your results available at [http://127.0.0.1:8000](http://127.0.0.1:8000).  Note that this server is not actually using the internet at all, it's just using your browser as a file viewer.
 
 To use FluentDNA as a python module, follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
+
+***
+
+## Example Use Cases
+* [Simple FASTA file (DNA)](#simple-fasta-file-dna)
+* [Multi-part FASTA file (DNA)](#multi-part-fasta-file-dna)
+* [Annotated Genomes](#annotated-genomes)
+* [Multiple Sequence Alignment Families](#multiple-sequence-alignment-families)
+* [Alignment of two Genomes](#alignment-of-two-genomes)
+* [History](#history)
+
+
 ***
 
 ### Simple FASTA file (DNA)
