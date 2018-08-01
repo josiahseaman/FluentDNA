@@ -6,8 +6,10 @@ import sys
 import textwrap
 from collections import defaultdict
 from datetime import datetime
+from itertools import chain
 
-from DNASkittleUtils.Contigs import read_contigs
+from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
+from DNASkittleUtils.DDVUtils import editable_str
 from PIL import ImageDraw
 
 
@@ -423,3 +425,26 @@ def viridis_palette():
     palette[254] = (250, 230, 34)
     palette[255] = (253, 231, 36)
     return palette
+
+
+def squish_fasta(scaffolds, annotation_width, base_width):
+    print("Squishing fasta by %i / %i" % (base_width, annotation_width))
+    squished_versions = []
+    skip_size = base_width // annotation_width
+    remainder = base_width - (skip_size * annotation_width)
+    skips = list(chain([skip_size] * (annotation_width - 1), [skip_size + remainder]))
+    for contig in scaffolds:
+        work = editable_str('')
+        i = 0; x = 0
+        while i < len(contig.seq):
+            work.append(contig.seq[i])
+            i += skips[x % annotation_width]
+            x += 1
+        squished_versions.append(Contig(contig.name, ''.join(work)))
+    return squished_versions
+
+if __name__ == '__main__':
+    scaffolds = read_contigs('data/annotation_alignment/chr19_Hg38_gapped_gene_annotation.fa')
+    processed = squish_fasta(scaffolds, 18, 100)
+    write_contigs_to_file('data/annotation_alignment/chr19_Hg38_gapped_gene_annotation_squished_18.fa', processed)
+

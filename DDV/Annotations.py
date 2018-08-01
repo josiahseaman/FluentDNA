@@ -1,13 +1,11 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
+
 import os
 from collections import namedtuple, defaultdict
-from itertools import chain
-
-from DNASkittleUtils.Contigs import Contig
-
-from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
+from DDV import gap_char
+from DDVUtils import squish_fasta
 
 
 class GFF(object):
@@ -132,23 +130,6 @@ def handle_tail(seq_array, scaffold_lengths, sc_index):
     if scaffold_lengths is not None:
         remaining = scaffold_lengths[sc_index] - len(seq_array)
         seq_array.extend( gap_char * remaining)
-
-
-def squish_fasta(scaffolds, annotation_width, base_width):
-    print("Squishing annotation by %i / %i" % (base_width, annotation_width))
-    squished_versions = []
-    skip_size = base_width // annotation_width
-    remainder = base_width - (skip_size * annotation_width)
-    skips = list(chain([skip_size] * (annotation_width - 1), [skip_size + remainder]))
-    for contig in scaffolds:
-        work = editable_str('')
-        i = 0; x = 0
-        while i < len(contig.seq):
-            work.append(contig.seq[i])
-            i += skips[x % annotation_width]
-            x += 1
-        squished_versions.append(Contig(contig.name, ''.join(work)))
-    return squished_versions
 
 
 def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
