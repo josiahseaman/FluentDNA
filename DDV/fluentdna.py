@@ -42,8 +42,14 @@ multiprocessing.freeze_support()
 # ----------BEGIN MAIN PROGRAM----------
 from DDV import VERSION
 
-import shutil
 import argparse
+from gooey import Gooey
+#By default, the python interpreter buffers stdout. In short, this means that rather than
+# Gooey being able to read the output of your program in real time, it receives it in
+# very coarsely grained chunks. These two lines must be before main()
+# nonbuffered_stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+# sys.stdout = nonbuffered_stdout
+
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
@@ -305,6 +311,7 @@ def finish_webpage(args, layout, output_dir, output_name):
         del layout
 
 
+@Gooey
 def main():
     if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
         print("--Starting in Quick Mode--")
