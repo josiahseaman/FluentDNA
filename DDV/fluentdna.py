@@ -117,7 +117,7 @@ def run_server(home_directory):
     handler = server.SimpleHTTPRequestHandler
     httpd = TCPServer((ADDRESS, PORT), handler)
 
-    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)))
+    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)), flush=True)
     httpd.serve_forever()
 
 
@@ -311,7 +311,7 @@ def finish_webpage(args, layout, output_dir, output_name):
         del layout
 
 
-@Gooey
+@Gooey(program_name='FluentDNA Visualization', image_dir='html_template/img')
 def main():
     if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
         print("--Starting in Quick Mode--")

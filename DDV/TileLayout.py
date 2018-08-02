@@ -179,28 +179,28 @@ class TileLayout(object):
                      no_webpage=False, extract_contigs=None):
         start_time = datetime.now()
         self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
-        print("Read contigs :", datetime.now() - start_time)
+        print("Read contigs :", datetime.now() - start_time, flush=True)
         self.prepare_image(self.image_length)
-        print("Initialized Image:", datetime.now() - start_time, "\n")
+        print("Initialized Image:", datetime.now() - start_time, "\n", flush=True)
         try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
             self.draw_nucleotides()
-            print("\nDrew Nucleotides:", datetime.now() - start_time)
+            print("\nDrew Nucleotides:", datetime.now() - start_time, flush=True)
         except Exception as e:
-            print('Encountered exception while drawing nucleotides:', '\n')
+            print('Encountered exception while drawing nucleotides:', '\n', flush=True)
             traceback.print_exc()
         try:
             if len(self.contigs) > 1 and self.use_titles:
-                print("Drawing %i titles" % sum(len(x.seq) > small_title_bp for x in self.contigs))
+                print("Drawing %i titles" % sum(len(x.seq) > small_title_bp for x in self.contigs), flush=True)
                 self.draw_titles()
-                print("Drew Titles:", datetime.now() - start_time)
+                print("Drew Titles:", datetime.now() - start_time, flush=True)
         except BaseException as e:
-            print('Encountered exception while drawing titles:', '\n')
+            print('Encountered exception while drawing titles:', '\n', flush=True)
             traceback.print_exc()
         self.output_image(output_folder, output_file_name)
-        print("Output Image in:", datetime.now() - start_time)
+        print("Output Image in:", datetime.now() - start_time, flush=True)
         fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
         if extract_contigs:
-            print("Rendered sequence:", fasta_destination)
+            print("Rendered sequence:", fasta_destination, flush=True)
 
 
     def draw_nucleotides(self):
@@ -221,9 +221,9 @@ class TileLayout(object):
                     self.draw_pixel(nuc, x + i, y)
                 #except IndexError:
                 #    print("Cursor fell off the image at", x,y)
-                if cx % 100000 == 0:
+                if cx % 1000000 == 1000000-1:
                     print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
-                          end="")  # pseudo progress bar
+                          end="", flush=True)  # pseudo progress bar
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
         print('')
 
@@ -251,11 +251,11 @@ class TileLayout(object):
         # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
         #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
-            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
+            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.", flush=True)
             self.skip_small_titles = True
             self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
         if self.sort_contigs:
-            print("Scaffolds are being sorted by length.")
+            print("Scaffolds are being sorted by length.", flush=True)
             self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
         for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
@@ -278,8 +278,8 @@ class TileLayout(object):
         try:
             self.contigs = read_contigs(input_file_path)
         except UnicodeDecodeError as e:
-            print(e)
-            print("Important: Non-standard characters detected.  Switching to 256 colormap for bytes")
+            print(e, flush=True)
+            print("Important: Non-standard characters detected.  Switching to 256 colormap for bytes", flush=True)
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
@@ -298,7 +298,7 @@ class TileLayout(object):
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
-        print("Image dimensions are", width, "x", height, "pixels")
+        print("Image dimensions are", width, "x", height, "pixels", flush=True)
         print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
               "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
         self.image = Image.new(self.pil_mode, (width, height), "white")
@@ -430,7 +430,7 @@ class TileLayout(object):
         del self.pixels
         del self.draw
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
-        print("-- Writing:", self.final_output_location, "--")
+        print("-- Writing:", self.final_output_location, "--", flush=True)
         self.image.save(self.final_output_location, 'PNG')
         # del self.image
 

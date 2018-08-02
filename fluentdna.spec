@@ -32,21 +32,20 @@ options = [('u', None, 'OPTION'), ('u', None, 'OPTION'), ('u', None, 'OPTION')]
 
 exe = EXE(pyz,
    a.scripts,
-          a.binaries,
-          a.zipfiles,
-          a.datas,
-          options,
-          gooey_languages, # Add them in to collected files
-          gooey_images, # Same here.
-
+   a.binaries,
+   a.zipfiles,
+   a.datas,
+   options,
+   gooey_languages, # Add them in to collected files
+   gooey_images, # Same here.
    name='FluentDNA',
    debug=False,
    strip=None, #strip=False,
    upx=False, #executable compression
    console=False,
    windowed=True,
-   icon=os.path.join(gooey_root, 'images', 'program_icon.ico'))
-   #(gooey_root, 'DDV','html_template','img','favicon.ico'))
+   icon=os.path.join(pathextras[0], 'DDV','html_template','img','favicon.ico'))
+   #(gooey_root, 'images', 'program_icon.ico'))
 
 
 #coll = COLLECT(exe,
@@ -58,7 +57,7 @@ exe = EXE(pyz,
 #   name='FluentDNA')
    
 #the app will be useful ONLY for the MAC GUI/windowed version
-#if is_darwin:
-#   app = BUNDLE(exe,
-#                name='FluentDNA.app',
-#                icon='favicon.icns')
+if is_darwin:
+   app = BUNDLE(exe,
+                name='FluentDNA.app',
+                icon=os.path.join(pathextras[0], 'DDV','html_template','img','favicon.icns'))
