@@ -60,4 +60,6 @@ exe = EXE(pyz,
 if is_darwin:
    app = BUNDLE(exe,
                 name='FluentDNA.app',
+                onefile=True,
+                windowed=True,
                 icon=os.path.join(pathextras[0], 'DDV','html_template','img','favicon.icns'))

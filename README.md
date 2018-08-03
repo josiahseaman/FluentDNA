@@ -19,6 +19,9 @@ You can start using FluentDNA:
 
 To use FluentDNA as a python module, follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
 
+## Support Contact
+If you run into any problems or would like to use FluentDNA in research, contact me at josiah@newline.us.  I'm happy to support my own software and always interested in new collaborations.
+
 ***
 
 ## Example Use Cases

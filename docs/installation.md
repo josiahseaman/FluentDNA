@@ -31,15 +31,15 @@ To run FluentDNA from your own python script I recommend looking at fluentdna.py
 Check out the file [example_DDV_commands.txt](https://github.com/josiahseaman/DDV/blob/python-master/example_DDV_commands.txt) for more examples.
 
 ## Support Contact
-If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
+If you run into any problems or would like to use FluentDNA in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
 
-## DDV 2.0 Features
+## FluentDNA 2.0 Features
 
-DDV 2.0 is a complete rewrite in Python of DDV.  DDV 2.0 has a much expanded feature set for handling
+FluentDNA 2.0 is a complete rewrite in Python of DDV.  FluentDNA 2.0 has a much expanded feature set for handling
 large, multipart files.  It can put an entire genome on a single image, marked with contig names.
-DDV 2.0 has features in development for exploring genome alignments, annotations, and transposon alignments.
+FluentDNA 2.0 has features in development for exploring genome alignments, annotations, and transposon alignments.
 It was developed by Newline Technical Innovations and can be found at:
-https://github.com/josiahseaman/DDV/tree/python-master
+https://github.com/josiahseaman/FluentDNA/tree/python-master
 
 
 # Compile Instructions for Developers:
