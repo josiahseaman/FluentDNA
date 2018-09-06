@@ -94,13 +94,14 @@ def query_yes_no(question, default='yes'):
 
 def run_server(home_directory):
     try:
+        print("Setting up HTTP Server based from", home_directory)
         from http import server
         from socketserver import TCPServer
     except ImportError:  # Python 2 imports
+        print("Import error, trying with Python 2")
         import SimpleHTTPServer as server
         from SocketServer import TCPServer
 
-    print("Setting up HTTP Server based from", home_directory)
     os.chdir(home_directory)
 
     ADDRESS = "127.0.0.1"
@@ -109,8 +110,9 @@ def run_server(home_directory):
     handler = server.SimpleHTTPRequestHandler
     httpd = TCPServer((ADDRESS, PORT), handler)
 
-    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)))
+    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)), flush=True)
     httpd.serve_forever()
+
 
 
 def done(args, output_dir):
