@@ -5,7 +5,7 @@ block_cipher = None
 pathextras=['D:\\josiah\\Projects\\DDV']
 mainexepath=['DDV\\fluentdna.py']
 excludelibs=[]
-if is_darwin: pathextras=[] 
+if is_darwin: pathextras=[]
 if is_darwin: excludelibs=['FixTk', 'tcl', 'tk', '_tkinter', 'tkinter', 'Tkinter']
 if is_darwin: mainexepath=['DDV/fluentdna.py']
 
@@ -21,7 +21,7 @@ a = Analysis(mainexepath,
    win_no_prefer_redirects=False,
    win_private_assemblies=False,
    cipher=block_cipher)
-             
+
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,
@@ -41,7 +41,7 @@ coll = COLLECT(exe,
    strip=False,
    upx=True,
    name='FluentDNA')
-   
+
 #the app will be useful ONLY for the MAC GUI/windowed version
 #if is_darwin:
 #   app = BUNDLE(exe,

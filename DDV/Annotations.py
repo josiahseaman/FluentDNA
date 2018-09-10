@@ -159,7 +159,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
         features = {'CDS':FeatureRep('G', 1),  # 1 priority is the most important
                     'exon':FeatureRep('T', 2),
                     'gene':FeatureRep('C', 3),
-                    'transcript':FeatureRep('A', 4)}
+                    'mRNA':FeatureRep('A', 4),
+                    'transcript':FeatureRep('N', 5)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename
@@ -217,6 +218,34 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 
     print("Done", gff.file_name)
     print("Kept %.2f percent = %i / %i" % (kept / total * 100, kept, total))
+
+
+
+def find_universal_prefix(chromosomes):
+    names = []
+    for annotation_list in chromosomes:
+        for entry in annotation_list:
+            assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+            names.append(extract_gene_name(entry))  # flattening the structure
+    start = 0
+    for column in zip(*names):
+        if all([c == column[0] for c in column]):
+            start += 1
+        else:
+            break
+    # shortened_names = [name[start:] for name in names]
+    prefix = names[0][:start]
+    return prefix
+
+
+def extract_gene_name(entry):
+    if 'Name' in entry.attributes:
+        name = entry.attributes['Name']
+    elif 'ID' in entry.attributes:  # TODO case sensitive?
+        name = entry.attributes['ID']
+    else:
+        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+    return name
 
 
 if __name__ == '__main__':

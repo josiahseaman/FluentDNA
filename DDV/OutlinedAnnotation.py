@@ -1,6 +1,6 @@
 from PIL import Image, ImageFont, ImageDraw
 
-from DDV.Annotations import GFF
+from DDV.Annotations import GFF, extract_gene_name
 from DDV.DDVUtils import multi_line_height
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
@@ -51,7 +51,7 @@ class OutlinedAnnotation(TileLayout):
                           (58, 20, 84, 84),
                           (58, 20, 84, 49),
                           (58, 20, 84, 15)]
-        exon_color = (255,255,255,135)  # white highlighter.  This is less disruptive overall
+        exon_color = (255,255,255,80)  # white highlighter.  This is less disruptive overall
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
                 darkness = 6 - len(region.outline_points) + radius  # softer line for small features
@@ -67,6 +67,7 @@ class OutlinedAnnotation(TileLayout):
         print("Collecting points in annotated regions")
         positions = self.contig_struct()
         regions = []
+
         for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
             scaff_name = coordinate_frame["name"].split()[0]
             if scaff_name in self.annotation.annotations.keys():
@@ -81,7 +82,7 @@ class OutlinedAnnotation(TileLayout):
                                                        coordinate_frame["xy_seq_start"]))
                     if entry.feature == 'CDS':
                         # hopefully mRNA comes first in the file
-                        if regions[-1].attributes['Name'] == entry.attributes['Parent']:
+                        if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
                             regions[-1].add_cds_region(entry)
 
         return regions
@@ -120,7 +121,7 @@ class OutlinedAnnotation(TileLayout):
                 height = 11  # don't make the area so small it clips the text
                 upper_left[1] -= 2
 
-            self.write_label(region.attributes["Name"], width, height, font_size, 18, upper_left,
+            self.write_label(extract_gene_name(region), width, height, font_size, 18, upper_left,
                              vertical_label, region.strand, markup_image)
 
 

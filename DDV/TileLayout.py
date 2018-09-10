@@ -206,7 +206,7 @@ class TileLayout(object):
     def draw_nucleotides(self):
         total_progress = 0
         # Layout contigs one at a time
-        for contig in self.contigs:
+        for contig_index, contig in enumerate(self.contigs):
             total_progress += contig.reset_padding + contig.title_padding
             seq_length = len(contig.seq)
             line_width = self.levels[0].modulo
@@ -214,17 +214,17 @@ class TileLayout(object):
                 x, y = self.position_on_screen(total_progress)
                 remaining = min(line_width, seq_length - cx)
                 total_progress += remaining
-                #try:
-                for i in range(remaining):
-                    nuc = contig.seq[cx + i]
-                    # if nuc != gap_char:
-                    self.draw_pixel(nuc, x + i, y)
-                #except IndexError:
-                #    print("Cursor fell off the image at", x,y)
-                if cx % 100000 == 0:
-                    print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
-                          end="")  # pseudo progress bar
+                try:
+                    for i in range(remaining):
+                        nuc = contig.seq[cx + i]
+                        # if nuc != gap_char:
+                        self.draw_pixel(nuc, x + i, y)
+                except IndexError:
+                   print("Cursor fell off the image at", x,y)
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
+            if len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0:
+                print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
+                      flush=True)  # pseudo progress bar
         print('')
 
 

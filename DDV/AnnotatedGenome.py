@@ -1,35 +1,10 @@
-from  os.path import join, basename
-
 import math
 from DNASkittleUtils.Contigs import read_contigs
+from  os.path import join, basename
 
+from Annotations import find_universal_prefix, extract_gene_name
 from DDV.Annotations import create_fasta_from_annotation, GFF
 from DDV.ParallelGenomeLayout import ParallelLayout
-
-
-def find_universal_prefix(chromosomes):
-    names = []
-    for annotation_list in chromosomes:
-        for entry in annotation_list:
-            assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
-            names.append(extract_gene_name(entry))  # flattening the structure
-    start = 0
-    for column in zip(*names):
-        if all([c == column[0] for c in column]):
-            start += 1
-        else:
-            break
-    # shortened_names = [name[start:] for name in names]
-    prefix = names[0][:start]
-    return prefix
-
-
-def extract_gene_name(entry):
-    try:
-        name = entry.attributes['Name']
-    except KeyError:
-        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
-    return name
 
 
 class AnnotatedGenomeLayout(ParallelLayout):
@@ -110,7 +85,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
             scaff_name = scaffold["name"].split()[0]
             if scaff_name in labels.keys():
                 for entry in labels[scaff_name]:
-                    if entry.feature == 'gene':
+                    if entry.feature in ['gene', 'mRNA']:
                         progress = (entry.start ) // self.base_width *\
                                    self.annotation_width + scaffold["xy_seq_start"]
                         end = (entry.end) // self.base_width *\
@@ -134,7 +109,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def additional_html_content(self, html_content):
         return {'legend': html_content['legend'] +
                 """<p><span><strong>Annotation Colors:</strong>
-                <p>Gene = Blue, Exon = Yellow, CDS = Green. Gene components are stacked in a hierarchy: 
+                <p>Gene = Blue, mRNA = Red, Exon = Yellow, CDS = Green. Gene components are stacked in a hierarchy: 
                  CDS in exons, exons in genes. Only the most exclusive category (CDS) is visible. 
                  Visible blue regions are introns.  Visible yellow (exon, but not CDS) are 3' and 5' UTR.</p></span></p>
                 """}  # override in children
