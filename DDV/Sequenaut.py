@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from DDV.TileLayout import TileLayout
 from DDV.fluentdna import create_tile_layout_viz_from_fasta
-from DDV.DDVUtils import make_output_dir_with_suffix, base_directories
+from DDV.DDVUtils import make_output_dir_with_suffix, base_directories, interpolate
 
 
 def hasDepth(listLike):
@@ -17,19 +17,6 @@ def hasDepth(listLike):
             listLike[0], "__getitem__")
     except:
         return False
-
-
-def interpolate(A, B, start, end, position):
-    if start == end:
-        return A
-    progress = (position - start) / (end - start)  # progress goes from 0.0 p1  to 1.0 p2
-    inverse = 1.0 - progress
-    sample = A * inverse + B * progress
-    return sample
-
-
-def linspace(start, end, steps):
-    return [interpolate(start, end, 0, steps - 1, i) for i in range(steps)]
 
 
 def countNucleotides(seq, oligomerSize):

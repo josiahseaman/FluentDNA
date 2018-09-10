@@ -4,6 +4,7 @@ from DDV.Annotations import GFF, extract_gene_name
 from DDV.DDVUtils import multi_line_height
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
+from DDV.DDVUtils import linspace
 from collections import namedtuple
 Point = namedtuple('Point', ['x', 'y'])
 
@@ -25,7 +26,7 @@ class OutlinedAnnotation(TileLayout):
         self.annotation = GFF(self.gff_filename)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
-
+        self.border_width = 30
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -45,16 +46,13 @@ class OutlinedAnnotation(TileLayout):
     def draw_annotation_outlines(self, markup_canvas):
         regions = self.find_annotated_regions()
         print("Drawing annotation outlines")
-        outline_colors = [(58, 20, 84, 197),  # desaturated purple drop shadow, decreasing opacity
-                          (58, 20, 84, 162),
-                          (58, 20, 84, 128),
-                          (58, 20, 84, 84),
-                          (58, 20, 84, 49),
-                          (58, 20, 84, 15)]
+        # desaturated purple drop shadow, decreasing opacity
+        opacities = linspace(197, 10, self.border_width)
+        outline_colors = [(65, 42, 80, int(opacity)) for opacity in opacities]
         exon_color = (255,255,255,80)  # white highlighter.  This is less disruptive overall
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
-                darkness = 6 - len(region.outline_points) + radius  # softer line for small features
+                darkness = self.border_width - len(region.outline_points) + radius  # softer line for small features
                 c = outline_colors[darkness]
                 for pt in layer:
                     blend_pixel(markup_canvas, pt, c)
@@ -79,7 +77,7 @@ class OutlinedAnnotation(TileLayout):
                             progress = i + coordinate_frame["xy_seq_start"]
                             annotation_points.append(self.position_on_screen(progress))
                         regions.append(AnnotatedRegion(entry, annotation_points,
-                                                       coordinate_frame["xy_seq_start"]))
+                                                       coordinate_frame["xy_seq_start"], self.border_width))
                     if entry.feature == 'CDS':
                         # hopefully mRNA comes first in the file
                         if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
@@ -179,7 +177,7 @@ def outlines(annotation_points, radius, square_corners=False):
 
 
 class AnnotatedRegion(GFF.Annotation):
-    def __init__(self, GFF_annotation, annotation_points, xy_seq_start):
+    def __init__(self, GFF_annotation, annotation_points, xy_seq_start, radius):
         assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
         g = GFF_annotation  # short name
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
@@ -187,7 +185,6 @@ class AnnotatedRegion(GFF.Annotation):
                                               g.attributes, g.line)
         self.points = list(annotation_points)
         self.xy_seq_start = xy_seq_start
-        radius = 6 if self.feature == 'mRNA' else 3
         self.outline_points = outlines(annotation_points, radius)
         self.protein_spans = []
 
