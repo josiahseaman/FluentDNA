@@ -313,8 +313,10 @@ def main():
               # "The scaffolds will be sorted by length for best layout."
               "Recommend you open large files with 'Windows Photo Viewer'.")
         sys.argv[1] = '--fasta=' + sys.argv[1]
-        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
         sys.argv.append("--quick")
+    if "--quick" in sys.argv:
+        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
+
         # sys.argv.append("--sort_contigs")
 
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",

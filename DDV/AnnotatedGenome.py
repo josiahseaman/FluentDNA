@@ -10,7 +10,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def __init__(self, fasta_file, gff_file, annotation_width=None, *args, **kwargs):
         self.annotation_phase = 0  # Means annotations are first, on the left
         self.annotation_width = annotation_width if annotation_width is not None else 100
-        columns = [annotation_width, 100]  # TODO: or base_width
+        columns = [self.annotation_width, 100]  # TODO: or base_width
         super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, column_widths=columns, *args, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
