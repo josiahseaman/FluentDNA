@@ -6,6 +6,32 @@ from DNASkittleUtils.Contigs import read_contigs
 from DDV.Annotations import create_fasta_from_annotation, GFF
 from DDV.ParallelGenomeLayout import ParallelLayout
 
+
+def find_universal_prefix(chromosomes):
+    names = []
+    for annotation_list in chromosomes:
+        for entry in annotation_list:
+            assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+            names.append(extract_gene_name(entry))  # flattening the structure
+    start = 0
+    for column in zip(*names):
+        if all([c == column[0] for c in column]):
+            start += 1
+        else:
+            break
+    # shortened_names = [name[start:] for name in names]
+    prefix = names[0][:start]
+    return prefix
+
+
+def extract_gene_name(entry):
+    try:
+        name = entry.attributes['Name']
+    except KeyError:
+        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+    return name
+
+
 class AnnotatedGenomeLayout(ParallelLayout):
     def __init__(self, fasta_file, gff_file, annotation_width=None, *args, **kwargs):
         self.annotation_phase = 0  # Means annotations are first, on the left
@@ -78,20 +104,19 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def draw_annotation_labels(self):
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
+        universal_prefix = find_universal_prefix(labels.values())
+        print("Removing Universal Prefix from annotations:", universal_prefix)
         for sc_index, scaffold in enumerate(layout):  # Exact match required (case sensitive)
             scaff_name = scaffold["name"].split()[0]
             if scaff_name in labels.keys():
                 for entry in labels[scaff_name]:
-                    assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
                     if entry.feature == 'gene':
                         progress = (entry.start ) // self.base_width *\
                                    self.annotation_width + scaffold["xy_seq_start"]
                         end = (entry.end) // self.base_width *\
                                    self.annotation_width + scaffold["xy_seq_start"]
-                        try:
-                            name = entry.attributes['Name']
-                        except KeyError:
-                            name = ';'.join(['%s=%s' %(key, val) for key, val in entry.attributes.items()])
+                        name = extract_gene_name(entry)
+                        name = name[len(universal_prefix):]  # remove prefix
                         upper_left = self.position_on_screen(progress + 2)
                         bottom_right = self.position_on_screen(end - 2)
                         width = 100  # bottom_right[0] - upper_left[0],
