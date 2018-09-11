@@ -221,12 +221,12 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 
 
 
-def find_universal_prefix(chromosomes):
+def find_universal_prefix(annotation_list):
+    """ :type annotation_list: list(GFF.Annotation) """
     names = []
-    for annotation_list in chromosomes:
-        for entry in annotation_list:
-            assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
-            names.append(extract_gene_name(entry))  # flattening the structure
+    for entry in annotation_list:
+        assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+        names.append(extract_gene_name(entry))  # flattening the structure
     start = 0
     for column in zip(*names):
         if all([c == column[0] for c in column]):
@@ -238,14 +238,14 @@ def find_universal_prefix(chromosomes):
     return prefix
 
 
-def extract_gene_name(entry):
+def extract_gene_name(entry, remove_prefix=''):
     if 'Name' in entry.attributes:
         name = entry.attributes['Name']
     elif 'ID' in entry.attributes:  # TODO case sensitive?
         name = entry.attributes['ID']
     else:
         name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
-    return name
+    return name.replace(remove_prefix, '', 1)
 
 
 if __name__ == '__main__':

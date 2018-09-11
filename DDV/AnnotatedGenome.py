@@ -1,5 +1,6 @@
 import math
 from DNASkittleUtils.Contigs import read_contigs
+from itertools import chain
 from  os.path import join, basename
 
 from Annotations import find_universal_prefix, extract_gene_name
@@ -79,7 +80,8 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def draw_annotation_labels(self):
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
-        universal_prefix = find_universal_prefix(labels.values())
+        flattened_annotation = chain(*[list(annotation_list) for annotation_list in labels.values()])
+        universal_prefix = find_universal_prefix(flattened_annotation)
         print("Removing Universal Prefix from annotations:", universal_prefix)
         for sc_index, scaffold in enumerate(layout):  # Exact match required (case sensitive)
             scaff_name = scaffold["name"].split()[0]

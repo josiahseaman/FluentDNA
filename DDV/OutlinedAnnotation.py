@@ -1,6 +1,6 @@
 from PIL import Image, ImageFont, ImageDraw
 
-from DDV.Annotations import GFF, extract_gene_name
+from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
 from DDV.DDVUtils import multi_line_height
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
@@ -49,7 +49,7 @@ class OutlinedAnnotation(TileLayout):
         # desaturated purple drop shadow, decreasing opacity
         opacities = linspace(197, 10, self.border_width)
         outline_colors = [(65, 42, 80, int(opacity)) for opacity in opacities]
-        exon_color = (255,255,255,80)  # white highlighter.  This is less disruptive overall
+        exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
                 darkness = self.border_width - len(region.outline_points) + radius  # softer line for small features
@@ -90,6 +90,8 @@ class OutlinedAnnotation(TileLayout):
         """ :type annotated_regions: list(AnnotatedRegion) """
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
+        universal_prefix = find_universal_prefix(annotated_regions)
+        print("Removing Universal Prefix from annotations:", universal_prefix)
         for region in annotated_regions:
             pts = [pt for pt in region.points]
             left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
@@ -119,7 +121,8 @@ class OutlinedAnnotation(TileLayout):
                 height = 11  # don't make the area so small it clips the text
                 upper_left[1] -= 2
 
-            self.write_label(extract_gene_name(region), width, height, font_size, 18, upper_left,
+            self.write_label(extract_gene_name(region, universal_prefix),
+                             width, height, font_size, 18, upper_left,
                              vertical_label, region.strand, markup_image)
 
 
