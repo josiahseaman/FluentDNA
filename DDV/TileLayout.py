@@ -103,7 +103,7 @@ class TileLayout(object):
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
-        self.palette['N'] = (61, 61, 61)  # charcoal grey
+        self.palette['N'] = (122, 122, 122)  # medium grey
         self.palette[gap_char] = (247, 247, 247)  # almost white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
 
