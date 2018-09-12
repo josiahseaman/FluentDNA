@@ -206,15 +206,9 @@ def ddv(args):
         done(args, output_dir)
     elif args.layout == "outlines":
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = OutlinedAnnotation(args.fasta, args.ref_annotation)
+        layout = OutlinedAnnotation(args.fasta, args.ref_annotation, args.query_annotation)
         layout.process_file(args.fasta, output_dir, args.output_name,
                             args.no_webpage, args.contigs)
-        finish_webpage(args, layout, output_dir, args.output_name)
-        done(args, output_dir)
-    elif args.layout == "outlines":
-        output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = OutlinedAnnotation(args.fasta, args.ref_annotation)
-        layout.process_file(args.fasta, output_dir, args.output_name,)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
 

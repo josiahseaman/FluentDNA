@@ -224,6 +224,8 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 def find_universal_prefix(annotation_list):
     """ :type annotation_list: list(GFF.Annotation) """
     names = []
+    if len(annotation_list) < 2:
+        return ''
     for entry in annotation_list:
         assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
         names.append(extract_gene_name(entry))  # flattening the structure

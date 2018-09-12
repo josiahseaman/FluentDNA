@@ -1,3 +1,5 @@
+from itertools import chain
+
 from PIL import Image, ImageFont, ImageDraw
 
 from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
@@ -19,11 +21,12 @@ def blend_pixel(markup_canvas, pt, c):
 
 
 class OutlinedAnnotation(TileLayout):
-    def __init__(self, fasta_file, gff_file, **kwargs):
+    def __init__(self, fasta_file, gff_file, query=None, **kwargs):
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename)
+        self.annotation = GFF(self.gff_filename).annotations
+        self.query_annotation = GFF(query).annotations if query is not None else None
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
         self.border_width = 30
@@ -38,17 +41,24 @@ class OutlinedAnnotation(TileLayout):
         super(OutlinedAnnotation, self).draw_titles()
         markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
         markup_canvas = markup_image.load()
+        query_regions = []
 
-        annotated_regions = self.draw_annotation_outlines(markup_canvas)
-        self.draw_annotation_labels(markup_image, annotated_regions)
+        annotated_regions = self.draw_annotation_outlines(self.annotation, markup_canvas, (65, 42, 80))
+        if self.query_annotation is not None:
+            query_regions = self.draw_annotation_outlines(self.query_annotation, markup_canvas, (211, 229, 199))
+        # important to combine set of names so not too much prefix gets chopped off
+        annotated_regions = list(chain(annotated_regions, query_regions))
+        universal_prefix = find_universal_prefix(annotated_regions)
+        print("Removing Universal Prefix from annotations:", universal_prefix)
+        self.draw_annotation_labels(markup_image, annotated_regions, universal_prefix)
         self.image = Image.alpha_composite(self.image, markup_image)
 
-    def draw_annotation_outlines(self, markup_canvas):
-        regions = self.find_annotated_regions()
+    def draw_annotation_outlines(self, annotations, markup_canvas, shadow):
+        regions = self.find_annotated_regions(annotations)
         print("Drawing annotation outlines")
         # desaturated purple drop shadow, decreasing opacity
         opacities = linspace(197, 10, self.border_width)
-        outline_colors = [(65, 42, 80, int(opacity)) for opacity in opacities]
+        outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
         for region in regions:
             for radius, layer in enumerate(region.outline_points):
@@ -61,15 +71,16 @@ class OutlinedAnnotation(TileLayout):
                 blend_pixel(markup_canvas, point, exon_color)
         return regions
 
-    def find_annotated_regions(self):
+    def find_annotated_regions(self, annotations):
+        """ :type annotations: dict(GFF.Annotation) """
         print("Collecting points in annotated regions")
         positions = self.contig_struct()
         regions = []
 
         for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
             scaff_name = coordinate_frame["name"].split()[0]
-            if scaff_name in self.annotation.annotations.keys():
-                for entry in self.annotation.annotations[scaff_name]:
+            if scaff_name in annotations.keys():
+                for entry in annotations[scaff_name]:
                     if entry.feature == 'mRNA':
                         annotation_points = []  # this became too complex for a list comprehension
                         for i in range(entry.start, entry.end):
@@ -77,7 +88,8 @@ class OutlinedAnnotation(TileLayout):
                             progress = i + coordinate_frame["xy_seq_start"]
                             annotation_points.append(self.position_on_screen(progress))
                         regions.append(AnnotatedRegion(entry, annotation_points,
-                                                       coordinate_frame["xy_seq_start"], self.border_width))
+                                                       coordinate_frame["xy_seq_start"], self.border_width,
+                                                       self.image.width, self.image.height))
                     if entry.feature == 'CDS':
                         # hopefully mRNA comes first in the file
                         if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
@@ -86,12 +98,10 @@ class OutlinedAnnotation(TileLayout):
         return regions
 
 
-    def draw_annotation_labels(self, markup_image, annotated_regions):
+    def draw_annotation_labels(self, markup_image, annotated_regions, universal_prefix=''):
         """ :type annotated_regions: list(AnnotatedRegion) """
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
-        universal_prefix = find_universal_prefix(annotated_regions)
-        print("Removing Universal Prefix from annotations:", universal_prefix)
         for region in annotated_regions:
             pts = [pt for pt in region.points]
             left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
@@ -159,7 +169,7 @@ def allNeighbors(pt):
     return getNeighbors(pt).union({(pt[0] + 1, pt[1] + 1), (pt[0] - 1, pt[1] - 1),
                                    (pt[0] - 1, pt[1] + 1), (pt[0] + 1, pt[1] - 1)})
 
-def outlines(annotation_points, radius, square_corners=False):
+def outlines(annotation_points, radius, width, height, square_corners=False):
     workingSet = set()
     nextEdge = set()
     workingSet.update(annotation_points)
@@ -172,15 +182,16 @@ def outlines(annotation_points, radius, square_corners=False):
         for block in activeEdge:
             neighbors = allNeighbors(block) if square_corners else getNeighbors(block)
             for n in neighbors:
-                if n not in workingSet and n[0] > 0 and n[1] > 0:  # TODO: check in bounds
+                if n not in workingSet and width > n[0] > 0 and height > n[1] > 0 :  # TODO: check in bounds
                     workingSet.add(n)
                     nextEdge.add(n)
         layers.append(nextEdge)
+
     return layers
 
 
 class AnnotatedRegion(GFF.Annotation):
-    def __init__(self, GFF_annotation, annotation_points, xy_seq_start, radius):
+    def __init__(self, GFF_annotation, annotation_points, xy_seq_start, radius, width, height):
         assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
         g = GFF_annotation  # short name
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
@@ -188,7 +199,7 @@ class AnnotatedRegion(GFF.Annotation):
                                               g.attributes, g.line)
         self.points = list(annotation_points)
         self.xy_seq_start = xy_seq_start
-        self.outline_points = outlines(annotation_points, radius)
+        self.outline_points = outlines(annotation_points, radius, width, height)
         self.protein_spans = []
 
     def dark_region_points(self):
