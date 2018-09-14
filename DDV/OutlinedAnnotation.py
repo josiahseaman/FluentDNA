@@ -70,19 +70,45 @@ class OutlinedAnnotation(TileLayout):
         opacities = linspace(197, 10, self.border_width)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
-        for region in regions:
-            outline_shadow = outlines(region.points,
-                                      self.border_width, self.image.width, self.image.height)
-            for radius, layer in enumerate(outline_shadow):
-                darkness = radius
-                #self.border_width - len(region.outline_points) + radius  # softer line for small features
-                c = outline_colors[darkness]
-                for pt in layer:
-                    blend_pixel(markup_canvas, pt, c)
 
-            for point in region.exon_region_points():
+        annotation_point_union = set()
+        for region in regions:
+            annotation_point_union.update(region.points)
+            region.outline_points = outlines(region.points,  # small outline
+                  self.border_width // 4, self.image.width, self.image.height)
+            for point in region.exon_region_points():  # highlight exons
                 blend_pixel(markup_canvas, point, exon_color)
+
+        big_shadow = outlines(annotation_point_union,
+                                  self.border_width, self.image.width, self.image.height)
+        self.draw_shadow(big_shadow, markup_canvas, outline_colors)
+        # Find subset of genes who are completely overshadowed
+
+        # drawn_area = set(annotation_point_union)
+        # for layer in big_shadow:
+        #     drawn_area.update(layer)  # including the shadow accounts for edges
+
+        self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow)
+
         return regions
+
+    def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
+        opacities = linspace(170, 40, self.border_width // 4)
+        outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
+        for region in regions:
+            # if annotation_point_union.issuperset(region.outline_points):
+            lost_edge = region.outline_points[0].intersection(annotation_point_union)
+            if lost_edge:
+                lost_shadows = [layer.intersection(annotation_point_union) for layer in region.outline_points]
+                self.draw_shadow(lost_shadows, markup_canvas, outline_colors)
+
+    def draw_shadow(self, shadow, markup_canvas, outline_colors, flat_color=False):
+        for radius, layer in enumerate(shadow):
+            darkness = radius
+            # self.border_width - len(region.outline_points) + radius  # softer line for small features
+            c = outline_colors[darkness]
+            for pt in layer:
+                blend_pixel(markup_canvas, pt, c)
 
     def find_annotated_regions(self, annotations):
         """ :type annotations: dict(GFF.Annotation) """
@@ -107,7 +133,7 @@ class OutlinedAnnotation(TileLayout):
                         genes_seen.add(extract_gene_name(entry).replace('g','t'))
                     if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
                         regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
-                    if entry.feature == 'CDS':
+                    if entry.feature == 'CDS' or entry.feature == 'exon':
                         # hopefully mRNA comes first in the file
                         # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
                         # the if was commented out because CDS [Parent] to mRNA, not gene names
