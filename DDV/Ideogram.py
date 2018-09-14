@@ -28,7 +28,7 @@ class Ideogram(OutlinedAnnotation):
         self.y_radices = y_radices
         self.x_scale, self.y_scale = x_scale, y_scale
         self.point_mapping = [] # for annotation and testing purposes
-        self.border_width = 10
+        self.border_width = 12
 
 
     def draw_nucleotides(self):

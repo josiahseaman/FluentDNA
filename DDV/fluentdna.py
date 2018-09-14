@@ -239,7 +239,9 @@ def ddv(args):
             type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
             type(radix_settings[2]) == type(radix_settings[3]) == type(1):
             output_dir = make_output_dir_with_suffix(base_path, '')
-            layout = Ideogram(radix_settings, low_contrast=args.low_contrast)
+            layout = Ideogram(radix_settings,
+                              ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
+                              low_contrast=args.low_contrast)
             create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, layout)
         else:
             print("Invalid radix settings.  Follow the example.")
