@@ -47,10 +47,11 @@ import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
-    hold_console_for_windows
+    hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
 from DDV.Ideogram import Ideogram
+from DDV.OutlinedAnnotation import OutlinedAnnotation
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -120,6 +121,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
+    beep()
     hold_console_for_windows()
     sys.exit(0)
 
@@ -151,13 +153,13 @@ def ddv(args):
         create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
         done(args, output_dir)
 
-    # ==========TODO: separate views that support batches of chromosomes============= #
+    # ==========TODO: separate views that support batches of contigs============= #
     elif args.layout == 'transposon':
         layout = TransposonLayout()
         output_dir = make_output_dir_with_suffix(base_path, '')
-        # if len(args.chromosomes) != 1:
-        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
-        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
+        # if len(args.contigs) != 1:
+        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--contigs chr12'")
+        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.contigs)
         print("Done with Transposons")
         done(args, output_dir)
 
@@ -167,27 +169,17 @@ def ddv(args):
         layout.process_all_alignments(args.fasta,
                                       output_dir,
                                       args.output_name)
-        if not args.no_webpage:
-            layout.generate_html(output_dir, args.output_name)
-            final_output_location = layout.final_output_location
-            del layout
-            print("Creating Deep Zoom Structure from Generated Image...")
-            create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                                  os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-            print("Done creating Deep Zoom Structure.")
-        else:
-            del layout
+        finish_webpage(args, layout, output_dir, args.output_name)
         print("Done with Alignments")
         done(args, output_dir)
 
     elif args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
-            # TODO: allow batch of tiling layout by chromosome
-            # TODO: support drag and drop
+            # TODO: support drag and drop of multiple files
             output_dir = make_output_dir_with_suffix(base_path, '')
             create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, args.output_name,
                                             [args.fasta] + args.extra_fastas)
-            sys.exit(0)
+            done(args, output_dir)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
                                        first_source=args.fasta,
@@ -200,18 +192,24 @@ def ddv(args):
                                        show_translocations_only=args.show_translocations_only,
                                        aligned_only=args.aligned_only)
             print("Creating Gapped and Unique Fastas from Chain File...")
-            batches = chain_parser.parse_chain(args.chromosomes)
+            batches = chain_parser.parse_chain(args.contigs)
             del chain_parser
             print("Done creating Gapped and Unique.")
-            for batch in batches:  # multiple chromosomes, multiple views
+            for batch in batches:  # multiple contigs, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
                                                 args.output_name, batch.fastas)
             done(args, SERVER_HOME)
     elif args.layout == "annotated":
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = AnnotatedGenomeLayout(args.fasta,
-                                       args.ref_annotation)
-        layout.render_genome(output_dir, args.output_name,)
+        layout = AnnotatedGenomeLayout(args.fasta, args.ref_annotation, args.annotation_width)
+        layout.render_genome(output_dir, args.output_name, args.contigs)
+        finish_webpage(args, layout, output_dir, args.output_name)
+        done(args, output_dir)
+    elif args.layout == "outlines":
+        output_dir = make_output_dir_with_suffix(base_path, '')
+        layout = OutlinedAnnotation(args.fasta, args.ref_annotation, args.query_annotation)
+        layout.process_file(args.fasta, output_dir, args.output_name,
+                            args.no_webpage, args.contigs)
         finish_webpage(args, layout, output_dir, args.output_name)
         done(args, output_dir)
 
@@ -226,7 +224,7 @@ def ddv(args):
                                                     output_prefix=base_path,
                                                     trial_run=args.trial_run,
                                                     separate_translocations=args.separate_translocations)
-        batches = unique_chain_parser.parse_chain(args.chromosomes)
+        batches = unique_chain_parser.parse_chain(args.contigs)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
         combine_files(batches, args, args.output_name)
@@ -261,10 +259,10 @@ def ddv(args):
                                         show_translocations_only=args.show_translocations_only,
                                         aligned_only=args.aligned_only)
         print("Creating Aligned Annotations using Chain File...")
-        batches = anno_align.parse_chain(args.chromosomes)
+        batches = anno_align.parse_chain(args.contigs)
         del anno_align
         print("Done creating Gapped Annotations.")
-        for batch in batches:  # multiple chromosomes, multiple views
+        for batch in batches:  # multiple contigs, multiple views
             create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
                                             batch.fastas)
         done(args, SERVER_HOME)
@@ -278,23 +276,9 @@ def ddv(args):
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
-    layout.process_file(output_dir, output_name, fastas)
-    final_output_location = layout.final_output_location
-    del layout
-    try:
-        if not args.no_webpage:
-            for fa in fastas:
-                shutil.copy(fa, os.path.join(output_dir, os.path.basename(fa)))
-    except shutil.Error:
-        pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
-    print("Done creating Large Image and HTML.")
-    print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-    print("Done creating Deep Zoom Structure.")
+    layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
 
-    if args.run_server:
-        run_server(output_dir)
+    finish_webpage(args, layout, output_dir, output_name)
 
 
 
@@ -303,14 +287,9 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layo
     if layout is None:
         layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width)
-    layout.process_file(fasta, output_dir, output_name)
-    try:
-        if not args.no_webpage:
-            shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
-    except shutil.SameFileError:
-        pass  # not a problem
-    finish_webpage(args, layout, output_dir, output_name)
+    layout.process_file(fasta, output_dir, output_name, args.no_webpage, args.contigs)
 
+    finish_webpage(args, layout, output_dir, output_name)
 
 
 def combine_files(batches, args, output_name):
@@ -343,8 +322,10 @@ def main():
               # "The scaffolds will be sorted by length for best layout."
               "Recommend you open large files with 'Windows Photo Viewer'.")
         sys.argv[1] = '--fasta=' + sys.argv[1]
-        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
         sys.argv.append("--quick")
+    if "--quick" in sys.argv:
+        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
+
         # sys.argv.append("--sort_contigs")
 
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
@@ -371,6 +352,16 @@ def main():
                         action='store_true',
                         help="Run Web Server after computing.",
                         dest="run_server")
+    parser.add_argument("-c", "--contigs",
+                        nargs='+',
+                        type=str,
+                        help="List contigs you'd like visualized from the file separated by spaces. "
+                             "This can be used to pluck out your contig of interest from a large file. "
+                             "REQUIRED for Chain File alignments.",
+                        dest="contigs")
+    parser.add_argument("-cc", "--chromosomes", nargs='+', type=str,
+                        help="Synonym for --contigs for backwards compatibility.", dest="contigs")
+
     parser.add_argument('-s', '--sort_contigs',
                         action='store_true',
                         help="Sort the entries of the fasta file by length.  This option will kick in "
@@ -384,7 +375,7 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated",
+                        choices=["tiled", "parallel", "alignment", "annotated", "outlines",
                                  "unique", "transposon", "ideogram", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
@@ -413,15 +404,10 @@ def main():
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
                         dest="trial_run")
     ### Chain Files
-    parser.add_argument("-c", "--chainfile",
+    parser.add_argument("-cf", "--chainfile",
                         type=str,
                         help="Path to Chain File when doing Parallel Comparisons layout.",
                         dest="chain_file")
-    parser.add_argument("-ch", "--chromosomes",
-                        nargs='+',
-                        type=str,
-                        help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
-                        dest="chromosomes")
     parser.add_argument("-t", "--separate_translocations",
                         action='store_true',
                         help="Don't edit in translocations, list them at the end.",
@@ -448,6 +434,12 @@ def main():
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
+    parser.add_argument("-aw", "--annotation_width",
+                        help="Overrides the default 100 pixel column width for annotations. "
+                        "annotation_width=1 will only sample one pixel per display line, "
+                        "skipping intermediate intervals.  If annotated features are less than"
+                        "base_width / annotation_width bp in length it's possible they won't be visible.",
+                        dest="annotation_width")
 
     ### Other
     parser.add_argument("-i", "--image",
@@ -477,6 +469,8 @@ def main():
     # Errors
     if args.base_width:
         args.base_width = int(args.base_width)
+    if args.annotation_width:
+        args.annotation_width = int(args.annotation_width)
     if args.layout == "original":
         parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
     if not args.layout:
@@ -502,8 +496,8 @@ def main():
         parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
     # if args.layout and args.layout == 'unique' and args.extra_fastas:
     #     parser.error("For Unique view, you don't need to specify 'extrafastas'.")
-    # if args.chromosomes and not (args.chain_file or args.layout == 'transposon'):
-    #     parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
+    # if args.contigs and not (args.chain_file or args.layout == 'transposon'):
+    #     parser.error("Listing 'contigs' is only relevant when parsing Chain Files or Repeats!")
     # if args.extra_fastas and "parallel" not in args.layout:
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout not in ["parallel", "unique"]:
@@ -521,8 +515,9 @@ def main():
     if args.image and not args.layout:
         args.layout = "NONE"
 
-    if not args.chromosomes and args.chain_file and args.layout != 'unique':
-        args.chromosomes = ['chr21']
+    if not args.contigs and args.chain_file and args.layout != 'unique':
+        print("Error: you must list the name of a contig you wish to display for an alignment.\n"
+              "Example: --contigs chrM chrX --chain_file=input.chain.liftover", file=sys.stderr)
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore

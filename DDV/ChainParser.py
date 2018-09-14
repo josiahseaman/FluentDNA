@@ -3,12 +3,15 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 from collections import namedtuple
-from datetime import datetime
-import blist
-import sys
+try:
+    from blist import blist
+except ImportError:
+    blist = list  # issue warning if used
+
+
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta, read_contigs
+from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
 from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
@@ -57,7 +60,9 @@ class ChainParser(object):
         self.query_seq_gapped = editable_str('')
         self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
-        self.alignment = blist.blist()  # optimized for inserts in the middle
+        self.alignment = blist()  # optimized for inserts in the middle
+        if type(self.alignment) == type([]):
+            print("WARNING: blist library not installed: Genome alignment will be very slow.")
         self.stored_rev_comps = {}
         self.gapped = '_gapped'
         self.stats = DefaultOrderedDict(lambda: 0)
@@ -496,7 +501,7 @@ class ChainParser(object):
         self.query_seq_gapped = editable_str('')
         self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
-        self.alignment = blist.blist()  # Alignment is specific to the chromosome
+        self.alignment = blist()  # Alignment is specific to the chromosome
         self.stats = DefaultOrderedDict(lambda: 0)
         if ref_chr in self.ref_contigs:
             self.ref_sequence = self.ref_contigs[ref_chr]  # only need the reference chromosome read, skip the others

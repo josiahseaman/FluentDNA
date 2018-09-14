@@ -2,6 +2,10 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
 from collections import namedtuple, defaultdict
+from itertools import chain
+
+from DNASkittleUtils.Contigs import Contig
+
 from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
 
@@ -130,14 +134,33 @@ def handle_tail(seq_array, scaffold_lengths, sc_index):
         seq_array.extend( gap_char * remaining)
 
 
-def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None):
+def squish_fasta(scaffolds, annotation_width, base_width):
+    print("Squishing annotation by %i / %i" % (base_width, annotation_width))
+    squished_versions = []
+    skip_size = base_width // annotation_width
+    remainder = base_width - (skip_size * annotation_width)
+    skips = list(chain([skip_size] * (annotation_width - 1), [skip_size + remainder]))
+    for contig in scaffolds:
+        work = editable_str('')
+        i = 0; x = 0
+        while i < len(contig.seq):
+            work.append(contig.seq[i])
+            i += skips[x % annotation_width]
+            x += 1
+        squished_versions.append(Contig(contig.name, ''.join(work)))
+    return squished_versions
+
+
+def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
+                                 annotation_width=100, base_width=100):
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
     FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
     if features is None:
         features = {'CDS':FeatureRep('G', 1),  # 1 priority is the most important
                     'exon':FeatureRep('T', 2),
                     'gene':FeatureRep('C', 3),
-                    'transcript':FeatureRep('A', 4)}
+                    'mRNA':FeatureRep('A', 4),
+                    'transcript':FeatureRep('N', 5)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = GFF(gff)  # gff parameter was a filename
@@ -165,6 +188,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
         print("Done", gff.file_name, "Found %i features" % count, "on %i scaffolds" % len(scaffolds))
     else:
         print("WARNING: No matching scaffold names were found between the annotation and the request.")
+    if annotation_width != base_width:
+        scaffolds = squish_fasta(scaffolds, annotation_width, base_width)
     if output_path is not None:
         write_contigs_to_file(output_path, scaffolds)
     return scaffolds
@@ -193,6 +218,36 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 
     print("Done", gff.file_name)
     print("Kept %.2f percent = %i / %i" % (kept / total * 100, kept, total))
+
+
+
+def find_universal_prefix(annotation_list):
+    """ :type annotation_list: list(GFF.Annotation) """
+    names = []
+    if len(annotation_list) < 2:
+        return ''
+    for entry in annotation_list:
+        assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+        names.append(extract_gene_name(entry))  # flattening the structure
+    start = 0
+    for column in zip(*names):
+        if all([c == column[0] for c in column]):
+            start += 1
+        else:
+            break
+    # shortened_names = [name[start:] for name in names]
+    prefix = names[0][:start]
+    return prefix
+
+
+def extract_gene_name(entry, remove_prefix=''):
+    if 'Name' in entry.attributes:
+        name = entry.attributes['Name']
+    elif 'ID' in entry.attributes:  # TODO case sensitive?
+        name = entry.attributes['ID']
+    else:
+        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+    return name.replace(remove_prefix, '', 1)
 
 
 if __name__ == '__main__':

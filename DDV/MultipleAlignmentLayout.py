@@ -27,6 +27,7 @@ def collapse_file_to_one_contig(fasta):
 class MultipleAlignmentLayout(TransposonLayout):
     def __init__(self, sort_contigs=False, **kwargs):
         kwargs['low_contrast'] = True
+        kwargs['sort_contigs'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.sort_contigs = sort_contigs
@@ -103,9 +104,10 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def draw_nucleotides(self):
-        for contig in self.contigs:
-            assert contig.consensus_width, \
-                "Error while reading: %s\n No consensus_width was set." % contig.name
+        bad_contigs = [c for c in self.contigs if not c.consensus_width]
+        for contig in bad_contigs:
+            print("Error while reading FASTA. Skipping: %s" % contig.name)
+            self.contigs.remove(contig)
         if self.sort_contigs:
             self.contigs.sort(key=lambda x: -x.height)
             self.layout_based_on_repeat_size(self.contigs[0].consensus_width,

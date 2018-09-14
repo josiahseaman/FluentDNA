@@ -43,6 +43,13 @@ from PIL import Image as PILImage
 import sys
 import xml.dom.minidom
 
+# Monkey Patch: Sets a much larger size to avoid the DecompressionBombWarning that
+# scares users.  FluentDNA will suck up a lot of RAM, but especially on clusters,
+# this warning shouldn't go off all the time.  I've been able to reliably generate
+# 3GB images on my laptop with 32GB of RAM.  Larger HPC should be able to handle
+# more.  Further handling for gauging system resources would be helpful.
+PILImage.MAX_IMAGE_PIXELS = 10 * 1024 * 1024 * 1024  # 10GB
+
 NS_DEEPZOOM = "http://schemas.microsoft.com/deepzoom/2008"
 
 resize_filter_map = {

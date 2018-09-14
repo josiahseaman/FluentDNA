@@ -3,27 +3,30 @@ from __future__ import print_function, division, absolute_import, \
 
 import math
 import os
+import shutil
 import traceback
 from collections import defaultdict
 from datetime import datetime
+
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
-from DNASkittleUtils.Contigs import read_contigs, Contig
+from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette, \
     make_output_dir_with_suffix
 from DDV import gap_char
 
 small_title_bp = 10000
-font_name = "Arial.ttf"
+font_filename = "Arial.ttf"
 try:
-    ImageFont.truetype(font_name, 10)
+    ImageFont.truetype(font_filename, 10)
 except IOError:
     try:
-        font_name = font_name.lower()  # windows and mac are both case sensitive in opposite directions
-        ImageFont.truetype(font_name, 10)
+        font_filename = font_filename.lower()  # windows and mac are both case sensitive in opposite directions
+        ImageFont.truetype(font_filename, 10)
     except IOError:
-        font_name = None
+        font_filename = None
 
 
 
@@ -32,12 +35,27 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
+def level_layout_factory(modulos, padding=None):
+    if padding is None:
+        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+    # noinspection PyListCreation
+    levels = [
+        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
+        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
+    ]
+    for i in range(2, len(modulos)):
+        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
+    # levels.append(LayoutLevel("RowInTile", modulos[3], levels=levels))  # [3]
+    # levels.append(LayoutLevel("TileColumn", modulos[4], levels=levels))  # [4]
+    # levels.append(LayoutLevel("TileRow", modulos[5], levels=levels))  # [5]
+    # levels.append(LayoutLevel("PageColumn", modulos[6], levels=levels))  # [6]
+    return levels
 
 
 class TileLayout(object):
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None):
+                 low_contrast=False, base_width=None, font_name=font_filename):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
@@ -50,15 +68,18 @@ class TileLayout(object):
         self.title_skip_padding = self.base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
+        self.font_name = font_name
         sizes = [9, 38, 380, 380 * 2]
-        if font_name is not None:
-            self.fonts = {size: ImageFont.truetype(font_name, size) for size in sizes}
+        if self.font_name is not None:
+            self.fonts = {size: ImageFont.truetype(self.font_name, size) for size in sizes}
+            self.fonts[sizes[0]] = ImageFont.load_default()
         else:
             self.fonts = {size: ImageFont.load_default() for size in sizes}
         self.final_output_location = None
         self.image = None
         self.draw = None
         self.pixels = None
+        self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
         self.image_length = 0
         #Natural, color blind safe Colors
@@ -83,7 +104,7 @@ class TileLayout(object):
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
-        self.palette['N'] = (61, 61, 61)  # charcoal grey
+        self.palette['N'] = (122, 122, 122)  # medium grey
         self.palette[gap_char] = (247, 247, 247)  # almost white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
 
@@ -99,29 +120,29 @@ class TileLayout(object):
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
-
-        # noinspection PyListCreation
-        self.levels = [
-            LayoutLevel("XInColumn", self.base_width, 1, 0),  # [0]
-            LayoutLevel("LineInColumn", self.base_width * 10, self.base_width, 0)  # [1]
-        ]
-        self.levels.append(LayoutLevel("ColumnInRow", 100, padding=6, levels=self.levels))  # [2]
-        self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-        self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
-        self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
-        self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
+        padding = [0, 0, 6, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
+        self.levels = level_layout_factory(modulos, padding=padding)
 
         self.tile_label_size = self.levels[3].chunk_size * 2
         self.origin = [self.levels[2].padding, self.levels[2].padding]
         if self.use_fat_headers:
             self.enable_fat_headers()
 
+
+
     def activate_high_contrast_colors(self):
+        # # -----Nucleotide Colors! Paletton Stark ------
+        #Base RGB: FF4100, Dist 40
+        self.palette['A'] = hex_to_rgb('FF4100')  # Red
+        self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
+        self.palette['C'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
+        self.palette['G'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
         # Original DDV Colors
-        self.palette['A'] = (255, 0, 0)
-        self.palette['G'] = (0, 255, 0)
-        self.palette['T'] = (250, 240, 114)
-        self.palette['C'] = (0, 0, 255)
+        # self.palette['A'] = (255, 0, 0)
+        # self.palette['G'] = (0, 255, 0)
+        # self.palette['T'] = (250, 240, 114)
+        # self.palette['C'] = (0, 0, 255)
 
     def activate_natural_colors(self):
         # -----Nucleotide Colors! Paletton Quadrapole colors------
@@ -139,11 +160,6 @@ class TileLayout(object):
         # self.palette['T'] = hex_to_rgb('ECBC6C')  # Yellow
         # self.palette['G'] = hex_to_rgb('4CA47A')  # Green
         # self.palette['C'] = hex_to_rgb('4F6F9B')  # Blue
-        # # -----Nucleotide Colors! Paletton Stark ------
-        # self.palette['A'] = hex_to_rgb('FF4100')  # Red
-        # self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
-        # self.palette['G'] = hex_to_rgb('00C566')  # Green
-        # self.palette['C'] = hex_to_rgb('0B56BE')  # Blue
         # -----Manually Adjusted Colors from Paletton plus contrast------
         self.palette['A'] = hex_to_rgb('D4403C')  # Red
         self.palette['T'] = hex_to_rgb('E2AE5B')  # Yellow
@@ -160,11 +176,12 @@ class TileLayout(object):
             self.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
-    def process_file(self, input_file_path, output_folder, output_file_name):
+    def process_file(self, input_file_path, output_folder, output_file_name,
+                     no_webpage=False, extract_contigs=None):
         make_output_dir_with_suffix(output_folder, '')
         start_time = datetime.now()
         self.final_output_location = output_folder
-        self.image_length = self.read_contigs_and_calc_padding(input_file_path)
+        self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
         print("Read contigs from", input_file_path, ":", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time, "\n")
@@ -184,11 +201,15 @@ class TileLayout(object):
             traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
+        if extract_contigs:
+            print("Rendered sequence:", fasta_destination)
+
 
     def draw_nucleotides(self):
         total_progress = 0
         # Layout contigs one at a time
-        for contig in self.contigs:
+        for contig_index, contig in enumerate(self.contigs):
             total_progress += contig.reset_padding + contig.title_padding
             seq_length = len(contig.seq)
             line_width = self.levels[0].modulo
@@ -196,26 +217,42 @@ class TileLayout(object):
                 x, y = self.position_on_screen(total_progress)
                 remaining = min(line_width, seq_length - cx)
                 total_progress += remaining
-                #try:
-                for i in range(remaining):
-                    nuc = contig.seq[cx + i]
-                    # if nuc != gap_char:
-                    self.draw_pixel(nuc, x + i, y)
-                #except IndexError:
-                #    print("Cursor fell off the image at", x,y)
-                if cx % 100000 == 0:
-                    print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
-                          end="")  # pseudo progress bar
+                try:
+                    for i in range(remaining):
+                        nuc = contig.seq[cx + i]
+                        # if nuc != gap_char:
+                        self.draw_pixel(nuc, x + i, y)
+                except IndexError:
+                   print("Cursor fell off the image at", x,y)
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
+            if len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0:
+                print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
+                      flush=True)  # pseudo progress bar
         print('')
+
+
+    def output_fasta(self, output_folder, fasta, no_webpage=False, extract_contigs=None, ):
+        fasta_destination = os.path.join(output_folder, os.path.basename(fasta))
+        if extract_contigs:
+            length_sum = sum([len(c.seq) for c in self.contigs])
+            fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+            write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+        else:
+            try:
+                if not no_webpage:
+                    shutil.copy(fasta, fasta_destination)
+            except shutil.SameFileError:
+                pass  # not a problem
+        return fasta_destination
+
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
         multipart_file = len(self.contigs) > 1
 
-        if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
-            self.enable_fat_headers()  # first contig is huge and there's more contigs coming
+        # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
+        #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
@@ -240,7 +277,7 @@ class TileLayout(object):
         return total_progress  # + reset + title + tail + length
 
 
-    def read_contigs_and_calc_padding(self, input_file_path):
+    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
         try:
             self.contigs = read_contigs(input_file_path)
         except UnicodeDecodeError as e:
@@ -249,12 +286,25 @@ class TileLayout(object):
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
+        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
         return self.calc_all_padding()
+
+    def filter_by_contigs(self, unfiltered, extract_contigs):
+        if extract_contigs is not None:  # winnow down to only extracted contigs
+            filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
+            if filtered_contigs:
+                return filtered_contigs
+            else:
+                print("Warning: No matching contigs were found, so the whole file is being used:",
+                      extract_contigs, file=sys.stderr)
+        return unfiltered
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
-        self.image = Image.new('RGB', (width, height), "white")
+        print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
+              "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
+        self.image = Image.new(self.pil_mode, (width, height), "white")
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
@@ -295,15 +345,15 @@ class TileLayout(object):
         return 0, 0, 0
 
 
-    def position_on_screen(self, index):
+    def position_on_screen(self, progress):
         """ Readable unoptimized version:
         Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
         xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
         for i, level in enumerate(self.levels):
-            if index < level.chunk_size:
+            if progress < level.chunk_size:
                 return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
             part = i % 2
-            coordinate_in_chunk = int(index / level.chunk_size) % level.modulo
+            coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
         return int(xy[0]), int(xy[1])
 
@@ -354,15 +404,14 @@ class TileLayout(object):
                 width = self.levels[4].thickness * tiles_spanned  # spans 3 full Tiles, or one full Page width
 
         contig_name = contig.name
-        self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label)
+        self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left,
+                         vertical_label, self.image)
 
 
-    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left, vertical_label):
+    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left,
+                    vertical_label, canvas):
         upper_left = list(upper_left)  # to make it mutable
-        if font_size in self.fonts:
-            font = self.fonts[font_size]
-        else:
-            font = ImageFont.truetype(font_name, font_size)
+        font = self.get_font(self.font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
@@ -371,8 +420,14 @@ class TileLayout(object):
         if vertical_label:
             txt = txt.rotate(90, expand=True)
             upper_left[0] += 8  # adjusts baseline for more polish
-        self.image.paste(txt, (upper_left[0], upper_left[1]), txt)
+        canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
+    def get_font(self, font_name, font_size):
+        if font_size in self.fonts:
+            font = self.fonts[font_size]
+        else:
+            font = ImageFont.truetype(font_name, font_size)
+        return font
 
     def output_image(self, output_folder, output_file_name):
         del self.pixels
@@ -458,6 +513,7 @@ class TileLayout(object):
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""
+            html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
                 for key, value in html_content.items():
@@ -523,4 +579,8 @@ class TileLayout(object):
         for y in range(column_height):
             coords.extend([(x, y, y * self.levels[0].modulo + x) for x in line])
         return coords
+
+
+    def additional_html_content(self, html_content):
+        return {}  # override in children
 

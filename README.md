@@ -3,111 +3,170 @@
 This application creates visualizations of FASTA formatted DNA nucleotide data.
 FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
-## Quick Start
-You will need:
-1. Familiarity with the command line: [Windows Tutorial](https://github.com/pettarin/python-on-windows) [Mac Tutorial](http://docs.python-guide.org/en/latest/starting/install3/osx/#install3-osx)
-1. Python (Windows must by Python 3.4 or older): [Download Link](https://www.python.org/downloads/release/python-343/)
-2. Git: [Download Link](https://git-scm.com/downloads)
+From 2Mbp of Genomic Sequence, FluentDNA generates this image.  Changes in nucleotide usage make
+individual genome elements visible even without an annotation.  Add your annotation files to see how
+they align with the sequence features.
+![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/Test%20Simple.png)
 
-**Installation**  
-From a command line in your python directory or virtual environment:    
-`pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
+***
+## FluentDNA Quick Start
 
-**Running**  
-fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH.
+You can start using FluentDNA:
+ 1. Downloading and unzipping the [Latest Release](https://github.com/josiahseaman/FluentDNA/releases).
+ 2. Open a terminal (command line) in the same folder you unzipped FluentDNA.
+ 3. Run the command `./fluentdna --fasta="DDV/example_data/Human selenoproteins.fa" --runserver`
+ 4. Once your private server has started, all your results available at [http://127.0.0.1:8000](http://127.0.0.1:8000).  Note that this server is not actually using the internet at all, it's just using your browser as a file viewer.
 
-`python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/site-packages/DDV/example_data/hg38_chr19_sample.fa"`  
-**Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:  
-`python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`  
+To use FluentDNA as a python module, follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
 
-To use the interactive browser, especially for large files, start a server.  
+***
 
-`python /path/to/site-packages/DDV/fluentdna.py --runserver`  
-Then open your browser and enter the URL: `http://localhost:8000/`  
-
-To run FluentDNA from your own python script I recommend looking at fluentdna.py for examples such as `create_tile_layout_viz_from_fasta()`
-
-### Example Commands
-Check out the file [example_DDV_commands.txt](https://github.com/josiahseaman/DDV/blob/python-master/example_DDV_commands.txt) for more examples.
-
-## Support Contact 
-If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
-
-## DDV 2.0 Features
-
-DDV 2.0 is a complete rewrite in Python of DDV.  DDV 2.0 has a much expanded feature set for handling
-large, multipart files.  It can put an entire genome on a single image, marked with contig names.
-DDV 2.0 has features in development for exploring genome alignments, annotations, and transposon alignments.
-It was developed by Newline Technical Innovations and can be found at:
-https://github.com/josiahseaman/DDV/tree/python-master
+## Example Use Cases
+* [Simple FASTA file (DNA)](#simple-fasta-file-dna)
+* [Multi-part FASTA file (DNA)](#multi-part-fasta-file-dna)
+* [Annotated Genomes](#annotated-genomes)
+* [Multiple Sequence Alignment Families](#multiple-sequence-alignment-families)
+* [Alignment of two Genomes](#alignment-of-two-genomes)
+* [History](#history)
 
 
-# Compile Instructions
-Intended for developers:
+***
 
-### Windows:
+### Simple FASTA file (DNA)
 
-  - Install Mercurial so it is properly on your path
-  - Download PyWin32 from: http://sourceforge.net/projects/pywin32/files/pywin32/Build%20219/pywin32-219.win-amd64-py3.4.exe/download
-  - Using the easy_install in your new Virtual Environment (/path/to/adsm_venv/Scripts/easy_install), install PyWin32:
+Generating a basic visualization of a FASTA file downloaded from NCBI or another source is accomplished with the following commands:
 
-        `easy_install pywin32-219.win-amd64-py3.4.exe`
+**Command:** `./fluentdna --fasta="DDV/example_data/hg38_chr19_sample.fa" --outname="Test Simple"`
 
-  - Using /path/to/adsm_venv/Scripts/pip install cx_freeze:
+This generates an image pyramid with the standard legend (insert image of legend) and nucleotide number display.
 
-        `pip install hg+https://bitbucket.org/BryanHurst/cx_freeze`
+**Input Data Example:**
 
-    > Note: this currently does not work; instead, install cx_freeze 4.3.4 using pip, then manually apply [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/eba6cb644d390f69f07adbf9fdcead71ec0feebf?at=default) and [this patch](https://bitbucket.org/BryanHurst/cx_freeze/commits/22d73fe6386d92834339bdea30b3786a3543b2de?at=default) to the cx_freeze files that pip installed in your site-packages folder.
+* FA File: [DDV/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/hg38_chr19_sample.fa)
 
-### Linux:
+**Result:** [Hg38 chr19 sample](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/)
+![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/Test%20Simple.png)
 
-  - Requires ldd and objdump installed (probably already on your system)
-  - Install Mercurial `sudo apt-get install mercurial`
-  - You need a custom compiled version of Python3.4 (will use instead of venv)
+It is also possible to generate an image file only that can be accessed with an image viewer using `--no_webpage`.
 
-        sudo apt-get install zlib1g-dev libbz2-dev libncurses5-dev libreadline6-dev libsqlite3-dev libssl-dev libgdbm-dev liblzma-dev tk8.5-dev
-        wget https://www.python.org/ftp/python/3.4.3/Python-3.4.3.tgz
-        tar zxvf Python-3.4.3.tgz
-        rm Python-3.4.3.tgz
-        cd Python-3.4.3/
-        ./configure --prefix=/path/to/projects/ddv_python --exec_prefix=/path/to/projects/ddv_python
-        make
-        make altinstall
-        /path/to/projects/ddv_python/bin/pip uninstall setuptools
-        /path/to/projects/ddv_python/bin/pip uninstall pip
-        wget https://pypi.python.org/packages/source/s/setuptools/setuptools-3.4.4.tar.gz
-	    tar -vzxf setuptools-3.4.4.tar.gz
-	    rm setuptools-3.4.4.tar.gz
-	    cd setuptools-3.4.4
-        /path/to/projects/ddv_python/bin/python setup.py install
-        cd ..
-        rm -r setuptools-3.4.4/
-        wget https://pypi.python.org/packages/source/p/pip/pip-1.5.6.tar.gz
-	    tar -vzxf pip-1.5.6.tar.gz
-	    rm pip-1.5.6.tar.gz
-	    cd pip-1.5.6
-	    /path/to/projects/ddv_python/bin/python setup.py install
-	    cd ..
-	    rm -r pip-1.5.6
+**Command:** `./fluentdna --fasta="DDV/example_data/hg38_chr19_sample.fa" --outname="Test Simple" --no_webpage`
 
-  - Using the new python, install all the requirements `/path/to/projects/ddv_python/bin/pip install -r /path/to/DDV/Requirements.txt`
-  - `/path/to/projects/ddv_python/bin/pip install hg+https://bitbucket.org/BryanHurst/cx_freeze`
-    - If the above install fails, then there is a problem with your python shared libraries, I have a clone of the cx_freeze repo with a temp fix
-      - CD to a directory where you want to download it, then `hg clone hg+https://bitbucket.org/BryanHurst/cx_freeze; cd cx_freeze; /path/to/projects/adsm_python/bin/python setup.py install`
 
-## History: DDV 1.1
+***
+
+### Multi-part FASTA file (DNA)
+
+Multi-part FASTA format includes multiple sequences in the same file. A sequence record in a FASTA format consists of a single-line description (sequence name), followed by line(s) of sequence data. The first character of the description line is a greater-than (">") symbol. Multi-part format Example:
+```
+>seq0
+AATGCCA
+>seq1
+GCCCTAT
+```
+
+The following command generates a multi-part FASTA file visualization:
+
+**Input Data Example:**
+* FA File: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/Human%20selenoproteins.fa
+
+**Command:** `./fluentdna --fasta="DDV/example_data/Human selenoproteins.fa"`
+**Result:** [Human Selenoproteins](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/)
+
+![](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/Human%20selenoproteins.png)
+
+This generates a multi-scale image of the multi-part FASTA file.  Note that if you don't specify `--outname=` it will default to the name of the FASTA file.
+
+Using this simple command, FluentDNA can visualize an entire draft genome at once.
+**Result:** [Ash Tree Genome (_Fraxinus excelsior_)](https://dnaskittle.com/ddvresults/dnadata/Ash%20Tree%20Genome%20-%20BATG-0_5/)
+![Fraxinus excelsior genome](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/British%20Ash%20Tree%20Genome.png)
+
+Additional options - see also:
+- `--outname`
+- `--sort_contigs`
+- `--no_titles`
+- `--natural_colors`
+- `--base_width`
+
+***
+### Annotated Genomes
+By specifying `--ref_annotation=` you can include a gene annotation to be rendered alongside your sequence.  This is currently setup to show gene introns and exons.  But the features rendered and colors used can be changed in `DDV/Annotations.py`
+
+**Command:** `./fluentdna --fasta="DDV/example_data/gnetum_sample.fa" --ref_annotation="DDV/example_data/Gnetum_sample_genes.gff"`
+
+**Input Data Example:**
+* GFF File: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/Gnetum_sample_genes.gff
+* FA file: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/gnetum_sample.fa
+
+
+**Result:** [Gnetum montanum Annotation](https://dnaskittle.com/ddvresults/dnadata/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS/)
+![Gnetum montanum Annotation](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS.png)
+
+You can download the full _Gnetum montanum_ files from [Data Dryad](https://datadryad.org//resource/doi:10.5061/dryad.0vm37).
+
+***
+
+### Multiple Sequence Alignment Families
+
+To visualize a multiple sequence alignment you need to use the `--layout=alignment` option to tell FluentDNA to treat each entry in a multipart fasta file as being one row of an alignment.  To show many MSAs at once, just point `--fasta=` to a folder instead of a file.
+
+**Input Data Example:**
+* Folder with FA files: https://github.com/josiahseaman/FluentDNA/tree/python-master/DDV/example_data/alignments
+
+**Important Note!** Make sure there are no other files in your folder besides sequence files.  If FluentDNA decides on an unreasonably long "max width" it is because it picked up a non-sequence file in the folder.
+
+Each fasta file represents one aligned protein family.  The input fasta file should already be aligned with another program.  Each protein is represented by one entry in the fasta file with `-` inserted for gap characters like this:
+```
+>GeneA_in_species1
+ACTCA--ACGATC------GGGT
+>GeneA_in_species2
+ACTCAAAACGATCTCTCTAGGGT
+```
+
+**Command:** `./fluentdna --layout=alignment --fasta="DDV/example_data\alignments" --outname="Example 7 Gene Families from Fraxinus"`
+
+This generates a multi-scale image of the multiple alignment.  The multiple alignment results are sorted by gene name.  For a smoother layout use `--sort_contigs` which will sort them by row count (copy number).
+
+**Result:** [Example 7 Gene Families from Fraxinus](https://dnaskittle.com/ddvresults/dnadata/Example%207%20Gene%20Families%20from%20Fraxinus/)
+![](https://raw.githubusercontent.com/josiahseaman/FluentDNA/python-master/DDV/example_data/Example%207%20Gene%20Families%20from%20Fraxinus.png)
+
+This layout allows users to check thousands of MSAs.  Here we used FluentDNA to quality check the merging software for 2,961 putative gene families: [Fraxinus Homologous Gene Groups](https://dnaskittle.com/ddvresults/dnadata/Fraxinus%20Homologous%20Gene%20Groups/)
+
+***
+
+### Alignment of two Genomes
+
+This generates an alignment visualization of two genomes (A and B).  Since this is a whole genome alignment the files are very large and not included in the FluentDNA installation.  Download each of these files and unzip them into a local folder called `data/`.
+
+#### Input Data Download Links (unzip these into data folder):
+* [Human Genome FA File (hg38.fa)](http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz)
+* [Alignment LiftOver Chain File (hg38ToPanTro5.over.chain)](http://hgdownload.cse.ucsc.edu/goldenPath/hg38/liftOver/hg38ToPanTro5.over.chain.gz)
+* [Chimpanzee Genome FA file (panTro5.fa)](http://hgdownload.cse.ucsc.edu/goldenPath/panTro5/bigZips/panTro5.fa.gz)
+
+**Command:** `./fluentdna --fasta=data/hg38.fa --chainfile=data/hg38ToPanTro5.over.chain --extrafastas data/panTro5.fa --chromosomes chr19 --outname="Human vs Chimpanzee"`
+
+This generates a multi-scale image of the alignment.  There are 4 columns in this visualization:
+
+* Column 1. Genome A (gapped entire DNA of genome A)
+* Column 2. Genome A (unique DNA of A)
+* Column 3. Genome B (unique DNA of B)
+* Column 4. Genome B (gapped entire DNA of genome B)
+
+**Result:** [Human vs Chimpanzee_chr19 (natural colors)](https://dnaskittle.com/ddvresults/dnadata/Parallel_hg38_and_panTro5_chr19/)
+![Rows of sequence side by side Human and chimp.  Gaps where they have unique sequence.](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/Human%20vs%20Chimpanzee_chr19.png)
+
+Figure 1 in the paper can be seen at Nucleotide Position 548,505 which corresponds to HG38 chr19:458,731.  The difference in coordinates is due to the gaps inserted for sake of alignment.
+
+**Note:** Whole genome alignment visualizations can be processed in batches, one visualization per chromosome.  Simply specify each of the reference chromosomes that you would like to generate.  `--outname` will be used as a prefix for the name of the folder and the visualization. For example, the above command generates a folder called "Human vs Chimpanzee_chr19".
+
+***
+
+
+
+
+## History
 This project is a fork of the C# DDV developed at Concordia University.
 https://github.com/photomedia/DDV/
 
 DDV Licence:
 https://github.com/photomedia/DDV/blob/master/DDV-license.txt
 
-### Examples (Demonstration):
-
-http://www.photomedia.ca/DDV/
-
-Visualizations generated with DDV can be placed on a web server. 
-The following contains the links to examples of the visualizations 
-generated by Tomasz Neugebauer, Éric Bordeleau, Vincent Burrus and Ryszard Brzezinski 
-with this software: DNA Data Visualizations Generated with DDV Software. 
-These examples include a number of bacteria chromosomes, as well as the entire Homo Sapiens genome. 

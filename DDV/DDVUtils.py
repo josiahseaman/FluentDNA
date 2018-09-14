@@ -153,13 +153,26 @@ def hold_console_for_windows():
         pass  # probably not windows, so it doesn't matter
 
 
-def beep(duration=1000):
+def beep(duration=300):
     try:
         import winsound
         freq = 440  # Hz
         winsound.Beep(freq, duration)
     except ImportError:
         pass  # not a windows machine
+
+
+def interpolate(A, B, start, end, position):
+    if start == end:
+        return A
+    progress = (position - start) / (end - start)  # progress goes from 0.0 p1  to 1.0 p2
+    inverse = 1.0 - progress
+    sample = A * inverse + B * progress
+    return sample
+
+
+def linspace(start, end, steps):
+    return [interpolate(start, end, 0, steps - 1, i) for i in range(steps)]
 
 
 def viridis_palette():
