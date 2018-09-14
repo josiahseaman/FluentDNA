@@ -21,11 +21,9 @@ def blend_pixel(markup_canvas, pt, c):
 
 
 class OutlinedAnnotation(TileLayout):
-    def __init__(self, fasta_file, gff_file, query=None, **kwargs):
+    def __init__(self, gff_file, query=None, **kwargs):
         super(OutlinedAnnotation, self).__init__(**kwargs)
-        self.fasta_file = fasta_file
-        self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename).annotations
+        self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
@@ -41,9 +39,10 @@ class OutlinedAnnotation(TileLayout):
         super(OutlinedAnnotation, self).draw_titles()
         markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
         markup_canvas = markup_image.load()
-        query_regions = []
+        annotated_regions, query_regions = [], []
 
-        annotated_regions = self.draw_annotation_outlines(self.annotation, markup_canvas, (65, 42, 80))
+        if self.annotation is not None:
+            annotated_regions = self.draw_annotation_outlines(self.annotation, markup_canvas, (65, 42, 80))
         if self.query_annotation is not None:
             query_regions = self.draw_annotation_outlines(self.query_annotation, markup_canvas, (211, 229, 199))
         # important to combine set of names so not too much prefix gets chopped off

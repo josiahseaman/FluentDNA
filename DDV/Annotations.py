@@ -227,7 +227,7 @@ def find_universal_prefix(annotation_list):
     if len(annotation_list) < 2:
         return ''
     for entry in annotation_list:
-        assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
+        assert hasattr(entry, 'attributes'), "This isn't a proper GFF object %s" % type(entry)
         names.append(extract_gene_name(entry))  # flattening the structure
     start = 0
     for column in zip(*names):
@@ -245,6 +245,8 @@ def extract_gene_name(entry, remove_prefix=''):
         name = entry.attributes['Name']
     elif 'ID' in entry.attributes:  # TODO case sensitive?
         name = entry.attributes['ID']
+    elif 'gene_name'in entry.attributes:
+        name = entry.attributes['gene_name']
     else:
         name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
     return name.replace(remove_prefix, '', 1)

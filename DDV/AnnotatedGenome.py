@@ -80,7 +80,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
     def draw_annotation_labels(self):
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
-        flattened_annotation = chain(*[list(annotation_list) for annotation_list in labels.values()])
+        flattened_annotation = list(chain(*[list(annotation_list) for annotation_list in labels.values()]))
         universal_prefix = find_universal_prefix(flattened_annotation)
         print("Removing Universal Prefix from annotations:", universal_prefix)
         for sc_index, scaffold in enumerate(layout):  # Exact match required (case sensitive)
