@@ -11,8 +11,8 @@ from collections import namedtuple
 Point = namedtuple('Point', ['x', 'y'])
 
 
-def blend_pixel(markup_canvas, pt, c):
-    if markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
+def blend_pixel(markup_canvas, pt, c, overwrite=False):
+    if overwrite or markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
         markup_canvas[pt[0], pt[1]] = c
     else:
         remaining_light = 1.0 - (markup_canvas[pt[0], pt[1]][3] / 256)
@@ -69,30 +69,27 @@ class OutlinedAnnotation(TileLayout):
         # desaturated purple drop shadow, decreasing opacity
         opacities = linspace(197, 10, self.border_width)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
+
         exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
+        for region in regions:
+            for point in region.exon_region_points():  # highlight exons
+                blend_pixel(markup_canvas, point, exon_color)
 
         annotation_point_union = set()
         for region in regions:
             annotation_point_union.update(region.points)
             region.outline_points = outlines(region.points,  # small outline
                   self.border_width // 4, self.image.width, self.image.height)
-            for point in region.exon_region_points():  # highlight exons
-                blend_pixel(markup_canvas, point, exon_color)
 
         big_shadow = outlines(annotation_point_union,
                                   self.border_width, self.image.width, self.image.height)
         self.draw_shadow(big_shadow, markup_canvas, outline_colors)
-        # Find subset of genes who are completely overshadowed
-
-        # drawn_area = set(annotation_point_union)
-        # for layer in big_shadow:
-        #     drawn_area.update(layer)  # including the shadow accounts for edges
-
         self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow)
 
         return regions
 
     def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
+        """Find subset of genes who are completely overshadowed"""
         opacities = linspace(170, 40, self.border_width // 4)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         for region in regions:
@@ -152,8 +149,8 @@ class OutlinedAnnotation(TileLayout):
                 left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
                 top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
 
-                height, left, right, top = self.handle_multi_column_annotations(region, left, right, top)
-                width = self.base_width
+                width, height, left, right, top = self.handle_multi_column_annotations(region, left, right,
+                                                                                       top, bottom)
                 vertical_label = height > width
                 upper_left = [left, top]
 
@@ -166,13 +163,12 @@ class OutlinedAnnotation(TileLayout):
                     height = 11  # don't make the area so small it clips the text
                     upper_left[1] -= 2
 
-                self.write_label(extract_gene_name(region, universal_prefix),
-                                 width, height, font_size, 18, upper_left,
-                                 vertical_label, region.strand, markup_image)
+                self.write_label(extract_gene_name(region, universal_prefix), width, height, font_size, 18,
+                                 upper_left, vertical_label, region.strand, markup_image)
             except BaseException as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
-    def handle_multi_column_annotations(self, region, left, right, top):
+    def handle_multi_column_annotations(self, region, left, right, top, bottom):
         multi_column = abs(right - left) > self.base_width
         if multi_column:  # pick the biggest column to contain the label, ignore others
             median_point = len(region.points) // 2 + region.xy_seq_start + min(region.start, region.end)
@@ -184,31 +180,38 @@ class OutlinedAnnotation(TileLayout):
             height = len(filtered) // self.base_width
         else:
             height = len(region.points) // self.base_width
-        return height, left, right, top
+        width = self.base_width
+        return width, height, left, right, top
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
-                    strand, canvas):
-        """write_label() made to nicely draw single line gene labels from annotation"""
+                    strand, canvas, horizontal_centering=False, center_vertical=False):
+        """write_label() made to nicely draw single line gene labels from annotation
+        :param horizontal_centering:
+        """
         font = self.get_font(self.font_name, font_size)
         upper_left = list(upper_left)  # to make it mutable
         shortened = contig_name[-title_width:]  # max length 18.  Last characters are most unique
         txt = Image.new('RGBA', (width, height))
-        if vertical_label:  # Large labels are centered in the column to look nice,
+        if center_vertical or vertical_label:  # Large labels are centered in the column to look nice,
             # rotation indicates strand in big text
             vertically_centered = (height // 2) - multi_line_height(font, shortened, txt)//2
         else:  # Place label at the beginning of gene based on strand
             vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
             if strand == "+":
                 vertically_centered = 0  # top of the box
-        text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 220)
+        text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 235)
         if font_size > 30:
             text_color = (100, 100, 100, 200)
-        ImageDraw.Draw(txt).multiline_text((0, max(0, vertically_centered)), shortened, font=font,
+        txt_canvas = ImageDraw.Draw(txt)
+        txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
                                            fill=text_color)
         if vertical_label:
             rotation_direction = 90 if strand == '-' else -90
             txt = txt.rotate(rotation_direction, expand=True)
             upper_left[1] += -4 if strand == '-' else 4
+        if horizontal_centering:
+            margin = width - txt_canvas.textsize(shortened, font)[0]
+            upper_left[0] += margin // 2
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 

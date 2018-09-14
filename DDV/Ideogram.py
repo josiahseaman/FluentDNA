@@ -165,11 +165,16 @@ class Ideogram(OutlinedAnnotation):
         return width, height
 
 
-    def handle_multi_column_annotations(self, region, left, right, top):
-        height = len(region.points) // self.base_width
-        #TODO: tweak based on radix row size
-        return height, left, right, top
+    def handle_multi_column_annotations(self, region, left, right, top, bottom):
+        height = bottom - top
+        width = right - left
+        return width, height, left, right, top
 
+    def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
+                    strand, canvas, horizontal_centering=False, center_vertical=False):
+        super(Ideogram, self).write_label(contig_name, width, height, font_size, title_width, upper_left,
+                                          False, '+', canvas, horizontal_centering=True,
+                                          center_vertical=True)
 
     def levels_json(self):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles
