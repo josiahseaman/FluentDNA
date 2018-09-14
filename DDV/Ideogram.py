@@ -14,19 +14,21 @@ try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 import sys
 
 from DDV.DDVUtils import beep
-from DDV.TileLayout import TileLayout, hex_to_rgb
-from PIL import Image, ImageDraw
+from DDV.OutlinedAnnotation import OutlinedAnnotation, extract_gene_name, AnnotatedRegion
+from DDV.Annotations import GFF
 import os
 import numpy as np
 from functools import reduce
 
-class Ideogram(TileLayout):
-    def __init__(self, radix_settings, **kwargs):
+class Ideogram(OutlinedAnnotation):
+    def __init__(self, radix_settings, ref_annotation=None, query_annotation=None, **kwargs):
+        super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation, **kwargs)
         x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
         self.x_radices = x_radices
         self.y_radices = y_radices
         self.x_scale, self.y_scale = x_scale, y_scale
-        super(Ideogram, self).__init__(**kwargs)
+        self.point_mapping = [] # for annotation and testing purposes
+        self.border_width = 10
 
 
     def draw_nucleotides(self):
@@ -52,7 +54,7 @@ class Ideogram(TileLayout):
         points_file = None # open(points_file_name, 'w')
         if points_file:
             print("Saving locations in {}".format(points_file_name))
-        contig = self.contigs[0]
+        contig = self.contigs[0]  # TODO pluck contig by --contigs
         seq_iter = iter(contig.seq)
 
         if self.x_scale == 1 and self.y_scale == 1:
@@ -80,6 +82,7 @@ class Ideogram(TileLayout):
             except IndexError:
                 print("Ran out of room at (%i,%i)" % (x,y))
                 break
+            self.point_mapping.append((x,y))
 
     def hacked_padding(self, curr_pos, max_x, odd, place):
         if place % 2 == 0:  # this is an y increments
@@ -134,6 +137,16 @@ class Ideogram(TileLayout):
             for scale_step in range(1, y_scale):
                 self.draw_pixel(next(seq_iter), x + x_nudge, y + scale_step * int(diff[0]))
 
+    def position_on_screen(self, progress):
+        """WARNING: This will not work until after self.draw_loop_optimized
+         has populated self.point_mapping"""
+        return self.point_mapping[progress]
+
+
+    def draw_extras(self):
+        super(Ideogram, self).draw_extras()
+
+
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
         nucleotide_width = reduce(int.__mul__, self.x_radices)
@@ -152,13 +165,11 @@ class Ideogram(TileLayout):
         return width, height
 
 
-    def prepare_image(self, image_length):
-        ui_grey = hex_to_rgb('EEF3FA')  # The contrast isn't quite so bad as white
-        width, height = self.max_dimensions(image_length)
-        print("Image dimensions are", width, "x", height, "pixels")
-        self.image = Image.new('RGB', (width, height), ui_grey)
-        self.draw = ImageDraw.Draw(self.image)
-        self.pixels = self.image.load()
+    def handle_multi_column_annotations(self, region, left, right, top):
+        height = len(region.points) // self.base_width
+        #TODO: tweak based on radix row size
+        return height, left, right, top
+
 
     def levels_json(self):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles

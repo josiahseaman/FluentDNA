@@ -60,11 +60,11 @@ class AnnotatedGenomeLayout(ParallelLayout):
         return reset_padding, title_padding, tail
 
 
-    def draw_titles(self):
+    def draw_extras(self):
+        """Drawing Annotations labels"""
         if self.genome_processed == self.annotation_phase:
             pass
         else:
-            super(AnnotatedGenomeLayout, self).draw_titles()  # scaffold names
             self.levels = self.each_layout[self.annotation_phase]
             self.genome_processed = 0
             self.read_contigs_and_calc_padding(self.annotation_fasta)

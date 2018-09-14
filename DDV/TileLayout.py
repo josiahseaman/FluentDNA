@@ -192,19 +192,29 @@ class TileLayout(object):
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
         try:
-            if len(self.contigs) > 1 and self.use_titles:
+            if self.use_titles:
                 print("Drawing %i titles" % sum(len(x.seq) > small_title_bp for x in self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
         except BaseException as e:
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
+        try:
+            self.draw_extras()
+        except BaseException as e:
+            print('Encountered exception while drawing titles:', '\n')
+            traceback.print_exc()
+
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
         fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
         if extract_contigs:
             print("Rendered sequence:", fasta_destination)
 
+
+    def draw_extras(self):
+        """Placeholder method for child classes"""
+        pass
 
     def draw_nucleotides(self):
         total_progress = 0
@@ -302,9 +312,7 @@ class TileLayout(object):
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
-        print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
-              "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
-        self.image = Image.new(self.pil_mode, (width, height), "white")
+        self.image = Image.new(self.pil_mode, (width, height), hex_to_rgb('#FFFFFF'))#ui_grey)
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 

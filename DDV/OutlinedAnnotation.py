@@ -19,6 +19,14 @@ def blend_pixel(markup_canvas, pt, c):
         combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
+def annotation_points(entry, renderer, progress_offset):
+    annotation_points = []
+    for i in range(entry.start, entry.end):
+        # important to include title and reset padding in coordinate frame
+        progress = i + progress_offset
+        annotation_points.append(renderer.position_on_screen(progress))
+    return annotation_points
+
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, **kwargs):
@@ -31,12 +39,15 @@ class OutlinedAnnotation(TileLayout):
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
+        if self.annotation is not None:
+            with open(input_file_path, 'r') as fasta:
+                assert fasta.readline().startswith('>'), "Fasta file must start with a header '>name'"
         super(OutlinedAnnotation, self).process_file(input_file_path, output_folder, output_file_name,
                                                      no_webpage, extract_contigs)
         # nothing extra
 
-    def draw_titles(self):
-        super(OutlinedAnnotation, self).draw_titles()
+    def draw_extras(self):
+        """Drawing Annotations labels and shadow outlines"""
         markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
         markup_canvas = markup_image.load()
         annotated_regions, query_regions = [], []
@@ -60,13 +71,16 @@ class OutlinedAnnotation(TileLayout):
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
         for region in regions:
-            for radius, layer in enumerate(region.outline_points):
-                darkness = self.border_width - len(region.outline_points) + radius  # softer line for small features
+            outline_shadow = outlines(region.points,
+                                      self.border_width, self.image.width, self.image.height)
+            for radius, layer in enumerate(outline_shadow):
+                darkness = radius
+                #self.border_width - len(region.outline_points) + radius  # softer line for small features
                 c = outline_colors[darkness]
                 for pt in layer:
                     blend_pixel(markup_canvas, pt, c)
 
-            for point in region.dark_region_points():
+            for point in region.exon_region_points():
                 blend_pixel(markup_canvas, point, exon_color)
         return regions
 
@@ -77,21 +91,26 @@ class OutlinedAnnotation(TileLayout):
         regions = []
 
         for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
-            scaff_name = coordinate_frame["name"].split()[0]
+            genes_seen = set()  # keeping track so I don't double down on gene/mRNA/transcript
+            scaff_name = coordinate_frame["name"].split()
+            if not scaff_name:
+                raise ValueError('Annotation cannot proceed without a contig name in the FASTA file.  \n'
+                                 'Please add a line at the beginning of your fasta file with a name '
+                                 'that exactly matches the first column in your annotation. For example: '
+                                 '>chrMt')
+            scaff_name = scaff_name[0]
             if scaff_name in annotations.keys():
                 for entry in annotations[scaff_name]:
-                    if entry.feature == 'mRNA':
-                        annotation_points = []  # this became too complex for a list comprehension
-                        for i in range(entry.start, entry.end):
-                            # important to include title and reset padding in coordinate frame
-                            progress = i + coordinate_frame["xy_seq_start"]
-                            annotation_points.append(self.position_on_screen(progress))
-                        regions.append(AnnotatedRegion(entry, annotation_points,
-                                                       coordinate_frame["xy_seq_start"], self.border_width,
-                                                       self.image.width, self.image.height))
+                    # redundancy checks for file with both mRNA and gene
+                    if entry.feature == 'gene':
+                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                        genes_seen.add(extract_gene_name(entry).replace('g','t'))
+                    if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
                     if entry.feature == 'CDS':
                         # hopefully mRNA comes first in the file
-                        if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                        # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                        # the if was commented out because CDS [Parent] to mRNA, not gene names
                             regions[-1].add_cds_region(entry)
 
         return regions
@@ -102,38 +121,44 @@ class OutlinedAnnotation(TileLayout):
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
         for region in annotated_regions:
-            pts = [pt for pt in region.points]
-            left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
-            top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
+            try:
+                pts = [pt for pt in region.points]
+                left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
+                top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
 
-            multi_column = abs(right - left) > self.base_width
-            if multi_column:  # pick the biggest column to contain the label, ignore others
-                median_point = len(region.points) // 2 + region.xy_seq_start + min(region.start, region.end)
-                s = median_point // self.base_width * self.base_width  # beginning of the line holding median
-                left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
-                right = self.position_on_screen(s + self.base_width - 1)[0]  # end of one line
-                filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
-                top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
-                height = len(filtered) // self.base_width
-            else:
-                height = len(region.points) // self.base_width
-            width = self.base_width
-            vertical_label = height > width
-            upper_left = [left, top]
+                height, left, right, top = self.handle_multi_column_annotations(region, left, right, top)
+                width = self.base_width
+                vertical_label = height > width
+                upper_left = [left, top]
 
-            # Title orientation and size
-            if vertical_label:
-                width, height = height, width  # swap
+                # Title orientation and size
+                if vertical_label:
+                    width, height = height, width  # swap
 
-            font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
-            if height < 11:
-                height = 11  # don't make the area so small it clips the text
-                upper_left[1] -= 2
+                font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
+                if height < 11:
+                    height = 11  # don't make the area so small it clips the text
+                    upper_left[1] -= 2
 
-            self.write_label(extract_gene_name(region, universal_prefix),
-                             width, height, font_size, 18, upper_left,
-                             vertical_label, region.strand, markup_image)
+                self.write_label(extract_gene_name(region, universal_prefix),
+                                 width, height, font_size, 18, upper_left,
+                                 vertical_label, region.strand, markup_image)
+            except BaseException as e:
+                print('Error while drawing label %s' % extract_gene_name(region), e)
 
+    def handle_multi_column_annotations(self, region, left, right, top):
+        multi_column = abs(right - left) > self.base_width
+        if multi_column:  # pick the biggest column to contain the label, ignore others
+            median_point = len(region.points) // 2 + region.xy_seq_start + min(region.start, region.end)
+            s = median_point // self.base_width * self.base_width  # beginning of the line holding median
+            left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
+            right = self.position_on_screen(s + self.base_width - 1)[0]  # end of one line
+            filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
+            top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
+            height = len(filtered) // self.base_width
+        else:
+            height = len(region.points) // self.base_width
+        return height, left, right, top
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
                     strand, canvas):
@@ -190,23 +215,25 @@ def outlines(annotation_points, radius, width, height, square_corners=False):
 
 
 class AnnotatedRegion(GFF.Annotation):
-    def __init__(self, GFF_annotation, annotation_points, xy_seq_start, radius, width, height):
+    def __init__(self, GFF_annotation, renderer, xy_seq_start):
         assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
         g = GFF_annotation  # short name
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
-        self.points = list(annotation_points)
+        self.points = annotation_points(GFF_annotation, renderer, xy_seq_start)
         self.xy_seq_start = xy_seq_start
-        self.outline_points = outlines(annotation_points, radius, width, height)
         self.protein_spans = []
 
-    def dark_region_points(self):
+    def exon_region_points(self):
         exon_indices = []
         for i in range(self.start, self.end):
             if any([i in exon for exon in self.protein_spans]):
                 exon_indices.append(i)
-        exon_points = [self.points[i - self.start] for i in exon_indices]
+        exon_points = []
+        for i in exon_indices:
+            if 0 <= i - self.start < len(self.points):
+                exon_points.append(self.points[i - self.start])
         # introns = [i for span in self.non_protein_spans for i in range(span.begin, span.end)]
         return exon_points
 
