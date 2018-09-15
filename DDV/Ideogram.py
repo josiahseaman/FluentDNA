@@ -204,6 +204,8 @@ if __name__ == "__main__":
     #                    [5,5,5,5,5 ,53], 1, 1))
     # layout = Ideogram([3,3,3,3,3,27],  # thin layout
     #                   [3,3,3,3,3,3 ,53], 1, 1)
+    # 3*3*3*3*3*27*
+    # 3*3*3*3*3 = 1,594,323 bp per fiber row
 
     radix_settings = eval(sys.argv[2])
     assert len(radix_settings) == 4 and \

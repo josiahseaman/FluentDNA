@@ -63,33 +63,38 @@ class OutlinedAnnotation(TileLayout):
         self.draw_annotation_labels(markup_image, annotated_regions, universal_prefix)
         self.image = Image.alpha_composite(self.image, markup_image)
 
-    def draw_annotation_outlines(self, annotations, markup_canvas, shadow):
+    def draw_annotation_outlines(self, annotations, markup_canvas, shadow_color):
         regions = self.find_annotated_regions(annotations)
+        self.draw_exons(markup_canvas, regions)
+        annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
+        self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
+        return regions
+
+    def draw_big_shadow_outline(self, markup_canvas, regions, shadow):
         print("Drawing annotation outlines")
-        # desaturated purple drop shadow, decreasing opacity
-        opacities = linspace(197, 10, self.border_width)
-        outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
-
-        exon_color = (255,255,255,107)  # white highlighter.  This is less disruptive overall
-        for region in regions:
-            for point in region.exon_region_points():  # highlight exons
-                blend_pixel(markup_canvas, point, exon_color)
-
         annotation_point_union = set()
         for region in regions:
             annotation_point_union.update(region.points)
             region.outline_points = outlines(region.points,  # small outline
-                  self.border_width // 4, self.image.width, self.image.height)
-
+                                             self.border_width // 4, self.image.width, self.image.height)
+        # desaturated purple drop shadow, decreasing opacity
+        opacities = linspace(197, 10, self.border_width)
+        outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         big_shadow = outlines(annotation_point_union,
-                                  self.border_width, self.image.width, self.image.height)
+                              self.border_width, self.image.width, self.image.height)
         self.draw_shadow(big_shadow, markup_canvas, outline_colors)
-        self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow)
+        return annotation_point_union
 
-        return regions
+    def draw_exons(self, markup_canvas, regions):
+        print("Drawing exons")
+        exon_color = (255, 255, 255, 107)  # white highlighter.  This is less disruptive overall
+        for region in regions:
+            for point in region.exon_region_points():  # highlight exons
+                blend_pixel(markup_canvas, point, exon_color)
 
     def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
         """Find subset of genes who are completely overshadowed"""
+        print("Drawing secondary shadows")
         opacities = linspace(170, 40, self.border_width // 4)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         for region in regions:
@@ -158,7 +163,11 @@ class OutlinedAnnotation(TileLayout):
                 if vertical_label:
                     width, height = height, width  # swap
 
-                font_size = max(9, int((width * 0.09) - 0))  # found eq with two reference points
+                font_size_by_width  = max(9, int((min(3000, width) * 0.09)))  # found eq with two reference points
+                font_size_by_height = max(9, int((min(3000, height * 18) * 0.09)))
+                if height <= 244: # 398580bp = 1900 width, 243 height
+                    font_size_by_height = min(font_size_by_height, int(1900 * .09))  # 171 max font size in one fiber
+                font_size = min(font_size_by_width, font_size_by_height)
                 if height < 11:
                     height = 11  # don't make the area so small it clips the text
                     upper_left[1] -= 2
@@ -215,27 +224,23 @@ class OutlinedAnnotation(TileLayout):
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
 
-def getNeighbors(pt):
-    return {(pt[0] + 1, pt[1]), (pt[0] - 1, pt[1]), (pt[0], pt[1] + 1), (pt[0], pt[1] - 1)}
+def getNeighbors(x, y):
+    return (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)
 
-def allNeighbors(pt):
-    return getNeighbors(pt).union({(pt[0] + 1, pt[1] + 1), (pt[0] - 1, pt[1] - 1),
-                                   (pt[0] - 1, pt[1] + 1), (pt[0] + 1, pt[1] - 1)})
+def allNeighbors(x, y):
+    return set(getNeighbors(x, y)).union({(x + 1, y + 1), (x - 1, y - 1),
+                                   (x - 1, y + 1), (x + 1, y - 1)})
 
-def outlines(annotation_points, radius, width, height, square_corners=False):
-    workingSet = set()
-    nextEdge = set()
-    workingSet.update(annotation_points)
-    nextEdge.update(annotation_points)
+def outlines(annotation_points, radius, width, height):
+    workingSet = set(annotation_points)
+    nextEdge = set(annotation_points)
     layers = []
     for iterationStep in range(radius, 0,  -1):
         activeEdge = nextEdge
         nextEdge = set()
-
-        for block in activeEdge:
-            neighbors = allNeighbors(block) if square_corners else getNeighbors(block)
-            for n in neighbors:
-                if n not in workingSet and width > n[0] > 0 and height > n[1] > 0 :  # TODO: check in bounds
+        for pt in activeEdge:
+            for n in getNeighbors(pt[0], pt[1]):
+                if n not in workingSet and width > n[0] > 0 and height > n[1] > 0:  # TODO: check in bounds
                     workingSet.add(n)
                     nextEdge.add(n)
         layers.append(nextEdge)
@@ -255,15 +260,15 @@ class AnnotatedRegion(GFF.Annotation):
         self.protein_spans = []
 
     def exon_region_points(self):
-        exon_indices = []
-        for i in range(self.start, self.end):
-            if any([i in exon for exon in self.protein_spans]):
-                exon_indices.append(i)
+        exon_indices = set()
+        for exon in self.protein_spans:
+            exon_indices.update(exon.set_of_points())
+        length = len(self.points)
         exon_points = []
         for i in exon_indices:
-            if 0 <= i - self.start < len(self.points):
-                exon_points.append(self.points[i - self.start])
-        # introns = [i for span in self.non_protein_spans for i in range(span.begin, span.end)]
+            adjusted = i - self.start
+            if 0 <= adjusted < length:
+                exon_points.append(self.points[adjusted])
         return exon_points
 
     def add_cds_region(self, annotation_entry):
