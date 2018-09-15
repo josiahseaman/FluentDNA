@@ -193,7 +193,7 @@ class OutlinedAnnotation(TileLayout):
         return width, height, left, right, top
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False):
+                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True):
         """write_label() made to nicely draw single line gene labels from annotation
         :param horizontal_centering:
         """
@@ -201,6 +201,11 @@ class OutlinedAnnotation(TileLayout):
         upper_left = list(upper_left)  # to make it mutable
         shortened = contig_name[-title_width:]  # max length 18.  Last characters are most unique
         txt = Image.new('RGBA', (width, height))
+        txt_canvas = ImageDraw.Draw(txt)
+        text_width = txt_canvas.textsize(shortened, font)[0]
+        if not chop_text and text_width > width:
+            txt = Image.new('RGBA', (text_width, height))  # TODO performance around txt_canvas
+            txt_canvas = ImageDraw.Draw(txt)
         if center_vertical or vertical_label:  # Large labels are centered in the column to look nice,
             # rotation indicates strand in big text
             vertically_centered = (height // 2) - multi_line_height(font, shortened, txt)//2
@@ -211,7 +216,6 @@ class OutlinedAnnotation(TileLayout):
         text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 235)
         if font_size > 30:
             text_color = (100, 100, 100, 200)
-        txt_canvas = ImageDraw.Draw(txt)
         txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
                                            fill=text_color)
         if vertical_label:
@@ -219,7 +223,7 @@ class OutlinedAnnotation(TileLayout):
             txt = txt.rotate(rotation_direction, expand=True)
             upper_left[1] += -4 if strand == '-' else 4
         if horizontal_centering:
-            margin = width - txt_canvas.textsize(shortened, font)[0]
+            margin = width - text_width
             upper_left[0] += margin // 2
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
