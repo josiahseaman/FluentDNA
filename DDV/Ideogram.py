@@ -150,17 +150,16 @@ class Ideogram(OutlinedAnnotation):
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
         nucleotide_width = reduce(int.__mul__, self.x_radices)
-        padding_remainder = 12
-        y_body = reduce(int.__mul__, self.y_radices[:-1]) + padding_remainder
+        y_body = reduce(int.__mul__, self.y_radices[:-1])
         n_coils = np.ceil(image_length / nucleotide_width )
         y_needed = int(np.ceil(n_coils / y_body))
         if y_needed % 2 == 0:  # needs to be odd
             y_needed += 1
-        if self.y_radices[-1] > y_needed:  # taller than it needs to be
-            self.y_radices[-1] = y_needed
+        self.y_radices[-1] = y_needed
         width = nucleotide_width * self.x_scale + self.origin[0] * 2
-        nuc_height = reduce(int.__mul__, self.y_radices)
-        height = nuc_height * self.y_scale + self.origin[1] + 10
+        padding_per_coil = 6
+        nuc_height = reduce(int.__mul__, self.y_radices) + padding_per_coil * y_needed
+        height = nuc_height * self.y_scale + self.origin[1]*2 + 10
 
         return width, height
 

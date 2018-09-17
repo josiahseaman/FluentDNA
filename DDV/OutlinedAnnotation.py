@@ -20,7 +20,7 @@ def blend_pixel(markup_canvas, pt, c, overwrite=False):
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
 def annotation_points(entry, renderer, progress_offset):
-    annotation_points = []
+    annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
     for i in range(entry.start, entry.end):
         # important to include title and reset padding in coordinate frame
         progress = i + progress_offset
@@ -130,17 +130,19 @@ class OutlinedAnnotation(TileLayout):
             if scaff_name in annotations.keys():
                 for entry in annotations[scaff_name]:
                     # redundancy checks for file with both mRNA and gene
-                    if entry.feature == 'gene':
-                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
-                        genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                    if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
-                    if entry.feature == 'CDS' or entry.feature == 'exon':
-                        # hopefully mRNA comes first in the file
-                        # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
-                        # the if was commented out because CDS [Parent] to mRNA, not gene names
-                            regions[-1].add_cds_region(entry)
-
+                    try:
+                        if entry.feature == 'gene':
+                            regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                            genes_seen.add(extract_gene_name(entry).replace('g','t'))
+                        if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                            regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                        if entry.feature == 'CDS' or entry.feature == 'exon':
+                            # hopefully mRNA comes first in the file
+                            # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                            # the if was commented out because CDS [Parent] to mRNA, not gene names
+                                regions[-1].add_cds_region(entry)
+                    except (IndexError, KeyError, TypeError, ValueError) as e:
+                        print(e)
         return regions
 
 
@@ -236,7 +238,7 @@ def allNeighbors(x, y):
                                    (x - 1, y + 1), (x + 1, y - 1)})
 
 def outlines(annotation_points, radius, width, height):
-    workingSet = set(annotation_points)
+    workingSet = set()
     nextEdge = set(annotation_points)
     layers = []
     for iterationStep in range(radius, 0,  -1):
@@ -244,7 +246,9 @@ def outlines(annotation_points, radius, width, height):
         nextEdge = set()
         for pt in activeEdge:
             for n in getNeighbors(pt[0], pt[1]):
-                if n not in workingSet and width > n[0] > 0 and height > n[1] > 0:  # TODO: check in bounds
+                if n not in workingSet \
+                        and n not in annotation_points \
+                        and width > n[0] > 0 and height > n[1] > 0:  # TODO: check in bounds
                     workingSet.add(n)
                     nextEdge.add(n)
         layers.append(nextEdge)
