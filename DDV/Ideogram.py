@@ -20,6 +20,9 @@ import os
 import numpy as np
 from functools import reduce
 
+from TileLayout import hex_to_rgb
+
+
 class Ideogram(OutlinedAnnotation):
     def __init__(self, radix_settings, ref_annotation=None, query_annotation=None, **kwargs):
         super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation, **kwargs)
@@ -30,6 +33,12 @@ class Ideogram(OutlinedAnnotation):
         self.point_mapping = [] # for annotation and testing purposes
         self.border_width = 12
 
+
+    def activate_high_contrast_colors(self):
+        self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
+        self.palette['C'] = hex_to_rgb('EE955D')  # rock
+        self.palette['T'] = hex_to_rgb('A19E3D')  # light green
+        self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
     def draw_nucleotides(self):
         ndim_x = len(self.x_radices)
@@ -201,8 +210,8 @@ if __name__ == "__main__":
     # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
     # layout = Ideogram(([5,5,5,5,11],  # thick, local
     #                    [5,5,5,5,5 ,53], 1, 1))
-    # layout = Ideogram([3,3,3,3,3,27],  # thin layout
-    #                   [3,3,3,3,3,3 ,53], 1, 1)
+    ## thin layout layout = Ideogram([3,3,3,3,3,27], [3,3,3,3,3,3 ,53], 1, 1)
+    #                               ([5,5,5,5,5,27], [3,3,3,3,3,3 ,53], 1, 1)
     # 3*3*3*3*3*27*
     # 3*3*3*3*3 = 1,594,323 bp per fiber row
 

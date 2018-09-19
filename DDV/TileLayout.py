@@ -134,10 +134,10 @@ class TileLayout(object):
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
         #Base RGB: FF4100, Dist 40
-        self.palette['A'] = hex_to_rgb('FF4100')  # Red
-        self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
-        self.palette['C'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
-        self.palette['G'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
+        self.palette['G'] = hex_to_rgb('FF4100')  # Red
+        self.palette['C'] = hex_to_rgb('FF9F00')  # Yellow
+        self.palette['T'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
+        self.palette['A'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
         # Original DDV Colors
         # self.palette['A'] = (255, 0, 0)
         # self.palette['G'] = (0, 255, 0)
@@ -161,10 +161,10 @@ class TileLayout(object):
         # self.palette['G'] = hex_to_rgb('4CA47A')  # Green
         # self.palette['C'] = hex_to_rgb('4F6F9B')  # Blue
         # -----Manually Adjusted Colors from Paletton plus contrast------
-        self.palette['A'] = hex_to_rgb('D4403C')  # Red
-        self.palette['T'] = hex_to_rgb('E2AE5B')  # Yellow
-        self.palette['G'] = hex_to_rgb('3FB93F')  # Green
-        self.palette['C'] = hex_to_rgb('2D6C85')  # Blue
+        self.palette['G'] = hex_to_rgb('D4403C')  # Red
+        self.palette['C'] = hex_to_rgb('E2AE5B')  # Yellow
+        self.palette['T'] = hex_to_rgb('2D6C85')  # Blue
+        self.palette['A'] = hex_to_rgb('3FB93F')  # Green
 
     def enable_fat_headers(self):
         if self.use_titles:

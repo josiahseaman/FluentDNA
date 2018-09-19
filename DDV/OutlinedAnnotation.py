@@ -89,7 +89,7 @@ class OutlinedAnnotation(TileLayout):
         print("Drawing exons")
         exon_color = (255, 255, 255, 107)  # white highlighter.  This is less disruptive overall
         for region in regions:
-            for point in region.exon_region_points():  # highlight exons
+            for point in region.exon_region_points():  #.points:# highlight exons
                 blend_pixel(markup_canvas, point, exon_color)
 
     def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
@@ -238,7 +238,7 @@ def allNeighbors(x, y):
                                    (x - 1, y + 1), (x + 1, y - 1)})
 
 def outlines(annotation_points, radius, width, height):
-    workingSet = set()
+    workingSet = set(annotation_points)
     nextEdge = set(annotation_points)
     layers = []
     for iterationStep in range(radius, 0,  -1):
@@ -247,7 +247,6 @@ def outlines(annotation_points, radius, width, height):
         for pt in activeEdge:
             for n in getNeighbors(pt[0], pt[1]):
                 if n not in workingSet \
-                        and n not in annotation_points \
                         and width > n[0] > 0 and height > n[1] > 0:  # TODO: check in bounds
                     workingSet.add(n)
                     nextEdge.add(n)
