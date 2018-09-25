@@ -14,8 +14,7 @@ try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 import sys
 
 from DDV.DDVUtils import beep
-from DDV.OutlinedAnnotation import OutlinedAnnotation, extract_gene_name, AnnotatedRegion
-from DDV.Annotations import GFF
+from DDV.OutlinedAnnotation import OutlinedAnnotation
 import os
 import numpy as np
 from functools import reduce
@@ -162,14 +161,14 @@ class Ideogram(OutlinedAnnotation):
         y_body = reduce(int.__mul__, self.y_radices[:-1])
         n_coils = np.ceil(image_length / nucleotide_width )
         y_needed = int(np.ceil(n_coils / y_body))
-        if y_needed % 2 == 0:  # needs to be odd
-            y_needed += 1
         self.y_radices[-1] = y_needed
         width = nucleotide_width * self.x_scale + self.origin[0] * 2
         padding_per_coil = 6
         nuc_height = reduce(int.__mul__, self.y_radices) + padding_per_coil * y_needed
         height = nuc_height * self.y_scale + self.origin[1]*2 + 10
 
+        if self.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
+            self.y_radices[-1] += 1
         return width, height
 
 

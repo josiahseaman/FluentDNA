@@ -60,14 +60,19 @@ class OutlinedAnnotation(TileLayout):
         annotated_regions = list(chain(annotated_regions, query_regions))
         universal_prefix = find_universal_prefix(annotated_regions)
         print("Removing Universal Prefix from annotations:", universal_prefix)
-        self.draw_annotation_labels(markup_image, annotated_regions, universal_prefix)
-        self.image = Image.alpha_composite(self.image, markup_image)
+        self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
+        del markup_image
+        self.draw_annotation_labels(self.image, annotated_regions, universal_prefix)  # labels on top
 
     def draw_annotation_outlines(self, annotations, markup_canvas, shadow_color):
         regions = self.find_annotated_regions(annotations)
+        self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
         self.draw_exons(markup_canvas, regions)
-        annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
-        self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
+        try:
+            annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
+            self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
+        except MemoryError as e:  # the global union takes a lot of memory
+            print(e)
         return regions
 
     def draw_big_shadow_outline(self, markup_canvas, regions, shadow):
@@ -85,12 +90,17 @@ class OutlinedAnnotation(TileLayout):
         self.draw_shadow(big_shadow, markup_canvas, outline_colors)
         return annotation_point_union
 
-    def draw_exons(self, markup_canvas, regions):
-        print("Drawing exons")
+    def draw_exons(self, markup_canvas, regions,  highlight_whole_gene=False):
+        print("Drawing exons" if not highlight_whole_gene else "Drawing genic regions")
         exon_color = (255, 255, 255, 107)  # white highlighter.  This is less disruptive overall
+        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
         for region in regions:
-            for point in region.exon_region_points():  #.points:# highlight exons
-                blend_pixel(markup_canvas, point, exon_color)
+            if highlight_whole_gene:
+                for point in region.points:  # highlight exons
+                    blend_pixel(markup_canvas, point, genic_color)
+            else:
+                for point in region.exon_region_points():  # highlight exons
+                    blend_pixel(markup_canvas, point, exon_color)
 
     def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
         """Find subset of genes who are completely overshadowed"""
