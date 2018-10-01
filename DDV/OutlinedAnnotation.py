@@ -30,12 +30,13 @@ def annotation_points(entry, renderer, progress_offset):
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, **kwargs):
+        self.highlight_whole_gene = kwargs.pop('highlight_whole_gene', False)
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
-        self.border_width = 30
+        self.border_width = 12
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -59,14 +60,15 @@ class OutlinedAnnotation(TileLayout):
         # important to combine set of names so not too much prefix gets chopped off
         annotated_regions = list(chain(annotated_regions, query_regions))
         universal_prefix = find_universal_prefix(annotated_regions)
-        print("Removing Universal Prefix from annotations:", universal_prefix)
+        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
         self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
         del markup_image
         self.draw_annotation_labels(self.image, annotated_regions, universal_prefix)  # labels on top
 
     def draw_annotation_outlines(self, annotations, markup_canvas, shadow_color):
         regions = self.find_annotated_regions(annotations)
-        self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
+        if self.highlight_whole_gene:
+            self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
         self.draw_exons(markup_canvas, regions)
         try:
             annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)

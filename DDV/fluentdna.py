@@ -477,9 +477,10 @@ def main():
         parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
     if not args.layout:
         if args.ref_annotation and args.fasta:
-            args.layout = "annotated"
-        elif args.radix:
-            args.layout = 'ideogram'
+            if args.radix:
+                args.layout = 'ideogram'
+            else:
+                args.layout = "outlines"
         # elif args.ref_annotation:
         #     args.layout = "annotation_only"
 

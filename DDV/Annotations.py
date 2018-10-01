@@ -34,7 +34,7 @@ class GFF(object):
         for line in open_annotation_file.readlines():
             if line.startswith("#"):
                 if "gff-version" in line:
-                    gff_version = line.split(' ')[1]
+                    gff_version = line.split()[1]
                     if int(gff_version) != 2:
                         print("WARNING: Expecting GFF Version 2, not  %s!" % gff_version)
                 elif "genome-build" in line:
@@ -237,6 +237,8 @@ def find_universal_prefix(annotation_list):
             break
     # shortened_names = [name[start:] for name in names]
     prefix = names[0][:start]
+    while len(prefix) and prefix[-1].isdigit() and prefix[-1] != '0':
+        prefix = prefix[:-1]  # chop off last letter
     return prefix
 
 
