@@ -21,84 +21,84 @@ class GFF(object):
         assert os.path.isfile(annotation_file)
 
         specimen = None
-        gff_version = 2
+        gff_version = '2'
         genome_version = None
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
         annotations = {}
         chromosome_lengths = {}
 
-        open_annotation_file = open(annotation_file, 'r')
-        counter = 0
-        print("Opening Annotation file...")
-        for line in open_annotation_file.readlines():
-            if line.startswith("#"):
-                if "gff-version" in line:
-                    gff_version = line.split()[1]
-                    if int(gff_version) != 2:
-                        print("WARNING: Expecting GFF Version 2, not  %s!" % gff_version)
-                elif "genome-build" in line:
-                    specimen = line.split(' ')[1]
-                elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
-                    genome_version = line.split(' ')[1]
-                elif "genome-date" in line:
-                    date = line.split(' ')[1]
-            else:
-                if counter == 0:
-                    print("Version 2 GFF file:", annotation_file)
+        with open(annotation_file, 'r') as open_annotation_file:
+            counter = 0
+            print("Opening Annotation file...")
+            for line in open_annotation_file.readlines():
+                if line.startswith("#"):
+                    if "gff-version" in line:
+                        gff_version = line.split()[1]
+                        if int(gff_version) != '2':
+                            print("WARNING: Expecting GFF Version 2, not  %s!" % gff_version)
+                    elif "genome-build" in line:
+                        specimen = line.split()[1]
+                    elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
+                        genome_version = line.split()[1]
+                    elif "genome-date" in line:
+                        date = line.split()[1]
+                elif line.strip():
+                    if counter == 0:
+                        print("Version 2 GFF file:", annotation_file)
 
-                counter += 1
+                    counter += 1
+                    try:
+                        elements = line.split('\t')
 
-                elements = line.split('\t')
+                        chromosome = elements[0]
 
-                chromosome = elements[0]
+                        if chromosome not in annotations:
+                            annotations[chromosome] = []
+                            chromosome_lengths[chromosome] = 0
+                            if len(annotations) < 10:
+                                print(chromosome, end=", ")
+                            elif len(annotations) == 10:
+                                print('...')
 
-                if chromosome not in annotations:
-                    annotations[chromosome] = []
-                    chromosome_lengths[chromosome] = 0
-                    if len(annotations) < 10:
-                        print(chromosome, end=", ")
-                    elif len(annotations) == 10:
-                        print('...')
+                        ID = counter
+                        source = elements[1]
+                        feature = elements[2]
+                        start = int(elements[3])
+                        end = int(elements[4])
 
-                ID = counter
-                source = elements[1]
-                feature = elements[2]
-                start = int(elements[3])
-                end = int(elements[4])
+                        if elements[5] == '.':
+                            score = None
+                        else:
+                            score = float(elements[5])
 
-                if elements[5] == '.':
-                    score = None
-                else:
-                    score = float(elements[5])
+                        if elements[6] == '.':
+                            strand = None
+                        else:
+                            strand = elements[6]
 
-                if elements[6] == '.':
-                    strand = None
-                else:
-                    strand = elements[6]
+                        if elements[7] == '.':
+                            frame = None
+                        else:
+                            frame = int(elements[7])
 
-                if elements[7] == '.':
-                    frame = None
-                else:
-                    frame = int(elements[7])
+                        if len(elements) >= 9:
+                            pairs = [pair.strip() for pair in elements[8].split(';') if pair]
+                            attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs if
+                                          len(pair.split('=')) == 2}
+                        else:
+                            attributes = {}
 
-                if len(elements) >= 9:
-                    pairs = [pair.strip() for pair in elements[8].split(';') if pair]
-                    attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs if
-                                  len(pair.split('=')) == 2}
-                else:
-                    attributes = {}
+                        annotation = self.Annotation(chromosome, ID,
+                                                     source, feature,
+                                                     start, end,
+                                                     score, strand,
+                                                     frame, attributes, line)
 
-                annotation = self.Annotation(chromosome, ID,
-                                             source, feature,
-                                             start, end,
-                                             score, strand,
-                                             frame, attributes, line)
-
-                annotations[chromosome].append(annotation)
-                chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
-
-        open_annotation_file.close()
+                        annotations[chromosome].append(annotation)
+                        chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
+                    except IndexError as e:
+                        print(e, line)
 
         return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
 

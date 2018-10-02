@@ -49,33 +49,63 @@ class OutlinedAnnotation(TileLayout):
 
     def draw_extras(self):
         """Drawing Annotations labels and shadow outlines"""
-        markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
+
+        positions = self.contig_struct()
+        for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
+            scaff_name = coordinate_frame["name"].split()
+            if not scaff_name:
+                raise ValueError('Annotation cannot proceed without a contig name in the FASTA file.  \n'
+                                 'Please add a line at the beginning of your fasta file with a name '
+                                 'that exactly matches the first column in your annotation. For example: '
+                                 '>chrMt')
+            scaff_name = scaff_name[0]
+            # for one chromosome
+            try:
+                self.draw_extras_for_chromosome(scaff_name, coordinate_frame)
+            except BaseException as e:
+                print("Encountered error while rendering", scaff_name)
+                print(e)
+                print("Continuing to next scaffold.")
+
+
+    def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
+        annotated_regions = self.find_annotated_regions(self.annotation, scaff_name, coordinate_frame)
+        query_regions = self.find_annotated_regions(self.query_annotation, scaff_name, coordinate_frame)
+        # important to combine set of names so not too much prefix gets chopped off
+        union_regions = list(chain(annotated_regions, query_regions))
+        universal_prefix = find_universal_prefix(union_regions)
+        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
+
+        upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
+        width = max(set(p.points[0] for p in union_regions))
+        height = max(set(p.points[1] for p in union_regions))
+        markup_image = Image.new('RGBA', (width, height), (0,0,0,0))
         markup_canvas = markup_image.load()
-        annotated_regions, query_regions = [], []
 
         if self.annotation is not None:
-            annotated_regions = self.draw_annotation_outlines(self.annotation, markup_canvas, (65, 42, 80))
+            self.draw_annotation_outlines(annotated_regions, scaff_name, coordinate_frame,
+                                          markup_canvas, (65, 42, 80))
         if self.query_annotation is not None:
-            query_regions = self.draw_annotation_outlines(self.query_annotation, markup_canvas, (211, 229, 199))
-        # important to combine set of names so not too much prefix gets chopped off
-        annotated_regions = list(chain(annotated_regions, query_regions))
-        universal_prefix = find_universal_prefix(annotated_regions)
-        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
-        self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
-        del markup_image
-        self.draw_annotation_labels(self.image, annotated_regions, universal_prefix)  # labels on top
+            self.draw_annotation_outlines(query_regions, coordinate_frame,
+                                          markup_canvas, (211, 229, 199))
 
-    def draw_annotation_outlines(self, annotations, markup_canvas, shadow_color):
-        regions = self.find_annotated_regions(annotations)
+        # self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
+        self.image.paste(markup_image, (upper_left[0], upper_left[1]))
+        del markup_image
+        self.draw_annotation_labels(self.image, union_regions, universal_prefix)  # labels on top
+
+
+    def draw_annotation_outlines(self, regions, coordinate_frame, markup_canvas, shadow_color):
         if self.highlight_whole_gene:
             self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
         self.draw_exons(markup_canvas, regions)
         try:
-            annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
-            self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
+            pass
+            # annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
+            # self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
         except MemoryError as e:  # the global union takes a lot of memory
+            print("Ran out of Memory rendering annotation shadows.  Continuing...")
             print(e)
-        return regions
 
     def draw_big_shadow_outline(self, markup_canvas, regions, shadow):
         print("Drawing annotation outlines")
@@ -94,8 +124,8 @@ class OutlinedAnnotation(TileLayout):
 
     def draw_exons(self, markup_canvas, regions,  highlight_whole_gene=False):
         print("Drawing exons" if not highlight_whole_gene else "Drawing genic regions")
-        exon_color = (255, 255, 255, 107)  # white highlighter.  This is less disruptive overall
-        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
+        exon_color = (255, 255, 255, 87)  # white highlighter.  This is less disruptive overall
+        genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
         for region in regions:
             if highlight_whole_gene:
                 for point in region.points:  # highlight exons
@@ -124,37 +154,31 @@ class OutlinedAnnotation(TileLayout):
             for pt in layer:
                 blend_pixel(markup_canvas, pt, c)
 
-    def find_annotated_regions(self, annotations):
-        """ :type annotations: dict(GFF.Annotation) """
-        print("Collecting points in annotated regions")
-        positions = self.contig_struct()
+    def find_annotated_regions(self, annotations, scaff_name, coordinate_frame):
+        """:param scaffold_name:
+           :type annotations: dict(GFF.Annotation)
+        """
+        print("Collecting points in annotated regions of", scaff_name)
         regions = []
-
-        for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
-            genes_seen = set()  # keeping track so I don't double down on gene/mRNA/transcript
-            scaff_name = coordinate_frame["name"].split()
-            if not scaff_name:
-                raise ValueError('Annotation cannot proceed without a contig name in the FASTA file.  \n'
-                                 'Please add a line at the beginning of your fasta file with a name '
-                                 'that exactly matches the first column in your annotation. For example: '
-                                 '>chrMt')
-            scaff_name = scaff_name[0]
-            if scaff_name in annotations.keys():
-                for entry in annotations[scaff_name]:
-                    # redundancy checks for file with both mRNA and gene
-                    try:
-                        if entry.feature == 'gene':
-                            regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
-                            genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                        if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                            regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
-                        if entry.feature == 'CDS' or entry.feature == 'exon':
-                            # hopefully mRNA comes first in the file
-                            # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
-                            # the if was commented out because CDS [Parent] to mRNA, not gene names
-                                regions[-1].add_cds_region(entry)
-                    except (IndexError, KeyError, TypeError, ValueError) as e:
-                        print(e)
+        genes_seen = set()
+        if annotations is None:
+            return regions
+        if scaff_name in annotations.keys():
+            for entry in annotations[scaff_name]:
+                # redundancy checks for file with both mRNA and gene
+                try:
+                    if entry.feature == 'gene':
+                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                        genes_seen.add(extract_gene_name(entry).replace('g','t'))
+                    if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                    if entry.feature == 'CDS' or entry.feature == 'exon':
+                        # hopefully mRNA comes first in the file
+                        # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                        # the if was commented out because CDS [Parent] to mRNA, not gene names
+                            regions[-1].add_cds_region(entry)
+                except (IndexError, KeyError, TypeError, ValueError) as e:
+                    print(e)
         return regions
 
 
