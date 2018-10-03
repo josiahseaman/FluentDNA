@@ -353,10 +353,10 @@ class TileLayout(object):
         return 0, 0, 0
 
 
-    def position_on_screen(self, progress):
+    def relative_position(self, progress):
         """ Readable unoptimized version:
-        Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
-        xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
+            Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
+        xy = [0, 0]
         for i, level in enumerate(self.levels):
             if progress < level.chunk_size:
                 return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
@@ -364,6 +364,11 @@ class TileLayout(object):
             coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
         return int(xy[0]), int(xy[1])
+
+    def position_on_screen(self, progress):
+        # column padding for various markup = self.levels[2].padding
+        xy = self.relative_position(progress)
+        return (xy[0] + self.origin[0], xy[1] + self.origin[1])
 
 
     def draw_pixel(self, character, x, y):

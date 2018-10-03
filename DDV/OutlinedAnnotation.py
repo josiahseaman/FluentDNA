@@ -20,12 +20,11 @@ def blend_pixel(markup_canvas, pt, c, overwrite=False):
         combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
-def annotation_points(entry, renderer, progress_offset):
+def annotation_points(entry, renderer):
     annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
     for i in range(entry.start, entry.end):
         # important to include title and reset padding in coordinate frame
-        progress = i + progress_offset
-        annotation_points.append(renderer.position_on_screen(progress))
+        annotation_points.append(renderer.relative_position(i))
     return annotation_points
 
 
@@ -71,33 +70,36 @@ class OutlinedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        annotated_regions = self.find_annotated_regions(self.annotation, scaff_name, coordinate_frame)
-        query_regions = self.find_annotated_regions(self.query_annotation, scaff_name, coordinate_frame)
+        annotated_regions = self.find_annotated_regions(self.annotation, scaff_name)
+        query_regions = self.find_annotated_regions(self.query_annotation, scaff_name)
         # important to combine set of names so not too much prefix gets chopped off
         union_regions = list(chain(annotated_regions, query_regions))
+        if not len(union_regions):
+            return  # no work to do for this scaffold
         universal_prefix = find_universal_prefix(union_regions)
         print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
 
-        # upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
-        # width = max(set(p[0] for region in union_regions for p in region.points))
-        # height = max(set(p[1] for region in union_regions for p in region.points))
-        markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
+        upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
+        width = max(set(p[0] for region in union_regions for p in region.points)) # relative coordinates
+        height = max(set(p[1] for region in union_regions for p in region.points))
+        markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
         markup_canvas = markup_image.load()
 
         if self.annotation is not None:
-            self.draw_annotation_outlines(annotated_regions, coordinate_frame,
-                                          markup_canvas, (65, 42, 80))
+            self.draw_annotation_outlines(annotated_regions, markup_canvas, (65, 42, 80))
         if self.query_annotation is not None:
-            self.draw_annotation_outlines(query_regions, coordinate_frame,
-                                          markup_canvas, (211, 229, 199))
+            self.draw_annotation_outlines(query_regions, markup_canvas, (211, 229, 199))
 
-        self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
-        # self.image.paste(markup_image, (upper_left[0], upper_left[1]))
+        # self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
+        self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
         del markup_image
-        self.draw_annotation_labels(self.image, union_regions, universal_prefix)  # labels on top
+        markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
+        self.draw_annotation_labels(markup_image, union_regions, universal_prefix)  # labels on top
+        self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
+        #self.draw_annotation_labels(self.image
 
 
-    def draw_annotation_outlines(self, regions, coordinate_frame, markup_canvas, shadow_color):
+    def draw_annotation_outlines(self, regions, markup_canvas, shadow_color):
         if self.highlight_whole_gene:
             self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
         self.draw_exons(markup_canvas, regions)
@@ -127,7 +129,7 @@ class OutlinedAnnotation(TileLayout):
     def draw_exons(self, markup_canvas, regions,  highlight_whole_gene=False):
         print("Drawing exons" if not highlight_whole_gene else "Drawing genic regions")
         exon_color = (255, 255, 255, 87)  # white highlighter.  This is less disruptive overall
-        genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
+        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
         for region in regions:
             if highlight_whole_gene:
                 for point in region.points:  # highlight exons
@@ -156,7 +158,7 @@ class OutlinedAnnotation(TileLayout):
             for pt in layer:
                 blend_pixel(markup_canvas, pt, c)
 
-    def find_annotated_regions(self, annotations, scaff_name, coordinate_frame):
+    def find_annotated_regions(self, annotations, scaff_name):
         """:param scaffold_name:
            :type annotations: dict(GFF.Annotation)
         """
@@ -170,10 +172,10 @@ class OutlinedAnnotation(TileLayout):
                 # redundancy checks for file with both mRNA and gene
                 try:
                     if entry.feature == 'gene':
-                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                        regions.append(AnnotatedRegion(entry, self))
                         genes_seen.add(extract_gene_name(entry).replace('g','t'))
                     if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                        regions.append(AnnotatedRegion(entry, self, coordinate_frame["xy_seq_start"]))
+                        regions.append(AnnotatedRegion(entry, self))
                     if entry.feature == 'CDS' or entry.feature == 'exon':
                         # hopefully mRNA comes first in the file
                         # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
@@ -220,7 +222,7 @@ class OutlinedAnnotation(TileLayout):
     def handle_multi_column_annotations(self, region, left, right, top, bottom):
         multi_column = abs(right - left) > self.base_width
         if multi_column:  # pick the biggest column to contain the label, ignore others
-            median_point = len(region.points) // 2 + region.xy_seq_start + min(region.start, region.end)
+            median_point = len(region.points) // 2 + min(region.start, region.end)
             s = median_point // self.base_width * self.base_width  # beginning of the line holding median
             left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
             right = self.position_on_screen(s + self.base_width - 1)[0]  # end of one line
@@ -255,7 +257,7 @@ class OutlinedAnnotation(TileLayout):
                 vertically_centered = 0  # top of the box
         text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 235)
         if font_size > 30:
-            text_color = (100, 100, 100, 200)
+            text_color = (50, 50, 50, 200)
         txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
                                            fill=text_color)
         if vertical_label:
@@ -266,6 +268,7 @@ class OutlinedAnnotation(TileLayout):
             margin = width - text_width
             upper_left[0] += margin // 2
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
+        del txt
 
 
 def getNeighbors(x, y):
@@ -294,14 +297,13 @@ def outlines(annotation_points, radius, width, height):
 
 
 class AnnotatedRegion(GFF.Annotation):
-    def __init__(self, GFF_annotation, renderer, xy_seq_start):
+    def __init__(self, GFF_annotation, renderer):
         assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
         g = GFF_annotation  # short name
         super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
                                               g.start, g.end, g.score, g.strand, g.frame,
                                               g.attributes, g.line)
-        self.points = annotation_points(GFF_annotation, renderer, xy_seq_start)
-        self.xy_seq_start = xy_seq_start
+        self.points = annotation_points(GFF_annotation, renderer)
         self.protein_spans = []
 
     def exon_region_points(self):
