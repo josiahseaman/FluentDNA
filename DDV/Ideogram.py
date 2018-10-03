@@ -180,10 +180,11 @@ class Ideogram(OutlinedAnnotation):
         return width, height, left, right, top
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=False):
+                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
+                    label_color=(50, 50, 50, 255)):
         super(Ideogram, self).write_label(contig_name, width, height, font_size, title_width, upper_left,
-                                          False, '+', canvas, horizontal_centering=True,
-                                          center_vertical=True, chop_text=False)
+                                          False, '+', canvas, horizontal_centering=True, center_vertical=True,
+                                          chop_text=False)
 
     def levels_json(self):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles

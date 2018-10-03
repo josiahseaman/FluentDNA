@@ -72,17 +72,18 @@ class OutlinedAnnotation(TileLayout):
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
         genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
-            self.draw_annotation_layer(self.repeat_annotation, scaff_name,
-                                       (0, 0, 0, 55), coordinate_frame, simple_entry=True)
+            self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
+                                       (255, 255, 255, 0), simple_entry=True)
         if self.query_annotation is not None:
-            self.draw_annotation_layer(self.query_annotation, scaff_name,
-                                       genic_color, coordinate_frame, shadows=True)
+            self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
+                                       (50, 50, 50, 255), shadows=True)
         if self.annotation is not None:
-            self.draw_annotation_layer(self.annotation, scaff_name,
-                                       genic_color, coordinate_frame)
+            self.draw_annotation_layer(self.annotation, scaff_name, coordinate_frame, genic_color,
+                                       (50, 50, 50, 255))
 
 
-    def draw_annotation_layer(self, annotations, scaff_name, color, coordinate_frame, simple_entry=False, shadows=False):
+    def draw_annotation_layer(self, annotations, scaff_name, coordinate_frame, color, label_color,
+                              simple_entry=False, shadows=False):
         regions = self.find_annotated_regions(annotations, scaff_name, no_structure=simple_entry)
         if not len(regions):
             return  # no work to do for this scaffold
@@ -98,7 +99,9 @@ class OutlinedAnnotation(TileLayout):
 
         universal_prefix = find_universal_prefix(regions)
         print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
-        self.draw_annotation_labels(markup_image, regions, universal_prefix)  # labels on top
+        if label_color[3]:  # if the text color is transparent, don't bother
+            self.draw_annotation_labels(markup_image, regions, label_color, universal_prefix,
+                                        use_suppression=simple_entry)  # labels on top
         self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
 
 
@@ -193,11 +196,21 @@ class OutlinedAnnotation(TileLayout):
         return regions
 
 
-    def draw_annotation_labels(self, markup_image, annotated_regions, universal_prefix=''):
-        """ :type annotated_regions: list(AnnotatedRegion) """
+    def draw_annotation_labels(self, markup_image, annotated_regions, label_color,
+                               universal_prefix='', use_suppression=False):
+        """        :type use_suppression: bool supress lines of text that would overlap and crowd
+ :type annotated_regions: list(AnnotatedRegion)
+        """
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
+        last_unsuppressed_progress = 0
+        suppression_size = 900 if use_suppression else 0
         for region in annotated_regions:
+            if last_unsuppressed_progress \
+                    and abs(region.start - last_unsuppressed_progress) < suppression_size:
+                continue #skip
+            else:
+                last_unsuppressed_progress = region.start
             try:
                 pts = [pt for pt in region.points]
                 left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
@@ -222,7 +235,8 @@ class OutlinedAnnotation(TileLayout):
                     upper_left[1] -= 2
 
                 self.write_label(extract_gene_name(region, universal_prefix), width, height, font_size, 18,
-                                 upper_left, vertical_label, region.strand, markup_image)
+                                 upper_left, vertical_label, region.strand, markup_image,
+                                 label_color=label_color)
             except BaseException as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
@@ -242,7 +256,8 @@ class OutlinedAnnotation(TileLayout):
         return width, height, left, right, top
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True):
+                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
+                    label_color=(50, 50, 50, 255)):
         """write_label() made to nicely draw single line gene labels from annotation
         :param horizontal_centering:
         """
@@ -262,11 +277,13 @@ class OutlinedAnnotation(TileLayout):
             vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
             if strand == "+":
                 vertically_centered = 0  # top of the box
-        text_color = (0, 0, 0, 255) if font_size < 14 else (50, 50, 50, 235)
-        if font_size > 30:
-            text_color = (50, 50, 50, 200)
+        if font_size >= 14:
+            alpha = 235 / 255
+            if font_size > 30:
+                alpha = 200 / 255
+            label_color = (label_color[0], label_color[1], label_color[2], int(label_color[3] * alpha))
         txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
-                                           fill=text_color)
+                                           fill=label_color)
         if vertical_label:
             rotation_direction = 90 if strand == '-' else -90
             txt = txt.rotate(rotation_direction, expand=True)
