@@ -1,4 +1,5 @@
 from itertools import chain
+import traceback
 
 from PIL import Image, ImageFont, ImageDraw
 
@@ -30,7 +31,7 @@ def annotation_points(entry, renderer, progress_offset):
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, **kwargs):
-        self.highlight_whole_gene = kwargs.pop('highlight_whole_gene', False)
+        self.highlight_whole_gene = kwargs.pop('highlight_whole_gene', True)
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
@@ -64,6 +65,7 @@ class OutlinedAnnotation(TileLayout):
                 self.draw_extras_for_chromosome(scaff_name, coordinate_frame)
             except BaseException as e:
                 print("Encountered error while rendering", scaff_name)
+                traceback.print_exc()
                 print(e)
                 print("Continuing to next scaffold.")
 
@@ -76,21 +78,21 @@ class OutlinedAnnotation(TileLayout):
         universal_prefix = find_universal_prefix(union_regions)
         print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
 
-        upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
-        width = max(set(p.points[0] for p in union_regions))
-        height = max(set(p.points[1] for p in union_regions))
-        markup_image = Image.new('RGBA', (width, height), (0,0,0,0))
+        # upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
+        # width = max(set(p[0] for region in union_regions for p in region.points))
+        # height = max(set(p[1] for region in union_regions for p in region.points))
+        markup_image = Image.new('RGBA', (self.image.width, self.image.height), (0,0,0,0))
         markup_canvas = markup_image.load()
 
         if self.annotation is not None:
-            self.draw_annotation_outlines(annotated_regions, scaff_name, coordinate_frame,
+            self.draw_annotation_outlines(annotated_regions, coordinate_frame,
                                           markup_canvas, (65, 42, 80))
         if self.query_annotation is not None:
             self.draw_annotation_outlines(query_regions, coordinate_frame,
                                           markup_canvas, (211, 229, 199))
 
-        # self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
-        self.image.paste(markup_image, (upper_left[0], upper_left[1]))
+        self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
+        # self.image.paste(markup_image, (upper_left[0], upper_left[1]))
         del markup_image
         self.draw_annotation_labels(self.image, union_regions, universal_prefix)  # labels on top
 
