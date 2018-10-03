@@ -437,7 +437,7 @@ def main():
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
-    parser.add_argument("-ra", "--repeat_annotation",
+    parser.add_argument("-rp", "--repeat_annotation",
                         type=str,
                         help="Path to Annotation File for Repeats which will be shaded.",
                         dest="repeat_annotation")

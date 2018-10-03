@@ -70,41 +70,39 @@ class OutlinedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        annotated_regions = self.find_annotated_regions(self.annotation, scaff_name)
-        query_regions = self.find_annotated_regions(self.query_annotation, scaff_name)
-        repeat_regions = self.find_annotated_regions(self.repeat_annotation, scaff_name, no_structure=True)
-        # important to combine set of names so not too much prefix gets chopped off
-        union_regions = list(chain(annotated_regions, query_regions, repeat_regions))
-        if not len(union_regions):
+        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
+        if self.repeat_annotation is not None:
+            self.draw_annotation_layer(self.repeat_annotation, scaff_name,
+                                       (0, 0, 0, 55), coordinate_frame, simple_entry=True)
+        if self.query_annotation is not None:
+            self.draw_annotation_layer(self.query_annotation, scaff_name,
+                                       genic_color, coordinate_frame, shadows=True)
+        if self.annotation is not None:
+            self.draw_annotation_layer(self.annotation, scaff_name,
+                                       genic_color, coordinate_frame)
+
+
+    def draw_annotation_layer(self, annotations, scaff_name, color, coordinate_frame, simple_entry=False, shadows=False):
+        regions = self.find_annotated_regions(annotations, scaff_name, no_structure=simple_entry)
+        if not len(regions):
             return  # no work to do for this scaffold
-        universal_prefix = find_universal_prefix(union_regions)
-        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
 
         upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
-        width = max(set(p[0] for region in union_regions for p in region.points)) # relative coordinates
-        height = max(set(p[1] for region in union_regions for p in region.points))
-        markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
+        width = max(set(p[0] for region in regions for p in region.points))  # relative coordinates
+        height = max(set(p[1] for region in regions for p in region.points))
+        markup_image = Image.new('RGBA', (width + 1, height + 1), (0, 0, 0, 0))
         markup_canvas = markup_image.load()
 
-        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
-        if self.query_annotation is not None:
-            self.draw_annotation_outlines(repeat_regions, markup_canvas, (0, 0, 0, 55), simple_entry=True)
-        if self.query_annotation is not None:
-            self.draw_annotation_outlines(query_regions, markup_canvas, genic_color, shadows=True)
-        if self.annotation is not None:
-            self.draw_annotation_outlines(annotated_regions, markup_canvas, genic_color)
+        self.draw_annotation_outlines(regions, markup_canvas, color,
+                                      simple_entry=simple_entry, shadows=shadows)
 
-        # self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
+        universal_prefix = find_universal_prefix(regions)
+        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
+        self.draw_annotation_labels(markup_image, regions, universal_prefix)  # labels on top
         self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
-        del markup_image
-        markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
-        #TODO: should this really contain repeat_regions?
-        self.draw_annotation_labels(markup_image, union_regions, universal_prefix)  # labels on top
-        self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
-        #self.draw_annotation_labels(self.image
 
 
-    def draw_annotation_outlines(self, regions, markup_canvas, color, simple_entry=False, shadows=False):
+    def draw_annotation_outlines(self, regions, markup_canvas, color, simple_entry, shadows):
 
         self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:

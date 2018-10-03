@@ -153,7 +153,7 @@ def hold_console_for_windows():
         pass  # probably not windows, so it doesn't matter
 
 
-def beep(duration=300):
+def beep(duration=600):
     try:
         import winsound
         freq = 440  # Hz
