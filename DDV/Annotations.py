@@ -243,6 +243,7 @@ def find_universal_prefix(annotation_list):
 
 
 def extract_gene_name(entry, remove_prefix=''):
+    #TODO repeatmasker format
     if 'Name' in entry.attributes:
         name = entry.attributes['Name']
     elif 'ID' in entry.attributes:  # TODO case sensitive?

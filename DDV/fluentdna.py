@@ -207,7 +207,7 @@ def ddv(args):
         done(args, output_dir)
     elif args.layout == "outlines":
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = OutlinedAnnotation(args.ref_annotation, args.query_annotation)
+        layout = OutlinedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
         layout.process_file(args.fasta, output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, output_dir, args.output_name)
@@ -241,6 +241,7 @@ def ddv(args):
             output_dir = make_output_dir_with_suffix(base_path, '')
             layout = Ideogram(radix_settings,
                               ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
+                              repeat_annotation=args.repeat_annotation,
                               low_contrast=args.low_contrast)
             create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, layout)
         else:
@@ -436,6 +437,11 @@ def main():
                         type=str,
                         help="Path to Annotation File for Query Genome (second).",
                         dest="query_annotation")
+    parser.add_argument("-ra", "--repeat_annotation",
+                        type=str,
+                        help="Path to Annotation File for Repeats which will be shaded.",
+                        dest="repeat_annotation")
+
     parser.add_argument("-aw", "--annotation_width",
                         help="Overrides the default 100 pixel column width for annotations. "
                         "annotation_width=1 will only sample one pixel per display line, "

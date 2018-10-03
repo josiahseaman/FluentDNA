@@ -29,11 +29,11 @@ def annotation_points(entry, renderer):
 
 
 class OutlinedAnnotation(TileLayout):
-    def __init__(self, gff_file, query=None, **kwargs):
-        self.highlight_whole_gene = kwargs.pop('highlight_whole_gene', True)
+    def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
         super(OutlinedAnnotation, self).__init__(**kwargs)
         self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
+        self.repeat_annotation = GFF(repeat_annotation).annotations if repeat_annotation is not None else None
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
         self.border_width = 12
@@ -72,8 +72,9 @@ class OutlinedAnnotation(TileLayout):
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
         annotated_regions = self.find_annotated_regions(self.annotation, scaff_name)
         query_regions = self.find_annotated_regions(self.query_annotation, scaff_name)
+        repeat_regions = self.find_annotated_regions(self.repeat_annotation, scaff_name, no_structure=True)
         # important to combine set of names so not too much prefix gets chopped off
-        union_regions = list(chain(annotated_regions, query_regions))
+        union_regions = list(chain(annotated_regions, query_regions, repeat_regions))
         if not len(union_regions):
             return  # no work to do for this scaffold
         universal_prefix = find_universal_prefix(union_regions)
@@ -85,31 +86,37 @@ class OutlinedAnnotation(TileLayout):
         markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
         markup_canvas = markup_image.load()
 
-        if self.annotation is not None:
-            self.draw_annotation_outlines(annotated_regions, markup_canvas, (65, 42, 80))
+        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
         if self.query_annotation is not None:
-            self.draw_annotation_outlines(query_regions, markup_canvas, (211, 229, 199))
+            self.draw_annotation_outlines(repeat_regions, markup_canvas, (0, 0, 0, 55), simple_entry=True)
+        if self.query_annotation is not None:
+            self.draw_annotation_outlines(query_regions, markup_canvas, genic_color, shadows=True)
+        if self.annotation is not None:
+            self.draw_annotation_outlines(annotated_regions, markup_canvas, genic_color)
 
         # self.image = Image.alpha_composite(self.image, markup_image)  # apply shading before labels
         self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
         del markup_image
         markup_image = Image.new('RGBA', (width+1, height+1), (0,0,0,0))
+        #TODO: should this really contain repeat_regions?
         self.draw_annotation_labels(markup_image, union_regions, universal_prefix)  # labels on top
         self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
         #self.draw_annotation_labels(self.image
 
 
-    def draw_annotation_outlines(self, regions, markup_canvas, shadow_color):
-        if self.highlight_whole_gene:
-            self.draw_exons(markup_canvas, regions, highlight_whole_gene=True)
-        self.draw_exons(markup_canvas, regions)
-        try:
-            pass
-            # annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, shadow_color)
-            # self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, shadow_color)
-        except MemoryError as e:  # the global union takes a lot of memory
-            print("Ran out of Memory rendering annotation shadows.  Continuing...")
-            print(e)
+    def draw_annotation_outlines(self, regions, markup_canvas, color, simple_entry=False, shadows=False):
+
+        self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
+        if not simple_entry:
+            exon_color = (255, 255, 255, 87)  # white highlighter.  This is less disruptive overall
+            self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
+        if shadows:
+            try:
+                annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, (65, 42, 80))
+                self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, (65, 42, 80))
+            except MemoryError as e:  # the global union takes a lot of memory
+                print("Ran out of Memory rendering annotation shadows.  Continuing...")
+                print(e)
 
     def draw_big_shadow_outline(self, markup_canvas, regions, shadow):
         print("Drawing annotation outlines")
@@ -126,17 +133,16 @@ class OutlinedAnnotation(TileLayout):
         self.draw_shadow(big_shadow, markup_canvas, outline_colors)
         return annotation_point_union
 
-    def draw_exons(self, markup_canvas, regions,  highlight_whole_gene=False):
-        print("Drawing exons" if not highlight_whole_gene else "Drawing genic regions")
-        exon_color = (255, 255, 255, 87)  # white highlighter.  This is less disruptive overall
-        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
+    def draw_exons(self, markup_canvas, regions, color, highlight_whole_entry=False):
+        print("Drawing exons" if not highlight_whole_entry else "Drawing genic regions")
+
         for region in regions:
-            if highlight_whole_gene:
+            if highlight_whole_entry:
                 for point in region.points:  # highlight exons
-                    blend_pixel(markup_canvas, point, genic_color)
+                    blend_pixel(markup_canvas, point, color)
             else:
                 for point in region.exon_region_points():  # highlight exons
-                    blend_pixel(markup_canvas, point, exon_color)
+                    blend_pixel(markup_canvas, point, color)
 
     def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
         """Find subset of genes who are completely overshadowed"""
@@ -158,7 +164,7 @@ class OutlinedAnnotation(TileLayout):
             for pt in layer:
                 blend_pixel(markup_canvas, pt, c)
 
-    def find_annotated_regions(self, annotations, scaff_name):
+    def find_annotated_regions(self, annotations, scaff_name, no_structure=False):
         """:param scaffold_name:
            :type annotations: dict(GFF.Annotation)
         """
@@ -171,16 +177,19 @@ class OutlinedAnnotation(TileLayout):
             for entry in annotations[scaff_name]:
                 # redundancy checks for file with both mRNA and gene
                 try:
-                    if entry.feature == 'gene':
+                    if no_structure:  # life is simple
                         regions.append(AnnotatedRegion(entry, self))
-                        genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                    if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                        regions.append(AnnotatedRegion(entry, self))
-                    if entry.feature == 'CDS' or entry.feature == 'exon':
-                        # hopefully mRNA comes first in the file
-                        # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
-                        # the if was commented out because CDS [Parent] to mRNA, not gene names
-                            regions[-1].add_cds_region(entry)
+                    else:  # find gene/mRNA/exon/CDS hierarchy
+                        if entry.feature == 'gene':
+                            regions.append(AnnotatedRegion(entry, self))
+                            genes_seen.add(extract_gene_name(entry).replace('g','t'))
+                        if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                            regions.append(AnnotatedRegion(entry, self))
+                        if entry.feature == 'CDS' or entry.feature == 'exon':
+                            # hopefully mRNA comes first in the file
+                            # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                            # the if was commented out because CDS [Parent] to mRNA, not gene names
+                                regions[-1].add_cds_region(entry)
                 except (IndexError, KeyError, TypeError, ValueError) as e:
                     print(e)
         return regions

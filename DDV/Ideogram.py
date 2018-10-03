@@ -23,9 +23,10 @@ from TileLayout import hex_to_rgb
 
 
 class Ideogram(OutlinedAnnotation):
-    def __init__(self, radix_settings, ref_annotation=None, query_annotation=None, **kwargs):
-        kwargs['highlight_whole_gene'] = True
-        super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation, **kwargs)
+    def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
+                 repeat_annotation=None, **kwargs):
+        super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation,
+                                       repeat_annotation=repeat_annotation, **kwargs)
         x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
         self.x_radices = x_radices
         self.y_radices = y_radices
