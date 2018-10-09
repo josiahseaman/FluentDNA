@@ -24,19 +24,20 @@ def annotation_points(entry, renderer):
     annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
     for i in range(entry.start, entry.end):
         # important to include title and reset padding in coordinate frame
-        annotation_points.append(renderer.relative_position(i))
+        position = renderer.relative_position(i)
+        annotation_points.append((position[0] + renderer.border_width,
+                                  position[1] + renderer.border_width))
     return annotation_points
 
 
 class OutlinedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
-        super(OutlinedAnnotation, self).__init__(**kwargs)
+        super(OutlinedAnnotation, self).__init__(border_width=12, **kwargs)
         self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
         self.repeat_annotation = GFF(repeat_annotation).annotations if repeat_annotation is not None else None
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
-        self.border_width = 12
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -70,7 +71,7 @@ class OutlinedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        genic_color = (255, 255, 255, 36)  # faint highlighter for genic regions
+        genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
                                        (255, 255, 255, 0), simple_entry=True)
@@ -89,49 +90,48 @@ class OutlinedAnnotation(TileLayout):
             return  # no work to do for this scaffold
 
         upper_left = self.position_on_screen(coordinate_frame['xy_seq_start'])
-        width = max(set(p[0] for region in regions for p in region.points))  # relative coordinates
-        height = max(set(p[1] for region in regions for p in region.points))
+        # relative coordinates
+        width = max(set(p[0] for region in regions for p in region.points)) + 2 * self.border_width
+        height = max(set(p[1] for region in regions for p in region.points)) + 2* self.border_width
         markup_image = Image.new('RGBA', (width + 1, height + 1), (0, 0, 0, 0))
-        markup_canvas = markup_image.load()
 
-        self.draw_annotation_outlines(regions, markup_canvas, color,
+        self.draw_annotation_outlines(regions, markup_image, color,
                                       simple_entry=simple_entry, shadows=shadows)
 
-        universal_prefix = find_universal_prefix(regions)
-        print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
-        if label_color[3]:  # if the text color is transparent, don't bother
+        if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
+            universal_prefix = find_universal_prefix(regions)
+            print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, label_color, universal_prefix,
                                         use_suppression=simple_entry)  # labels on top
-        self.image.paste(markup_image, (upper_left[0], upper_left[1]), markup_image)
+        self.image.paste(markup_image, (upper_left[0] - self.border_width,
+                                        upper_left[1] - self.border_width), markup_image)
 
 
-    def draw_annotation_outlines(self, regions, markup_canvas, color, simple_entry, shadows):
-
+    def draw_annotation_outlines(self, regions, markup_image, color, simple_entry, shadows):
+        markup_canvas = markup_image.load()
         self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:
-            exon_color = (255, 255, 255, 87)  # white highlighter.  This is less disruptive overall
+            exon_color = (255, 255, 255, 67)  # white highlighter.  This is less disruptive overall
             self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
         if shadows:
             try:
-                annotation_point_union = self.draw_big_shadow_outline(markup_canvas, regions, (65, 42, 80))
-                self.draw_secondary_shadows(annotation_point_union, markup_canvas, regions, (65, 42, 80))
+                annotation_point_union = self.draw_big_shadow_outline(markup_image, regions, (65, 42, 80))
+                self.draw_overlap_shadows(annotation_point_union, markup_image, regions, (65, 42, 80))
             except MemoryError as e:  # the global union takes a lot of memory
                 print("Ran out of Memory rendering annotation shadows.  Continuing...")
                 print(e)
 
-    def draw_big_shadow_outline(self, markup_canvas, regions, shadow):
+    def draw_big_shadow_outline(self, markup_image, regions, shadow):
         print("Drawing annotation outlines")
         annotation_point_union = set()
         for region in regions:
             annotation_point_union.update(region.points)
-            region.outline_points = outlines(region.points,  # small outline
-                                             self.border_width // 4, self.image.width, self.image.height)
         # desaturated purple drop shadow, decreasing opacity
         opacities = linspace(197, 10, self.border_width)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         big_shadow = outlines(annotation_point_union,
-                              self.border_width, self.image.width, self.image.height)
-        self.draw_shadow(big_shadow, markup_canvas, outline_colors)
+                              self.border_width, markup_image.width, markup_image.height)
+        self.draw_shadow(big_shadow, markup_image.load(), outline_colors)
         return annotation_point_union
 
     def draw_exons(self, markup_canvas, regions, color, highlight_whole_entry=False):
@@ -145,17 +145,22 @@ class OutlinedAnnotation(TileLayout):
                 for point in region.exon_region_points():  # highlight exons
                     blend_pixel(markup_canvas, point, color)
 
-    def draw_secondary_shadows(self, annotation_point_union, markup_canvas, regions, shadow):
+    def draw_overlap_shadows(self, annotation_point_union, markup_image, regions, shadow):
         """Find subset of genes who are completely overshadowed"""
         print("Drawing secondary shadows")
         opacities = linspace(170, 40, self.border_width // 4)
         outline_colors = [(shadow[0], shadow[1], shadow[2], int(opacity)) for opacity in opacities]
         for region in regions:
             # if annotation_point_union.issuperset(region.outline_points):
-            lost_edge = region.outline_points[0].intersection(annotation_point_union)
-            if lost_edge:
-                lost_shadows = [layer.intersection(annotation_point_union) for layer in region.outline_points]
-                self.draw_shadow(lost_shadows, markup_canvas, outline_colors)
+            region.outline_points = outlines(region.points,  # small outline
+                                             self.border_width // 4, markup_image.width, markup_image.height)
+            # remove this line if you prefer shadow intersection
+            self.draw_shadow(region.outline_points, markup_image.load(), outline_colors)
+            # lost_edge = region.outline_points[0].intersection(annotation_point_union)
+            # if lost_edge:
+            #     lost_shadows = [layer.intersection(annotation_point_union) for layer in region.outline_points]
+            #     self.draw_shadow(lost_shadows, markup_canvas, outline_colors)
+
 
     def draw_shadow(self, shadow, markup_canvas, outline_colors, flat_color=False):
         for radius, layer in enumerate(shadow):
