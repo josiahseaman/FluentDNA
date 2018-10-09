@@ -35,11 +35,16 @@ class Ideogram(OutlinedAnnotation):
         self.border_width = 12
 
 
-    def activate_high_contrast_colors(self):
-        self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
-        self.palette['C'] = hex_to_rgb('EE955D')  # rock
-        self.palette['T'] = hex_to_rgb('A19E3D')  # light green
-        self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
+    # def activate_high_contrast_colors(self):
+    #     # Original DDV Colors
+    #     self.palette['G'] = (255, 0, 0)
+    #     self.palette['A'] = (0, 255, 0)
+    #     self.palette['C'] = (250, 240, 114)
+    #     self.palette['T'] = (0, 0, 255)
+    #     self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
+    #     self.palette['C'] = hex_to_rgb('EE955D')  # rock
+    #     self.palette['T'] = hex_to_rgb('A19E3D')  # light green
+    #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
     def draw_nucleotides(self):
         ndim_x = len(self.x_radices)
