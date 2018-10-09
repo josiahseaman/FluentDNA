@@ -55,7 +55,7 @@ def level_layout_factory(modulos, padding=None):
 class TileLayout(object):
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None, font_name=font_filename):
+                 low_contrast=False, base_width=None, font_name=font_filename, border_width=3):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.use_titles = use_titles
@@ -82,6 +82,18 @@ class TileLayout(object):
         self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
         self.image_length = 0
+
+        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
+        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+        self.levels = level_layout_factory(modulos, padding=padding)
+
+        self.tile_label_size = self.levels[3].chunk_size * 2
+        self.border_width = border_width
+        self.origin = [max(self.border_width, self.levels[2].padding),
+                       max(self.border_width, self.levels[2].padding)]
+        if self.use_fat_headers:
+            self.enable_fat_headers()
+
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
 
@@ -120,14 +132,6 @@ class TileLayout(object):
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
-        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
-        padding = [0, 0, 6, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
-        self.levels = level_layout_factory(modulos, padding=padding)
-
-        self.tile_label_size = self.levels[3].chunk_size * 2
-        self.origin = [self.levels[2].padding, self.levels[2].padding]
-        if self.use_fat_headers:
-            self.enable_fat_headers()
 
 
 
@@ -363,7 +367,7 @@ class TileLayout(object):
             part = i % 2
             coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
             xy[part] += level.thickness * coordinate_in_chunk
-        return int(xy[0]), int(xy[1])
+        return [int(xy[0]), int(xy[1])]
 
     def position_on_screen(self, progress):
         # column padding for various markup = self.levels[2].padding

@@ -136,7 +136,7 @@ def ddv(args):
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
         output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+        layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast)
         layout.generate_html(output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
@@ -242,7 +242,7 @@ def ddv(args):
             layout = Ideogram(radix_settings,
                               ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
                               repeat_annotation=args.repeat_annotation,
-                              low_contrast=args.low_contrast)
+                              low_contrast=args.low_contrast, use_titles=args.use_titles)
             create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, layout)
         else:
             print("Invalid radix settings.  Follow the example.")
@@ -288,7 +288,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
 def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+        layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(fasta, output_dir, output_name, args.no_webpage, args.contigs)
 
@@ -542,6 +542,7 @@ def main():
             args.output_name = os.path.basename(os.path.splitext(either_name)[0])
     if args.output_name:
         args.output_name = args.output_name.strip()
+    args.use_titles = not args.no_titles
 
     ddv(args)
 

@@ -152,6 +152,8 @@ class Ideogram(OutlinedAnnotation):
          has populated self.point_mapping"""
         return self.point_mapping[progress]
 
+    def relative_position(self, progress):
+        return self.position_on_screen(progress)
 
     def draw_extras(self):
         super(Ideogram, self).draw_extras()
