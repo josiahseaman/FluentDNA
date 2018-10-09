@@ -49,15 +49,12 @@ class Ideogram(OutlinedAnnotation):
         radices = np.ones((max_dim, 2), dtype=np.int)
         digits = np.zeros((max_dim * 2), dtype=np.int)
         parities = np.ones((max_dim + 1, 2), dtype=np.int)
-        prevprev_pos = np.zeros((2,), dtype=np.int)  # stores y,x
-        prev_pos = np.zeros((2,), dtype=np.int)  # stores y,x
-        curr_pos = np.zeros((2,), dtype=np.int)  # stores y,x
+        curr_pos = np.array((0,0), dtype=np.int)  # stores y,x
         radices[0:ndim_x, 0] = self.x_radices
         radices[0:ndim_y, 1] = self.y_radices
 
         no_pts = np.prod(radices)
         points_visited = set()
-        n = np.prod(radices, 0)  # get nx = n[0] and ny = n[1]
         radices.shape = np.prod(radices.shape)  # flatten
 
         points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
@@ -70,23 +67,27 @@ class Ideogram(OutlinedAnnotation):
         if self.x_scale == 1 and self.y_scale == 1:
             self.draw_loop_optimized(curr_pos, digits, no_pts, parities, radices, seq_iter)
         else:
+            prevprev_pos = np.zeros((2,), dtype=np.int) # must start at 0 because of scale multiplaction
+            prev_pos = np.zeros((2,), dtype=np.int)  # must start at 0 because of scale multiplaction
+            curr_pos = np.zeros((2,), dtype=np.int)
             self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file, points_visited,
                                      prev_pos, prevprev_pos, radices, seq_iter, self.x_scale, self.y_scale)
 
 
     def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, seq_iter):
-        max_x = reduce(int.__mul__, self.x_radices) - 1
+        max_x = reduce(int.__mul__, self.x_radices) - 1 #+ self.origin[0]
+        min_x = 0  #self.origin[0]
         odd = 0
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
-            odd = self.hacked_padding(curr_pos, max_x, odd, place)
-            x = int(curr_pos[1] + 2)
-            y = int(curr_pos[0] + 2)
+            odd = self.hacked_padding(curr_pos, min_x, max_x, odd, place)
+            x = int(curr_pos[1])
+            y = int(curr_pos[0])
             curr_pos[place % 2] += parities[place // 2, place % 2]
             try:
-                self.draw_pixel(next(seq_iter), x, y)
+                self.draw_pixel(next(seq_iter), x + self.origin[0], y + self.origin[1])
             except StopIteration:
                 break  # reached end of sequence
             except IndexError:
@@ -94,10 +95,10 @@ class Ideogram(OutlinedAnnotation):
                 break
             self.point_mapping.append((x,y))
 
-    def hacked_padding(self, curr_pos, max_x, odd, place):
+    def hacked_padding(self, curr_pos, min_x, max_x, odd, place):
         if place % 2 == 0:  # this is an y increments
             if place // 2 == len(self.x_radices) - 1:
-                if curr_pos[1] == max_x or curr_pos[1] == 0:
+                if curr_pos[1] == max_x or curr_pos[1] == min_x:
                     if odd == 1:
                         curr_pos[0] += 3  # y coordinates are in [0]
                     odd = (odd + 1) % 2
@@ -112,16 +113,17 @@ class Ideogram(OutlinedAnnotation):
             prevprev_pos[:] = prev_pos[:]
             prev_pos[:] = curr_pos[:]
             # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * x_scale + 2 + self.origin[0])
-            y = int(prev_pos[0] * y_scale + 2 + self.origin[1])
+            x = int(prev_pos[1] * x_scale + self.origin[0])
+            y = int(prev_pos[0] * y_scale + self.origin[1])
             if points_file:
                 print("{} {}".format(x, y), file=points_file)
             curr_pos[place % 2] += parities[place // 2, place % 2]
             diff = curr_pos - prev_pos
             prev_diff = prev_pos - prevprev_pos
             assert (abs(sum(diff)) == 1)
-            assert (x, y) not in points_visited
-            points_visited.add((x, y))
+            # assert (x, y) not in points_visited
+            # points_visited.add((x, y))
+            self.point_mapping.append((x,y))
             try:
                 self.paint_turns(seq_iter, x, y, diff, prev_diff,
                                  prev_pos, prevprev_pos, x_scale, y_scale)
@@ -150,10 +152,11 @@ class Ideogram(OutlinedAnnotation):
     def position_on_screen(self, progress):
         """WARNING: This will not work until after self.draw_loop_optimized
          has populated self.point_mapping"""
-        return self.point_mapping[progress]
+        x, y = self.point_mapping[progress]
+        return x + self.origin[0], y + self.origin[1]
 
     def relative_position(self, progress):
-        return self.position_on_screen(progress)
+        return self.point_mapping[progress]
 
     def draw_extras(self):
         super(Ideogram, self).draw_extras()
