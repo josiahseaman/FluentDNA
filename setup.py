@@ -11,7 +11,7 @@ setup(
     license='BSD',
     packages=find_packages(exclude=('build', 'obj', 'www-data')),
     include_package_data=True,
-    package_data={'DDV': ['html_template/', 'example_data/']},
+    package_data={'DDV': ['html_template', 'example_data']},
     scripts=['DDV/fluentdna.py'],
     install_requires=[
         'Pillow>=3.2.0',
