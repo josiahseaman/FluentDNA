@@ -142,11 +142,12 @@ class ParallelLayout(TileLayout):
         self.palette[gap_char] = background
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         """Parallel Layouts have a special title which describes the first (main) alignment.
         So padding for their title does not need to be included."""
         # Get original values and level
-        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
+        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress,
+                                                                                      next_segment_length)
         # no larger than 1 full column or text will overlap
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size

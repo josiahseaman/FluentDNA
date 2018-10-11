@@ -50,10 +50,10 @@ class AnnotatedGenomeLayout(ParallelLayout):
             self.activate_natural_colors()
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         """ Skip the exceptions used in Parallel Layouts for first scaffold."""
-        reset_padding, title_padding, tail = super(ParallelLayout, self)\
-            .calc_padding(total_progress, next_segment_length, multipart_file)
+        reset_padding, title_padding, tail = super(ParallelLayout, self) \
+            .calc_padding(total_progress, next_segment_length)
         # no larger than 1 full column or text will overlap
         if title_padding >= self.levels[3].chunk_size:
             title_padding = self.levels[2].chunk_size

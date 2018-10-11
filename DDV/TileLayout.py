@@ -87,7 +87,7 @@ class TileLayout(object):
         padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
         self.levels = level_layout_factory(modulos, padding=padding)
 
-        self.tile_label_size = self.levels[3].chunk_size * 2
+        self.tile_label_size = self.levels[3].chunk_size
         self.border_width = border_width
         self.origin = [max(self.border_width, self.levels[2].padding),
                        max(self.border_width, self.levels[2].padding)]
@@ -263,7 +263,6 @@ class TileLayout(object):
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
-        multipart_file = len(self.contigs) > 1
 
         # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
         #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
@@ -278,7 +277,7 @@ class TileLayout(object):
         for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
             title_length = len(contig.name) + 1  # for tracking where we are in the SEQUENCE file
-            reset, title, tail = self.calc_padding(total_progress, length, multipart_file)
+            reset, title, tail = self.calc_padding(total_progress, length)
 
             contig.reset_padding = reset
             contig.title_padding = title
@@ -321,10 +320,8 @@ class TileLayout(object):
         self.pixels = self.image.load()
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         min_gap = (20 + 6) * self.base_width  # 20px font height, + 6px vertical padding  * 100 nt per line
-        if not multipart_file:
-            return 0, 0, 0
 
         for i, current_level in enumerate(self.levels):
             if next_segment_length + min_gap < current_level.chunk_size:
@@ -407,10 +404,10 @@ class TileLayout(object):
         if contig.title_padding >= self.levels[3].chunk_size:
             font_size = 380  # full row labels for chromosomes
             title_width = 50  # approximate width
-        if contig.title_padding == self.tile_label_size:  # Tile dedicated to a Title (square shaped)
-            # since this level is square, there's no point in rotating it
-            font_size = 380 * 2  # doesn't really need to be 10x larger than the rows
-            title_width = 50 // 2
+        if contig.title_padding == self.tile_label_size:  # Biggest Title
+            if len(contig.name) < 24:
+                font_size = 380 * 2  # doesn't really need to be 10x larger than the rows
+                title_width = 50 // 2
             if self.use_fat_headers:
                 # TODO add reset_padding from next contig, just in case there's unused space on this level
                 tiles_spanned = int(math.ceil((len(contig.seq) + contig.tail_padding) / self.levels[4].chunk_size))
