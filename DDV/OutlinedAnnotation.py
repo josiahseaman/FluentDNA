@@ -90,7 +90,7 @@ class OutlinedAnnotation(TileLayout):
         if not len(regions):
             return  # no work to do for this scaffold
 
-        upper_left = self.position_on_screen(coordinate_frame["nuc_title_start"])
+        upper_left = self.position_on_screen(coordinate_frame["xy_title_start"])
         # relative coordinates
         width = max(set(p[0] for region in regions for p in region.points)) + 2 * self.border_width
         height = max(set(p[1] for region in regions for p in region.points)) + 2* self.border_width
