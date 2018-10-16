@@ -99,13 +99,13 @@ def make_output_dir_with_suffix(base_path, suffix):
     return output_dir
 
 
-def base_directories(args):
+def base_directories(output_name):
     if getattr(sys, 'frozen', False):
         BASE_DIR = os.path.dirname(sys.executable)
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
-    base_path = os.path.join(SERVER_HOME, args.output_name) if args.output_name else SERVER_HOME
+    base_path = os.path.join(SERVER_HOME, output_name) if output_name else SERVER_HOME
     return SERVER_HOME, base_path
 
 
