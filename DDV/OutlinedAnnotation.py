@@ -71,7 +71,7 @@ class OutlinedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
+        genic_color = (49,163,84, 46)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
                                        (255, 255, 255, 0), simple_entry=True)
@@ -80,7 +80,7 @@ class OutlinedAnnotation(TileLayout):
                                        (50, 50, 50, 255), shadows=True)
         if self.annotation is not None:
             self.draw_annotation_layer(self.annotation, scaff_name, coordinate_frame, genic_color,
-                                       (50, 50, 50, 255))
+                                       (75, 75, 75, 255))
 
 
     def draw_annotation_layer(self, annotations, scaff_name, coordinate_frame, color, label_color,
@@ -112,7 +112,7 @@ class OutlinedAnnotation(TileLayout):
         markup_canvas = markup_image.load()
         self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:
-            exon_color = (255, 255, 255, 67)  # white highlighter.  This is less disruptive overall
+            exon_color = (227,74,51, 67)  # white highlighter.  This is less disruptive overall
             self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
         if shadows:
             try:
@@ -200,6 +200,8 @@ class OutlinedAnnotation(TileLayout):
                                 regions[-1].add_cds_region(entry)
                 except (IndexError, KeyError, TypeError, ValueError) as e:
                     print(e)
+        else:
+            print("No annotations found matching scaffold name:", scaff_name)
         return regions
 
 

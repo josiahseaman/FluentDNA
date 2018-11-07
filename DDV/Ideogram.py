@@ -35,7 +35,10 @@ class Ideogram(OutlinedAnnotation):
         self.border_width = 12
 
 
-    # def activate_high_contrast_colors(self):
+    def activate_high_contrast_colors(self):
+        super(Ideogram, self).activate_high_contrast_colors()
+        self.palette['0'] = (230, 230, 230)
+        self.palette['1'] = (100, 100, 100)
     #     # Original DDV Colors
     #     self.palette['G'] = (255, 0, 0)
     #     self.palette['A'] = (0, 255, 0)
@@ -47,6 +50,8 @@ class Ideogram(OutlinedAnnotation):
     #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
     def draw_nucleotides(self):
+        seq = self.contigs[0].seq  # TODO pluck contig by --contigs
+
         ndim_x = len(self.x_radices)
         ndim_y = len(self.y_radices)
         max_dim = max(ndim_x, ndim_y)
@@ -58,7 +63,6 @@ class Ideogram(OutlinedAnnotation):
         radices[0:ndim_x, 0] = self.x_radices
         radices[0:ndim_y, 1] = self.y_radices
 
-        no_pts = np.prod(radices)
         points_visited = set()
         radices.shape = np.prod(radices.shape)  # flatten
 
@@ -66,24 +70,23 @@ class Ideogram(OutlinedAnnotation):
         points_file = None # open(points_file_name, 'w')
         if points_file:
             print("Saving locations in {}".format(points_file_name))
-        contig = self.contigs[0]  # TODO pluck contig by --contigs
-        seq_iter = iter(contig.seq)
 
         if self.x_scale == 1 and self.y_scale == 1:
-            self.draw_loop_optimized(curr_pos, digits, no_pts, parities, radices, seq_iter)
+            self.draw_loop_optimized(curr_pos, digits, parities, radices, seq)
         else:
             prevprev_pos = np.zeros((2,), dtype=np.int) # must start at 0 because of scale multiplaction
             prev_pos = np.zeros((2,), dtype=np.int)  # must start at 0 because of scale multiplaction
             curr_pos = np.zeros((2,), dtype=np.int)
+            no_pts = min(len(seq), np.prod(radices))
             self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file, points_visited,
-                                     prev_pos, prevprev_pos, radices, seq_iter, self.x_scale, self.y_scale)
+                                     prev_pos, prevprev_pos, radices, iter(seq), self.x_scale, self.y_scale)
 
 
-    def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, seq_iter):
+    def draw_loop_optimized(self, curr_pos, digits, parities, radices, seq):
         max_x = reduce(int.__mul__, self.x_radices) - 1 #+ self.origin[0]
         min_x = 0  #self.origin[0]
         odd = 0
-        for pts in range(no_pts - 1):
+        for nucleotide in seq:
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
@@ -92,9 +95,8 @@ class Ideogram(OutlinedAnnotation):
             y = int(curr_pos[0])
             curr_pos[place % 2] += parities[place // 2, place % 2]
             try:
-                self.draw_pixel(next(seq_iter), x + self.origin[0], y + self.origin[1])
-            except StopIteration:
-                break  # reached end of sequence
+                pass
+                # self.draw_pixel(nucleotide, x + self.origin[0], y + self.origin[1])
             except IndexError:
                 print("Ran out of room at (%i,%i)" % (x,y))
                 break
@@ -196,7 +198,18 @@ class Ideogram(OutlinedAnnotation):
                                           False, '+', canvas, horizontal_centering=True, center_vertical=True,
                                           chop_text=False)
 
+    def draw_titles(self):
+        pass  # Not implemented
+
+    def calc_all_padding(self):
+        #This is a reminder this function is being used unmodified
+        return super(Ideogram, self).calc_all_padding()
+
+    def calc_padding(self, total_progress, next_segment_length):
+        return 0, 0, 0
+
     def levels_json(self):
+        #It should be possible to approximate this with the 3,3,3 segments, the 27 repeat and the main fiber
         return '[]'  # There's no reasonable way to encode mouse position in rectangles
     def contig_json(self):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles
@@ -239,3 +252,9 @@ if __name__ == "__main__":
                         os.path.splitext(input.split('_')[-1])[0])
 
     beep(200)
+    """
+    seq = seq.replace('A', '00')
+    seq = seq.replace('T', '11')
+    seq = seq.replace('C', '10')
+    seq = seq.replace('G', '01')
+    """
