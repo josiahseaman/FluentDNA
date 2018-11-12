@@ -1,6 +1,7 @@
 from itertools import chain
 import traceback
 
+import sys
 from PIL import Image, ImageFont, ImageDraw
 
 from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
@@ -90,7 +91,12 @@ class OutlinedAnnotation(TileLayout):
         if not len(regions):
             return  # no work to do for this scaffold
 
-        upper_left = self.position_on_screen(coordinate_frame["xy_title_start"])
+        try:
+            upper_left = self.position_on_screen(coordinate_frame["xy_title_start"])
+        except IndexError:
+            print("Warning: Annotation layer positioning error at:", coordinate_frame["xy_title_start"],
+                  file=sys.stderr)
+            upper_left = [self.border_width, self.border_width]
         # relative coordinates
         width = max(set(p[0] for region in regions for p in region.points)) + 2 * self.border_width
         height = max(set(p[1] for region in regions for p in region.points)) + 2* self.border_width

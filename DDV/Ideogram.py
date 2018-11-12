@@ -13,6 +13,8 @@ try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
 import sys
 
+from DNASkittleUtils.Contigs import read_contigs
+
 from DDV.DDVUtils import beep
 from DDV.OutlinedAnnotation import OutlinedAnnotation
 import os
@@ -25,6 +27,7 @@ from TileLayout import hex_to_rgb
 class Ideogram(OutlinedAnnotation):
     def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
                  repeat_annotation=None, **kwargs):
+        kwargs.update({'use_titles': False})
         super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation,
                                        repeat_annotation=repeat_annotation, **kwargs)
         x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
@@ -34,7 +37,14 @@ class Ideogram(OutlinedAnnotation):
         self.point_mapping = [] # for annotation and testing purposes
         self.border_width = 12
 
-
+    def process_file(self, input_file_path, output_folder, output_file_name,
+                     no_webpage=False, extract_contigs=None):
+        if extract_contigs is None:
+            contigs = read_contigs(input_file_path)
+            extract_contigs = [contigs[0].name.split()[0]]
+            print("Extracting ", extract_contigs)
+        super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
+                                           no_webpage=no_webpage, extract_contigs=extract_contigs)
     # def activate_high_contrast_colors(self):
     #     # Original DDV Colors
     #     self.palette['G'] = (255, 0, 0)
@@ -188,6 +198,10 @@ class Ideogram(OutlinedAnnotation):
         height = bottom - top
         width = right - left
         return width, height, left, right, top
+
+    def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
+        self.use_titles = True
+        super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
 
     def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
                     strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
