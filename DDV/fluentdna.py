@@ -49,9 +49,9 @@ from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
     hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
+from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
 from DDV.Ideogram import Ideogram
-from DDV.OutlinedAnnotation import OutlinedAnnotation
+from DDV.HighlightedAnnotation import HighlightedAnnotation
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
@@ -190,13 +190,13 @@ def ddv(args):
             for batch in batches:  # multiple contigs, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas), args.output_name, batch.fastas)
             done(args, SERVER_HOME)
-    elif args.layout == "annotated":
-        layout = AnnotatedGenomeLayout(args.fasta, args.ref_annotation, args.annotation_width)
+    elif args.layout == "annotation_track":
+        layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
         layout.render_genome(args.output_dir, args.output_name, args.contigs)
         finish_webpage(args, layout, args.output_name)
         done(args, args.output_dir)
-    elif args.layout == "outlines":
-        layout = OutlinedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
+    elif args.layout == "annotated":
+        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)
@@ -365,8 +365,8 @@ def main():
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
                         "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated", "outlines",
-                                 "unique", "transposon", "ideogram", "original" ],
+                        choices=["tiled", "annotated", "ideogram", "alignment", "annotation_track",
+                                 "parallel", "unique", "transposon", "original" ],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
@@ -473,7 +473,7 @@ def main():
             if args.radix:
                 args.layout = 'ideogram'
             else:
-                args.layout = "outlines"
+                args.layout = "annotated"
         # elif args.ref_annotation:
         #     args.layout = "annotation_only"
 

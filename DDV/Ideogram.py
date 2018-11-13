@@ -16,7 +16,7 @@ import sys
 from DNASkittleUtils.Contigs import read_contigs
 
 from DDV.DDVUtils import beep
-from DDV.OutlinedAnnotation import OutlinedAnnotation
+from DDV.HighlightedAnnotation import HighlightedAnnotation
 import os
 import numpy as np
 from functools import reduce
@@ -24,7 +24,7 @@ from functools import reduce
 from TileLayout import hex_to_rgb
 
 
-class Ideogram(OutlinedAnnotation):
+class Ideogram(HighlightedAnnotation):
     def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
                  repeat_annotation=None, **kwargs):
         kwargs.update({'use_titles': False})

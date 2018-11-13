@@ -9,7 +9,6 @@ from PIL import ImageFont
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.TileLayout import TileLayout, font_filename, level_layout_factory
-from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):
@@ -69,7 +68,8 @@ class ParallelLayout(TileLayout):
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename, extract_contigs)
                 self.draw_nucleotides()
-                self.draw_titles()
+                if index == self.n_genomes -1: #last one
+                    self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
                 self.output_fasta(output_folder, filename, False, extract_contigs)

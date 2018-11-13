@@ -31,9 +31,9 @@ def annotation_points(entry, renderer, start_offset):
     return annotation_points
 
 
-class OutlinedAnnotation(TileLayout):
+class HighlightedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
-        super(OutlinedAnnotation, self).__init__(border_width=12, **kwargs)
+        super(HighlightedAnnotation, self).__init__(border_width=12, **kwargs)
         self.annotation = GFF(gff_file).annotations if gff_file is not None else None
         self.query_annotation = GFF(query).annotations if query is not None else None
         self.repeat_annotation = GFF(repeat_annotation).annotations if repeat_annotation is not None else None
@@ -45,8 +45,8 @@ class OutlinedAnnotation(TileLayout):
         if self.annotation is not None:
             with open(input_file_path, 'r') as fasta:
                 assert fasta.readline().startswith('>'), "Fasta file must start with a header '>name'"
-        super(OutlinedAnnotation, self).process_file(input_file_path, output_folder, output_file_name,
-                                                     no_webpage, extract_contigs)
+        super(HighlightedAnnotation, self).process_file(input_file_path, output_folder, output_file_name,
+                                                        no_webpage, extract_contigs)
         # nothing extra
 
     def draw_extras(self):

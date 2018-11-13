@@ -8,12 +8,12 @@ from DDV.Annotations import create_fasta_from_annotation, GFF
 from DDV.ParallelGenomeLayout import ParallelLayout
 
 
-class AnnotatedGenomeLayout(ParallelLayout):
-    def __init__(self, fasta_file, gff_file, annotation_width=None, *args, **kwargs):
+class AnnotatedTrackLayout(ParallelLayout):
+    def __init__(self, fasta_file, gff_file, annotation_width=None, **kwargs):
         self.annotation_phase = 0  # Means annotations are first, on the left
         self.annotation_width = annotation_width if annotation_width is not None else 100
         columns = [self.annotation_width, 100]  # TODO: or base_width
-        super(AnnotatedGenomeLayout, self).__init__(n_genomes=2, column_widths=columns, *args, **kwargs)
+        super(AnnotatedTrackLayout, self).__init__(n_genomes=2, column_widths=columns, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
         self.annotation = GFF(self.gff_filename)
@@ -31,17 +31,10 @@ class AnnotatedGenomeLayout(ParallelLayout):
                                      output_path=self.annotation_fasta,
                                      annotation_width=self.annotation_width,
                                      base_width=self.base_width)
-        super(AnnotatedGenomeLayout, self).process_file(output_folder,
-                          output_file_name=output_file_name,
-                          fasta_files=[self.annotation_fasta, self.fasta_file],
-                          no_webpage=False, extract_contigs=extract_contigs)
-
-
-    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
-        self.contigs = read_contigs(input_file_path)
-        # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
-        return self.calc_all_padding()
-
+        super(AnnotatedTrackLayout, self).process_file(output_folder,
+                                                       output_file_name=output_file_name,
+                                                       fasta_files=[self.annotation_fasta, self.fasta_file],
+                                                       no_webpage=False, extract_contigs=extract_contigs)
 
     def changes_per_genome(self):
         self.levels = self.each_layout[self.genome_processed]
@@ -73,7 +66,7 @@ class AnnotatedGenomeLayout(ParallelLayout):
 
 
     def draw_the_viz_title(self, fasta_files):
-        super(AnnotatedGenomeLayout, self).draw_the_viz_title(fasta_files)
+        super(AnnotatedTrackLayout, self).draw_the_viz_title(fasta_files)
         # only draw on the annotation pass, not sequence
         # self.draw_annotation_labels()
 
@@ -109,9 +102,14 @@ class AnnotatedGenomeLayout(ParallelLayout):
         print("Done Drawing annotation labels")
 
     def additional_html_content(self, html_content):
+        """{'CDS':FeatureRep('G', 1),  # 1 priority is the most important
+            'exon':FeatureRep('T', 2),
+            'gene':FeatureRep('C', 3),
+            'mRNA':FeatureRep('A', 4),
+            'transcript':FeatureRep('N', 5)}"""
         return {'legend': html_content['legend'] +
                 """<p><span><strong>Annotation Colors:</strong>
-                <p>Gene = Blue, mRNA = Red, Exon = Yellow, CDS = Green. Gene components are stacked in a hierarchy: 
+                <p>Gene = Yellow, mRNA = Green, Exon = Blue, CDS = Red. Gene components are stacked in a hierarchy: 
                  CDS in exons, exons in genes. Only the most exclusive category (CDS) is visible. 
-                 Visible blue regions are introns.  Visible yellow (exon, but not CDS) are 3' and 5' UTR.</p></span></p>
+                 Visible yellow regions are introns.  Visible blue (exon, but not CDS) are 3' and 5' UTR.</p></span></p>
                 """}  # override in children
