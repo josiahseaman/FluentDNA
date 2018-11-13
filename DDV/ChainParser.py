@@ -42,7 +42,8 @@ def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
 class ChainParser(object):
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
-                 show_translocations_only=False, aligned_only=False, no_titles=False):
+                 show_translocations_only=False, aligned_only=False, no_titles=False,
+                 extract_contigs=None):
         self.ref_source = first_source  # example hg38ToPanTro4.chain  hg38 is the reference, PanTro4 is the query (has strand flips)
         self.query_source = second_source
         self.output_prefix = output_prefix
@@ -65,12 +66,29 @@ class ChainParser(object):
             print("WARNING: blist library not installed: Genome alignment will be very slow.")
         self.stored_rev_comps = {}
         self.gapped = '_gapped'
-        self.stats = DefaultOrderedDict(lambda: 0)
+        self.stats = {  # don't use a defaultdict as this is in the inner loop
+            'Shared seq bp': 0,
+            'Query N to ref in bp': 0,
+            'Ref N to query bp': 0,
+            'Ref unique bp': 0,
+            'Query unique bp': 0,
+            'Aligned Variance in bp': 0,
+            'translocation_searched': 0,
+            'translocation_deleted': 0,
+            'Query Number of Gaps (all)': 0,
+            'Query Gaps larger than 10bp': 0,
+            'Query Gaps larger than 100bp': 0,
+            'Query Gaps larger than 1000bp': 0,
+            'Ref Number of Gaps (all)': 0,
+            'Ref Gaps larger than 10bp': 0,
+            'Ref Gaps larger than 100bp': 0,
+            'Ref Gaps larger than 1000bp': 0,
+        }
 
         if self.query_source:
             self.query_contigs = read_contigs_to_dict(self.query_source)
-        self.ref_contigs = read_contigs_to_dict(self.ref_source)
-        self.chain_list = chain_file_to_list(chain_name)
+        self.ref_contigs = read_contigs_to_dict(self.ref_source, extract_contigs)
+        self.chain_list = chain_file_to_list(chain_name, extract_contigs)
 
         TranslocationMark = namedtuple('TranslocationMark', ['char', 'fill', 'legend', 'color'])
         self.translocation_types = [
@@ -538,7 +556,7 @@ class ChainParser(object):
             del names['query']
         batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
         self.write_stats_file()
-        self.output_folder = None  # clear the previous value
+        # self.output_folder = None  # clear the previous value
         return batch
 
 

@@ -8,14 +8,13 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 
-import sys
-from PIL import Image, ImageDraw, ImageFont
-
 from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
-from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette, \
-    make_output_dir_with_suffix
+from PIL import Image, ImageDraw, ImageFont
+
 from DDV import gap_char
+from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette, \
+    make_output_dir_with_suffix, filter_by_contigs
 
 small_title_bp = 10000
 font_filename = "Arial.ttf"
@@ -299,18 +298,8 @@ class TileLayout(object):
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
-        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
+        self.contigs = filter_by_contigs(self.contigs, extract_contigs)
         return self.calc_all_padding()
-
-    def filter_by_contigs(self, unfiltered, extract_contigs):
-        if extract_contigs is not None:  # winnow down to only extracted contigs
-            filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
-            if filtered_contigs:
-                return filtered_contigs
-            else:
-                print("Warning: No matching contigs were found, so the whole file is being used:",
-                      extract_contigs, file=sys.stderr)
-        return unfiltered
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)

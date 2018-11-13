@@ -6,6 +6,7 @@ from  os.path import join, basename
 from Annotations import find_universal_prefix, extract_gene_name
 from DDV.Annotations import create_fasta_from_annotation, GFF
 from DDV.ParallelGenomeLayout import ParallelLayout
+from DDVUtils import filter_by_contigs
 
 
 class AnnotatedTrackLayout(ParallelLayout):
@@ -23,7 +24,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                                      ('.fa' if extract_contigs is None else '_extracted.fa'))
         self.contigs = read_contigs(self.fasta_file)
         # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
-        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
+        self.contigs = filter_by_contigs(self.contigs, extract_contigs)
         extract_contigs = [x.name.split()[0] for x in self.contigs]
         lengths = [len(x.seq) for x in self.contigs]
         create_fasta_from_annotation(self.annotation, extract_contigs,

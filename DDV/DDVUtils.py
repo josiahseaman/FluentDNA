@@ -59,7 +59,7 @@ def pretty_contig_name(contig_name, title_width, title_lines):
     pretty_name = contig_name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)  # don't ask
-    if title_width < 20 and len(pretty_name) > title_width * 1.5:  # this is a suboptimal special case to try and
+    if title_width < 20 and len(pretty_name) > int(title_width * 1.5):  # this is a suboptimal special case to try and
         # cram more characters onto the two lines of the smallest contig titles when there's not enough space
         # For small spaces, cram every last bit into the line labels, there's not much room
         pretty_name = pretty_name[:title_width] + '\n' + pretty_name[title_width:title_width * 2]
@@ -68,19 +68,29 @@ def pretty_contig_name(contig_name, title_width, title_lines):
     return pretty_name
 
 
+def filter_by_contigs(unfiltered, extract_contigs):
+    if extract_contigs is not None:  # winnow down to only extracted contigs
+        filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
+        if filtered_contigs:
+            return filtered_contigs
+        else:
+            print("Warning: No matching contigs were found, so the whole file is being used:",
+                  extract_contigs, file=sys.stderr)
+    return unfiltered
 
-def read_contigs_to_dict(input_file_path):
+def read_contigs_to_dict(input_file_path, extract_contigs=None):
     print("Reading contigs... ", input_file_path)
     start_time = datetime.now()
     contig_list = read_contigs(input_file_path)
+    contig_list = filter_by_contigs(contig_list, extract_contigs)
     contig_dict = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
     print("Read %i FASTA Contigs in:" % len(contig_dict), datetime.now() - start_time)
     return contig_dict
 
 
 def create_deepzoom_stack(input_image, output_dzi):
-    import DDV.deepzoom as deepzoom
-    creator = deepzoom.ImageCreator(tile_size=256,
+    import DDV.deepzoom
+    creator = DDV.deepzoom.ImageCreator(tile_size=256,
                                     tile_overlap=1,
                                     tile_format="png",
                                     resize_filter="antialias")# cubic bilinear bicubic nearest antialias
@@ -436,4 +446,3 @@ def viridis_palette():
     palette[254] = (250, 230, 34)
     palette[255] = (253, 231, 36)
     return palette
-
