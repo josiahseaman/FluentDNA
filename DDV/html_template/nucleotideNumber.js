@@ -14,6 +14,7 @@ var nucNumX = 0;
 var nucNumY = 0;
 
 var wholeSequence = "";
+var contigs = {}
 var mySequence;
 var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
@@ -269,10 +270,23 @@ function getSequence() {
     });
 }
 
+function read_contigs(sequence_received) {
+    //read_contigs equiv in javascript
+    theSequenceSplit = sequence_received.split(/^>|\n>/);// begin line, caret  ">");
+    var contigs = {}
+    for (let contig_s of theSequenceSplit) {
+        var lines = contig_s.split(/\r?\n/);
+        var title = lines[0]
+        var seq = lines.slice(1).join();
+        contigs[title] = seq;
+    }
+    return contigs
+}
 function initSequence (sequence_received) {
     wholeSequence = sequence_received
-    theSequenceSplit=sequence_received.split("\n");
-    theSequenceSplit.splice(0,1);
+    contigs = read_contigs(sequence_received);
+
+    // theSequenceSplit.splice(0,1);  // pop off the first line with FASTA header
     mySequence = new Biojs.Sequence({
         sequence : "",
         target : "SequenceFragmentFASTA",
