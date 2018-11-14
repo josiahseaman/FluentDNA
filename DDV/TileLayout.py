@@ -57,6 +57,7 @@ class TileLayout(object):
                  low_contrast=False, base_width=None, font_name=font_filename, border_width=3):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
+        self.fasta_source = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
@@ -210,9 +211,8 @@ class TileLayout(object):
 
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-        fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
-        if extract_contigs:
-            print("Rendered sequence:", fasta_destination)
+        self.output_fasta(output_folder, input_file_path, no_webpage,
+                                              extract_contigs, self.sort_contigs)
 
 
     def draw_extras(self):
@@ -244,9 +244,9 @@ class TileLayout(object):
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage=False, extract_contigs=None, ):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
         fasta_destination = os.path.join(output_folder, os.path.basename(fasta))
-        if extract_contigs:
+        if extract_contigs or sort_contigs:
             length_sum = sum([len(c.seq) for c in self.contigs])
             fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
@@ -256,6 +256,9 @@ class TileLayout(object):
                     shutil.copy(fasta, fasta_destination)
             except shutil.SameFileError:
                 pass  # not a problem
+
+        self.fasta_source.append(os.path.basename(fasta_destination))
+        print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
 
@@ -471,6 +474,7 @@ class TileLayout(object):
             copytree(html_template, output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
+                            "fasta_source": str(self.fasta_source),
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": str(self.origin),
@@ -486,19 +490,18 @@ class TileLayout(object):
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
                             "sbegin": '1',
                             "send": str(self.image_length),
-                            "date": datetime.now().strftime("%Y-%m-%d")}
-            html_content['legend'] = """    <strong>Legend:</strong>
-                <img class='legend-icon' src='img/LEGEND-A.png'/>
-                <img class='legend-icon' src='img/LEGEND-T.png'/>
-                <img class='legend-icon' src='img/LEGEND-G.png'/>
-                <img class='legend-icon' src='img/LEGEND-C.png'/>
-                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are blue/green.
-                    A/T rich areas are reddish.  Poly-purines are more yellow (orange/green).
-                    Poly-pyrimidines are more purple (blue/red).
-                    Diffuse natural colors were chosen to be less harsh on the eyes.</span>
-            """
+                            "date": datetime.now().strftime("%Y-%m-%d"),
+                            'legend': """    <strong>Legend:</strong>
+                                <img class='legend-icon' src='img/LEGEND-A.png'/>
+                                <img class='legend-icon' src='img/LEGEND-T.png'/>
+                                <img class='legend-icon' src='img/LEGEND-G.png'/>
+                                <img class='legend-icon' src='img/LEGEND-C.png'/>
+                                <img class='legend-icon' src='img/LEGEND-N.png'/>
+                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
+                                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are red/orange.
+                                    A/T rich areas are green/blue.  
+                                    Color choice is a compromise between less harsh natural colors and high contrast.</span>
+                            """}
             if not self.low_contrast:
                 html_content['legend'] = """    <strong>Legend:</strong>
                                 <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
@@ -507,8 +510,8 @@ class TileLayout(object):
                                 <img class='legend-icon' src='img/LEGEND-C-contrast.png'/>
                                 <img class='legend-icon' src='img/LEGEND-N.png'/>
                                 <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>G/C rich regions are blue/green.
-                                    A/T rich areas are reddish.</span>
+                                <span class='color-explanation'>G/C rich regions are red/orange.
+                                A/T rich areas are green/blue.</span>
                             """
             if self.using_spectrum:
                 html_content['legend'] = """    <strong>Legend:</strong>

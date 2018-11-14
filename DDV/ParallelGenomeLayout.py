@@ -72,7 +72,8 @@ class ParallelLayout(TileLayout):
                     self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
-                self.output_fasta(output_folder, filename, False, extract_contigs)
+                self.output_fasta(output_folder, filename, False, extract_contigs, self.sort_contigs)
+
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
