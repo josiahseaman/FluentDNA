@@ -146,8 +146,8 @@ function tiled_layout_mouse_position(nucNumX, nucNumY) {
 
 function showNucleotideNumber(event, viewer) {
     /** getMousePosition() returns position relative to page,
-    * while we want the position relative to the viewer
-    * element. so subtract the difference.*/
+     * while we want the position relative to the viewer
+     * element. so subtract the difference.*/
     var pixel = OpenSeadragon.getMousePosition(event).minus(OpenSeadragon.getElementPosition(viewer.element));
     if (!viewer.isOpen()) {
         return;
@@ -197,7 +197,8 @@ function showNucleotideNumber(event, viewer) {
             theSequence = wholeSequence.substring(start, stop);
             //user visible indices start at 1, not 0
             fragmentid = "Sequence fragment at [" + numberWithCommas(Nucleotide) +
-                "], showing: (" + numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
+              "], showing: (" + numberWithCommas(start + 1) +
+              " - " + numberWithCommas(stop) + ")";
             mySequence.setSequence(theSequence, fragmentid);
             mySequence.setSelection(remainder, remainder);
 
@@ -241,4 +242,16 @@ function outputTable() {
     document.write('<tr><th>Nucleotide Number</th><td id="Nucleotide">-</td><td>-</td></tr><tr><th>Nucleotides in Local Column</th>   <td id="NucleotideY">-</td><td>-</td></tr>');
     document.write('<tr><th>Position in Column</th><td id="PositionInColumn">-</td><td></td></tr><tr><th>Nucleotides Per Column</th><td id="iNucleotidesPerColumn">-</td><td></td></tr>');
     document.write('<tr><th>Aspect Ratio</th><td id="aspectRatio">-</td><td></td></tr><tr><th>Viewport dimensions</th><td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr></table>');
+}
+
+
+
+function uiLoading (message) {
+    //var bufferOutFile=$("#outfile").val();
+    $("#status").html(" <img src='../../loading.gif' style='float:left;' /><div style='font-size:11pt;padding-top:10px;padding-bottom:15px;'>"+message+"</div>" );
+}
+
+function processError() {
+    $("#outfile").prepend("<br />Error.  Connection problem. <div class='resultdivider'></div>");
+    $("#status").html("Completed with error." );
 }
