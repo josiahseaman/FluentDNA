@@ -13,8 +13,8 @@ var NucleotideY = "-";
 var nucNumX = 0;
 var nucNumY = 0;
 
-var mySequence;
 var wholeSequence = "";
+var mySequence;
 var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
 var fragmentid = "";
@@ -67,6 +67,7 @@ function init(container_id, source_folder) {
     });
 
     $('#SequenceFragmentInstruction').hide();
+    $('#getSequenceButton').hide();
 }
 
 function numberWithCommas(x) {
@@ -195,6 +196,7 @@ function showNucleotideNumber(event, viewer) {
                 stop = Nucleotide + columnWidthInNucleotides * 3;
             }
             theSequence = wholeSequence.substring(start, stop);
+            theSequence = theSequence.replace(/\s+/g, '')
             //user visible indices start at 1, not 0
             fragmentid = "Sequence fragment at [" + numberWithCommas(Nucleotide) +
               "], showing: (" + numberWithCommas(start + 1) +
@@ -230,12 +232,73 @@ function addLoadEvent(func) {
     }
 }
 
+function getSequence() {
+
+
+    $.ajax({xhr: function()
+    {
+        var xhr = new window.XMLHttpRequest();
+        //Download progress
+        xhr.addEventListener("load", function (evt) {
+            $("#status").html("Sequence data loaded.  Display of sequence fragments activated.");
+            // $("#btnCallGCSkew").click(function (event) {
+            //     GenerateGCSkewChart();
+            // });
+            // $("#status").append("<div id='gc-skew-plot-button'>Generate GC Skew activated.");
+            sequence_data_loaded = 1;
+        }, false);
+        xhr.addEventListener("progress", function (evt) {
+            if (evt.lengthComputable) {
+                var percentComplete = (evt.loaded / evt.total) * 100;
+                //Do something with download progress
+                if (percentComplete < 100) {
+                    $("#status").html("<img src='img/loading.gif' /> Loading sequence data: " + parseFloat(percentComplete).toFixed(2) + "% complete");
+                }
+            }
+            else {
+                $("#status").html("<img src='img/loading.gif' />Loading sequence data  ... [ " + parseFloat(evt.loaded / 1048576).toFixed(2) + " MB loaded ]");
+            }
+        }, false);
+        return xhr;
+    },
+        type: "GET",
+        url: fasta_source[0],
+        contentType: "text/html",
+        success: initSequence,
+        error: processInitSequenceError
+    });
+}
+
+function initSequence (sequence_received) {
+    wholeSequence = sequence_received
+    theSequenceSplit=sequence_received.split("\n");
+    theSequenceSplit.splice(0,1);
+    mySequence = new Biojs.Sequence({
+        sequence : "",
+        target : "SequenceFragmentFASTA",
+        format : 'FASTA',
+        columns : {size:100,spacedEach:0} , //TODO: reference layout numbers
+        formatSelectorVisible: false,
+        fontSize: '11px',
+    });
+    sequence_data_viewer_initialized=1;
+    mySequence.clearSequence("");
+    $('#SequenceFragmentInstruction').hide();
+
+}
+
+function processInitSequenceError() {
+    //do nothing
+};
+
 addLoadEvent(init_all);
+addLoadEvent(getSequence);
+
 
 function outputTable() {
     document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>');
-    // document.write("<div id='getSequenceButton'><br /><a onclick='getSequence()'> Fetch Sequence </a></div>");
-    // document.write('<div id="base"></div><div id="SequenceFragmentFASTA" style="height:80px;"><div id="SequenceFragmentInstruction">press "x" key using keyboard to copy this fragment to Result Log</div></div>');
+    document.write("<div id='getSequenceButton'><br /><a onclick='getSequence()'> Fetch Sequence </a></div>");
+    document.write('<div id="base"></div><div id="SequenceFragmentFASTA" style="height:80px;"><div id="SequenceFragmentInstruction">press "x" key using keyboard to copy this fragment to Result Log</div></div>');
     document.write('<table class="output" style="border: 1px solid #000000;visibility:hidden;display:none;"><tr><th class="name"> </th><th class="value">Pixels</th><th class="value">Points</th></tr>');
     document.write('<tr><th>Mouse position</th><td id="mousePixels">-</td><td id="mousePoints">-</td></tr><tr><th>X, Y</th><td id="nucleotideNumberX">-</td><td id="nucleotideNumberY">-</td><td></td></tr>');
     document.write('<tr><th>(X, Y)</th><td id="NucleotideNumberX">-</td><td id="NucleotideNumberY">-</td></tr><tr><th>Column Number</th><td id="ColumnNumber">-</td><td id="ColumnRemainder">-</td></tr>');
@@ -248,7 +311,7 @@ function outputTable() {
 
 function uiLoading (message) {
     //var bufferOutFile=$("#outfile").val();
-    $("#status").html(" <img src='../../loading.gif' style='float:left;' /><div style='font-size:11pt;padding-top:10px;padding-bottom:15px;'>"+message+"</div>" );
+    $("#status").html(" <img src='img/loading.gif' style='float:left;' /><div style='font-size:11pt;padding-top:10px;padding-bottom:15px;'>"+message+"</div>" );
 }
 
 function processError() {

@@ -3,9 +3,11 @@
 <head>
     <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
     <title>FluentDNA Visualization Tool: {{title}}</title>
-    <script src='./openseadragon.js' type='text/javascript'></script>
+    <script type='text/javascript' src='./openseadragon.js' ></script>
     <script type='text/javascript' src='./jquery-1.7.min.js'></script>
-    <script src='./openseadragon-scalebar.js' type='text/javascript'></script>
+    <script type='text/javascript' src='./openseadragon-scalebar.js' ></script>
+    <script type='text/javascript' src='Biojs.js'></script>
+    <script type='text/javascript' src='Biojs.Sequence.js'></script>
 
     <script type='text/javascript'>
         var fasta_source = {{fasta_source}};
@@ -49,6 +51,7 @@
     outputTable();
 </script>
 <div id="status"></div>
+<div id="outfile"></div>
 <div class='legend-details'>
     <h3>Notes</h3>
     This DNA data visualization interface was generated with <a href='https://github.com/josiahseaman/DDV'>FluentDNA</a>
