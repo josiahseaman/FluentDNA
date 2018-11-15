@@ -1,20 +1,19 @@
 var PRECISION = 10;      // number of decimal places
 var viewer = null;
-var pointerStatus = "-";
+var pointerStatus = "";
 var cursor_in_a_title = false;
 var ColumnNumber = 0;
-var ColumnRemainder = "-";
-var PositionInColumn = "-";
+var ColumnRemainder = "";
+var PositionInColumn = "";
 var iNucleotidesPerColumn = columnWidthInNucleotides * originalImageHeight;
 var ColumnWidth = ColumnPadding + columnWidthInNucleotides;
 var originalAspectRatio = originalImageHeight / originalImageWidth;
-var Nucleotide = "-";
+var Nucleotide = "";
 var NucleotideY = "-";
 var nucNumX = 0;
 var nucNumY = 0;
 
-var wholeSequence = "";
-var contigs = {}
+var contigs = {};
 var visible_seq_obj;
 var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
@@ -25,15 +24,15 @@ var sequence_data_viewer_initialized = 0;
 function init_all(){
     /** Iterates through each chromosome container and initializes and OpenSeaDragon
      * view using the source directory specified in 'data-chr-source' */
-    $('.chromosome-container').each(function(index, element){
-        init($(element).attr('id'), $(element).attr('data-chr-source'))
+    $(".chromosome-container").each(function(index, element){
+        init($(element).attr("id"), $(element).attr("data-chr-source"));
     });
 }
 
 function init(container_id, source_folder) {
     var source = source_folder == "" ? "" : source_folder + "/"; //ensure directories end with a slash
     source += "GeneratedImages/dzc_output.xml";
-    var viewer = OpenSeadragon({
+    viewer = OpenSeadragon({
         id: container_id,
         prefixUrl: "img/",
         showNavigator: true,
@@ -56,10 +55,10 @@ function init(container_id, source_folder) {
         sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.BASEPAIR_LENGTH
     });
 
-    OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer)});
+    OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer);});
 
     //copy content of pointed at sequence fragment to result log
-    $('body').keyup(function (event) {
+    $("body").keyup(function (event) {
         if (theSequence) {
             if (event.keyCode == 88) {
                 $("#outfile").prepend("<div class='sequenceFragment'><div style='background-color:#f0f0f0;'>" + fragmentid + "</div>" + theSequence + "</div>");
@@ -67,8 +66,8 @@ function init(container_id, source_folder) {
         }
     });
 
-    $('#SequenceFragmentInstruction').hide();
-    $('#getSequenceButton').hide();
+    $("#SequenceFragmentInstruction").hide();
+    $("#getSequenceButton").hide();
 }
 
 function numberWithCommas(x) {
@@ -76,7 +75,7 @@ function numberWithCommas(x) {
 }
 
 function classic_layout_mouse_position(nucNumX, nucNumY) {
-    var Nucleotide = "-";
+    var Nucleotide = "";
 
     ColumnNumber = Math.floor(nucNumX / ColumnWidth);
     ColumnRemainder = nucNumX % ColumnWidth;
@@ -85,15 +84,15 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
     NucleotideY = columnWidthInNucleotides * nucNumY;
 
     if ((ColumnRemainder <= ColumnWidth) && (ColumnRemainder >= columnWidthInNucleotides )) {
-        ColumnNumber = "-";
-        PositionInColumn = "-";
+        ColumnNumber = "";
+        PositionInColumn = "";
         pointerStatus = "Outside of Image (Inbetween Columns)";
     }
     else {
         Nucleotide = iNucleotidesPerColumn * ColumnNumber + NucleotideY + PositionInColumn;
         if (Nucleotide > ipTotal) {
             //End of Sequence
-            Nucleotide = "-";
+            Nucleotide = "";
         }
 
     }
@@ -102,9 +101,9 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
 
 function nucleotide_coordinates_to_sequence_index(index_from_xy){
     cursor_in_a_title = false;
-    var contig_name = '-';
+    var contig_name = "";
     var index_inside_contig = 0;
-    var file_coordinates = '-';
+    var file_coordinates = "";
     for (var i = 0; i < ContigSpacingJSON.length; i++) {
         var contig = ContigSpacingJSON[i];
         if (contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
@@ -143,7 +142,7 @@ function tiled_layout_mouse_position(nucNumX, nucNumY) {
         xy_remaining[part] -= number_of_full_increments * level.thickness;
 
         if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
-            return "-";//check for invalid coordinate (margins)
+            return "";//check for invalid coordinate (margins)
         }
     }
     var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy);
@@ -161,10 +160,11 @@ function showNucleotideNumber(event, viewer) {
     var point = viewer.viewport.pointFromPixel(pixel);
     var position_info = {};
     var information_to_show = false;
+    cursor_in_a_title = false;
 
     if ((point.x < 0) || (point.x > 1)) {
         nucNumX = "-";
-        Nucleotide = "-";
+        Nucleotide = "";
         pointerStatus = "Outside of Image (X)";
     }
     else {
@@ -173,7 +173,7 @@ function showNucleotideNumber(event, viewer) {
 
     if ((point.y < 0) || (point.y > originalAspectRatio)) {
         nucNumY = "-";
-        Nucleotide = "-";
+        Nucleotide = "";
         pointerStatus = "Outside of Image (Y)";
     }
     else {
@@ -185,11 +185,15 @@ function showNucleotideNumber(event, viewer) {
         information_to_show = $.isNumeric(position_info.file_coordinates)
     }
 
-    document.getElementById("Nucleotide").innerHTML = numberWithCommas(Nucleotide);
+    var display = information_to_show ? position_info.index_inside_contig : "-";
+    if(cursor_in_a_title){
+        display = position_info.contig_name;
+    }
+    document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
 
     //show sequence fragment
     if (sequence_data_viewer_initialized) {
-        var lineNumber = "-";
+        var lineNumber = "";
         if (information_to_show && position_info.index_inside_contig) {
             Nucleotide = position_info.index_inside_contig;
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
@@ -206,7 +210,7 @@ function showNucleotideNumber(event, viewer) {
             theSequence = contigs[position_info.contig_name].substring(start, stop);
             //theSequence = theSequence.replace(/\s+/g, '')
             //user visible indices start at 1, not 0
-            fragmentid = "'" + position_info.contig_name + "': (" +
+            fragmentid = position_info.contig_name + ": (" +
               numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
             visible_seq_obj.setSequence(theSequence, fragmentid);
             visible_seq_obj.setSelection(remainder, remainder);
@@ -289,21 +293,19 @@ function read_contigs(sequence_received) {
     return contigs
 }
 function initSequence (sequence_received) {
-    wholeSequence = sequence_received
     contigs = read_contigs(sequence_received);
 
     visible_seq_obj = new Biojs.Sequence({
         sequence : "",
         target : "SeqDisplayTarget",
         format : 'FASTA',
-        columns : {size:100,spacedEach:0} , //TODO: reference layout numbers
+        columns : {size:columnWidthInNucleotides,spacedEach:0} ,
         formatSelectorVisible: false,
         fontSize: '18px',
     });
     sequence_data_viewer_initialized=1;
     visible_seq_obj.clearSequence("");
     $('#SequenceFragmentInstruction').hide();
-
 }
 
 function processInitSequenceError() {
@@ -317,7 +319,7 @@ addLoadEvent(getSequence);
 function outputTable() {
     document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
       '<div id="getSequenceButton"><br /><a onclick="getSequence()"> Fetch Sequence </a></div>' +
-      '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:160px;">' +
+      '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
         '<div id="SeqDisplayTarget"></div>' +
         '<div id="SequenceFragmentInstruction" style="display: block;margin-top: -25px;">' +
           'Press "x" key using keyboard to copy this fragment to Result Log</div>' +
