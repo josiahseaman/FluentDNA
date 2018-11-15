@@ -15,7 +15,7 @@ var nucNumY = 0;
 
 var wholeSequence = "";
 var contigs = {}
-var mySequence;
+var visible_seq_obj;
 var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
 var fragmentid = "";
@@ -102,25 +102,30 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
 
 function nucleotide_coordinates_to_sequence_index(index_from_xy){
     cursor_in_a_title = false;
-    if(!multipart_file){
-        return index_from_xy; // all the padding numbers are just zero
-    }
-    for(var i = 0; i < ContigSpacingJSON.length; i++){
+    var contig_name = '-';
+    var index_inside_contig = 0;
+    var file_coordinates = '-';
+    for (var i = 0; i < ContigSpacingJSON.length; i++) {
         var contig = ContigSpacingJSON[i];
-        if(contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
-            if(contig.xy_title_start > index_from_xy){ //we overshot and haven't reached title
-                return '-';
+        if (contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
+            if (contig.xy_title_start > index_from_xy) { //we overshot and haven't reached title
+                break;
             }
-            if (contig.xy_seq_start <= index_from_xy ) {// cursor is in nucleotide body
-                return contig.nuc_seq_start + (index_from_xy - contig.xy_seq_start);
-            } else {
-                // cursor is in label
+            if (contig.xy_seq_start <= index_from_xy) {// cursor is in nucleotide body
+                index_inside_contig = index_from_xy - contig.xy_seq_start;
+                file_coordinates = contig.nuc_seq_start + index_inside_contig;
+                contig_name = contig.name;
+                break;
+            } else {// cursor is in label
                 cursor_in_a_title = true;
-                return contig.nuc_title_start;
+                contig_name = contig.name;
+                break;
             }
         }
     }
-    return index_from_xy
+    return {contig_name: contig_name,
+        index_inside_contig: index_inside_contig,
+        file_coordinates: file_coordinates};
 }
 
 
@@ -141,9 +146,8 @@ function tiled_layout_mouse_position(nucNumX, nucNumY) {
             return "-";//check for invalid coordinate (margins)
         }
     }
-    index_from_xy = nucleotide_coordinates_to_sequence_index(index_from_xy);
-    index_from_xy = typeof index_from_xy === 'string' ? index_from_xy : index_from_xy + 1;
-    return index_from_xy; // nucleotide position is [1] indexed, instead of [0] indexed
+    var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy);
+    return position_info;
 }
 
 function showNucleotideNumber(event, viewer) {
@@ -175,11 +179,8 @@ function showNucleotideNumber(event, viewer) {
     }
 
     if ((nucNumX != "-") && (nucNumY != "-")) {
-        if (layoutSelector == 0) {
-            Nucleotide = classic_layout_mouse_position(nucNumX, nucNumY);
-        } else {
-            Nucleotide = tiled_layout_mouse_position(nucNumX, nucNumY);
-        }
+        var position_info = tiled_layout_mouse_position(nucNumX, nucNumY);
+        Nucleotide = position_info.file_coordinates;
     }
 
     document.getElementById("Nucleotide").innerHTML = numberWithCommas(Nucleotide);
@@ -202,14 +203,14 @@ function showNucleotideNumber(event, viewer) {
             fragmentid = "Sequence fragment at [" + numberWithCommas(Nucleotide) +
               "], showing: (" + numberWithCommas(start + 1) +
               " - " + numberWithCommas(stop) + ")";
-            mySequence.setSequence(theSequence, fragmentid);
-            mySequence.setSelection(remainder, remainder);
+            visible_seq_obj.setSequence(theSequence, fragmentid);
+            visible_seq_obj.setSelection(remainder, remainder);
 
             $('#SequenceFragmentInstruction').show();
 
         }
         else {
-            mySequence.clearSequence("");
+            visible_seq_obj.clearSequence("");
             theSequence = "";
             fragmentid = "";
             $('#SequenceFragmentInstruction').hide();
@@ -286,8 +287,7 @@ function initSequence (sequence_received) {
     wholeSequence = sequence_received
     contigs = read_contigs(sequence_received);
 
-    // theSequenceSplit.splice(0,1);  // pop off the first line with FASTA header
-    mySequence = new Biojs.Sequence({
+    visible_seq_obj = new Biojs.Sequence({
         sequence : "",
         target : "SequenceFragmentFASTA",
         format : 'FASTA',
@@ -296,7 +296,7 @@ function initSequence (sequence_received) {
         fontSize: '11px',
     });
     sequence_data_viewer_initialized=1;
-    mySequence.clearSequence("");
+    visible_seq_obj.clearSequence("");
     $('#SequenceFragmentInstruction').hide();
 
 }

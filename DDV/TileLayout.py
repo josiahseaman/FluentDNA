@@ -480,11 +480,8 @@ class TileLayout(object):
                             "image_origin": str(self.origin),
                             "ColumnPadding": str(self.levels[2].padding),
                             "columnWidthInNucleotides": str(self.levels[1].chunk_size),
-                            "layoutSelector": '1',
                             "layout_levels": self.levels_json(),
                             "ContigSpacingJSON": self.contig_json(),
-                            "multipart_file": str(len(self.contigs) > 1).lower(),
-                            # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
                             "includeDensity": 'false',
                             "ipTotal": str(self.image_length),
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
