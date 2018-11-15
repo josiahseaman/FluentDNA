@@ -51,6 +51,7 @@ def level_layout_factory(modulos, padding=None):
     return levels
 
 
+
 class TileLayout(object):
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
@@ -245,8 +246,10 @@ class TileLayout(object):
 
 
     def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
-        fasta_destination = os.path.join(output_folder, os.path.basename(fasta))
+        bare_file = os.path.basename(fasta)
+        fasta_destination = os.path.join(output_folder, bare_file)
         if extract_contigs or sort_contigs:
+            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             length_sum = sum([len(c.seq) for c in self.contigs])
             fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
@@ -257,7 +260,7 @@ class TileLayout(object):
             except shutil.SameFileError:
                 pass  # not a problem
 
-        self.fasta_source.append(os.path.basename(fasta_destination))
+        self.fasta_source.append(bare_file)
         print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
@@ -586,4 +589,15 @@ class TileLayout(object):
 
     def additional_html_content(self, html_content):
         return {}  # override in children
+
+
+def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
+    chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)
+    try:
+        os.makedirs(chunks_dir, exist_ok=True)
+    except BaseException:
+        pass
+    for i, contig in enumerate(contigs):
+        filename = os.path.join(chunks_dir, '%i.fa' % i)
+        write_contigs_to_file(filename, [contig],verbose=False)
 

@@ -243,37 +243,44 @@ function addLoadEvent(func) {
     }
 }
 
-function getSequence() {
-
-
-    $.ajax({xhr: function()
-    {
-        var xhr = new window.XMLHttpRequest();
-        //Download progress
-        xhr.addEventListener("load", function (evt) {
-            $("#status").html("Sequence data loaded.  Display of sequence fragments activated.");
-            // $("#btnCallGCSkew").click(function (event) {
-            //     GenerateGCSkewChart();
-            // });
-            // $("#status").append("<div id='gc-skew-plot-button'>Generate GC Skew activated.");
-            sequence_data_loaded = 1;
-        }, false);
-        xhr.addEventListener("progress", function (evt) {
-            if (evt.lengthComputable) {
-                var percentComplete = (evt.loaded / evt.total) * 100;
-                //Do something with download progress
-                if (percentComplete < 100) {
-                    $("#status").html("<img src='img/loading.gif' /> Loading sequence data: " + parseFloat(percentComplete).toFixed(2) + "% complete");
-                }
+function loading_function()
+{
+    var xhr = new window.XMLHttpRequest();
+    //Download progress
+    xhr.addEventListener("load", function (evt) {
+        $("#status").html("Sequence data loaded.  Display of sequence fragments activated.");
+        sequence_data_loaded = 1;
+    }, false);
+    xhr.addEventListener("progress", function (evt) {
+        if (evt.lengthComputable) {
+            var percentComplete = (evt.loaded / evt.total) * 100;
+            //Do something with download progress
+            if (percentComplete < 100) {
+                $("#status").html("<img src='img/loading.gif' /> Loading sequence data: " +
+                  parseFloat(percentComplete).toFixed(2) + "% complete");
             }
-            else {
-                $("#status").html("<img src='img/loading.gif' />Loading sequence data  ... [ " + parseFloat(evt.loaded / 1048576).toFixed(2) + " MB loaded ]");
-            }
-        }, false);
-        return xhr;
-    },
+        }
+        else {
+            $("#status").html("<img src='img/loading.gif' />Loading sequence data  ... [ " +
+              parseFloat(evt.loaded / 1048576).toFixed(2) + " MB loaded ]");
+        }
+    }, false);
+    return xhr;
+}
+
+function get_all_sequences() {
+    var fasta_path = fasta_source[0];
+    for(let [index, contig] of ContigSpacingJSON.entries()){
+        getSequence(index); // dispatch one request for each contig
+    }
+}
+
+function getSequence(contig_index) {
+    var fasta_path = "chunks/" + fasta_source[0] + "/" + contig_index + ".fa";
+
+    $.ajax({xhr: loading_function,
         type: "GET",
-        url: fasta_source[0],
+        url: fasta_path,
         contentType: "text/html",
         success: initSequence,
         error: processInitSequenceError
@@ -283,7 +290,6 @@ function getSequence() {
 function read_contigs(sequence_received) {
     //read_contigs equiv in javascript
     theSequenceSplit = sequence_received.split(/^>|\n>/);// begin line, caret  ">");
-    var contigs = {}
     for (let contig_s of theSequenceSplit) {
         var lines = contig_s.split(/\r?\n/);
         var title = lines[0]
@@ -293,7 +299,7 @@ function read_contigs(sequence_received) {
     return contigs
 }
 function initSequence (sequence_received) {
-    contigs = read_contigs(sequence_received);
+    read_contigs(sequence_received); // TODO: file specific contigs =
 
     visible_seq_obj = new Biojs.Sequence({
         sequence : "",
@@ -313,12 +319,12 @@ function processInitSequenceError() {
 };
 
 addLoadEvent(init_all);
-addLoadEvent(getSequence);
+addLoadEvent(get_all_sequences);
 
 
 function outputTable() {
     document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
-      '<div id="getSequenceButton"><br /><a onclick="getSequence()"> Fetch Sequence </a></div>' +
+      '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
       '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
         '<div id="SeqDisplayTarget"></div>' +
         '<div id="SequenceFragmentInstruction" style="display: block;margin-top: -25px;">' +

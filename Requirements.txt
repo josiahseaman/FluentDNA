@@ -4,7 +4,7 @@
 #wheel==0.24.0
 #cx_Freeze==5.1.1
 
-git+https://github.com/josiahseaman/DNASkittleUtils.git@1.0.10
+git+https://github.com/josiahseaman/DNASkittleUtils.git@1.0.11
 Pillow>=3.2.0
 six==1.10.0
 psutil==4.3.1
