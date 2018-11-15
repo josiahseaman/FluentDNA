@@ -103,7 +103,7 @@ a {
     font-size: 9pt;
 }
 
-#status {
+#status_box {
     margin-top: 20px;
     height: 50px;
     border: 1px dotted #a0a0a0;
@@ -112,7 +112,7 @@ a {
 
 #output {
     border: none;
-    margin: 1em 0em;
+    margin-top: 1em 0em;
 }
 
 #output td {

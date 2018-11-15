@@ -3,12 +3,6 @@
 <head>
     <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
     <title>FluentDNA Visualization Tool: {{title}}</title>
-    <script type='text/javascript' src='./openseadragon.js' ></script>
-    <script type='text/javascript' src='./jquery-1.7.min.js'></script>
-    <script type='text/javascript' src='./openseadragon-scalebar.js' ></script>
-    <script type='text/javascript' src='Biojs.js'></script>
-    <script type='text/javascript' src='Biojs.Sequence.js'></script>
-
     <script type='text/javascript'>
         var fasta_source = {{fasta_source}};
         var originalImageWidth = {{originalImageWidth}};
@@ -18,14 +12,18 @@
         var columnWidthInNucleotides = {{columnWidthInNucleotides}};
         var layout_levels = {{layout_levels}};
         var ContigSpacingJSON = {{ContigSpacingJSON}};
-        var multipart_file = {{multipart_file}};
         var includeDensity = {{includeDensity}};
 
         var ipTotal = {{ipTotal}};
         var direct_data_file_length = {{direct_data_file_length}};
-        var sbegin = '{{sbegin}}';
+        var sbegin = {{sbegin}};
         var send = {{send}};
     </script>
+    <script type='text/javascript' src='./openseadragon.js' ></script>
+    <script type='text/javascript' src='./jquery-1.7.min.js'></script>
+    <script type='text/javascript' src='./openseadragon-scalebar.js' ></script>
+    <script type='text/javascript' src='Biojs.js'></script>
+    <script type='text/javascript' src='Biojs.Sequence.js'></script>
     <script src='./nucleotideNumber.js' type='text/javascript'></script>
     <link rel='stylesheet' type='text/css' href='seadragon.css'/>
 </head>
@@ -49,7 +47,7 @@
 <script type='text/javascript'>
     outputTable();
 </script>
-<div id="status"></div>
+
 <div id="outfile"></div>
 <div class='legend-details'>
     <h3>Notes</h3>

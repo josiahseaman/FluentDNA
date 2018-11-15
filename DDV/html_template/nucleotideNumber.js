@@ -112,7 +112,7 @@ function nucleotide_coordinates_to_sequence_index(index_from_xy){
                 break;
             }
             if (contig.xy_seq_start <= index_from_xy) {// cursor is in nucleotide body
-                index_inside_contig = index_from_xy - contig.xy_seq_start;
+                index_inside_contig = index_from_xy - contig.xy_seq_start + 1;
                 file_coordinates = contig.nuc_seq_start + index_inside_contig;
                 contig_name = contig.name;
                 break;
@@ -159,6 +159,8 @@ function showNucleotideNumber(event, viewer) {
         return;
     }
     var point = viewer.viewport.pointFromPixel(pixel);
+    var position_info = {};
+    var information_to_show = false;
 
     if ((point.x < 0) || (point.x > 1)) {
         nucNumX = "-";
@@ -179,8 +181,8 @@ function showNucleotideNumber(event, viewer) {
     }
 
     if ((nucNumX != "-") && (nucNumY != "-")) {
-        var position_info = tiled_layout_mouse_position(nucNumX, nucNumY);
-        Nucleotide = position_info.file_coordinates;
+        position_info = tiled_layout_mouse_position(nucNumX, nucNumY);
+        information_to_show = $.isNumeric(position_info.file_coordinates)
     }
 
     document.getElementById("Nucleotide").innerHTML = numberWithCommas(Nucleotide);
@@ -188,21 +190,24 @@ function showNucleotideNumber(event, viewer) {
     //show sequence fragment
     if (sequence_data_viewer_initialized) {
         var lineNumber = "-";
-        if ($.isNumeric(Nucleotide)) {
+        if (information_to_show && position_info.index_inside_contig) {
+            Nucleotide = position_info.index_inside_contig;
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
             var start = Math.max(0, (lineNumber - 1) * columnWidthInNucleotides); // not before begin of seq
             var stop = Math.min(ipTotal, (lineNumber + 2) * columnWidthInNucleotides); //+2 = +1 start then + width of column
+            if(lineNumber == 0){ // first line of the contig
+                remainder -= columnWidthInNucleotides;
+            }
             if(cursor_in_a_title){
                 start = Nucleotide - 1;
-                stop = Nucleotide + columnWidthInNucleotides * 3;
+                stop = Nucleotide;
             }
-            theSequence = wholeSequence.substring(start, stop);
-            theSequence = theSequence.replace(/\s+/g, '')
+            theSequence = contigs[position_info.contig_name].substring(start, stop);
+            //theSequence = theSequence.replace(/\s+/g, '')
             //user visible indices start at 1, not 0
-            fragmentid = "Sequence fragment at [" + numberWithCommas(Nucleotide) +
-              "], showing: (" + numberWithCommas(start + 1) +
-              " - " + numberWithCommas(stop) + ")";
+            fragmentid = "'" + position_info.contig_name + "': (" +
+              numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
             visible_seq_obj.setSequence(theSequence, fragmentid);
             visible_seq_obj.setSelection(remainder, remainder);
 
@@ -278,7 +283,7 @@ function read_contigs(sequence_received) {
     for (let contig_s of theSequenceSplit) {
         var lines = contig_s.split(/\r?\n/);
         var title = lines[0]
-        var seq = lines.slice(1).join();
+        var seq = lines.slice(1).join('');
         contigs[title] = seq;
     }
     return contigs
@@ -289,11 +294,11 @@ function initSequence (sequence_received) {
 
     visible_seq_obj = new Biojs.Sequence({
         sequence : "",
-        target : "SequenceFragmentFASTA",
+        target : "SeqDisplayTarget",
         format : 'FASTA',
         columns : {size:100,spacedEach:0} , //TODO: reference layout numbers
         formatSelectorVisible: false,
-        fontSize: '11px',
+        fontSize: '18px',
     });
     sequence_data_viewer_initialized=1;
     visible_seq_obj.clearSequence("");
@@ -310,15 +315,32 @@ addLoadEvent(getSequence);
 
 
 function outputTable() {
-    document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>');
-    document.write("<div id='getSequenceButton'><br /><a onclick='getSequence()'> Fetch Sequence </a></div>");
-    document.write('<div id="base"></div><div id="SequenceFragmentFASTA" style="height:80px;"><div id="SequenceFragmentInstruction">press "x" key using keyboard to copy this fragment to Result Log</div></div>');
-    document.write('<table class="output" style="border: 1px solid #000000;visibility:hidden;display:none;"><tr><th class="name"> </th><th class="value">Pixels</th><th class="value">Points</th></tr>');
-    document.write('<tr><th>Mouse position</th><td id="mousePixels">-</td><td id="mousePoints">-</td></tr><tr><th>X, Y</th><td id="nucleotideNumberX">-</td><td id="nucleotideNumberY">-</td><td></td></tr>');
-    document.write('<tr><th>(X, Y)</th><td id="NucleotideNumberX">-</td><td id="NucleotideNumberY">-</td></tr><tr><th>Column Number</th><td id="ColumnNumber">-</td><td id="ColumnRemainder">-</td></tr>');
-    document.write('<tr><th>Nucleotide Number</th><td id="Nucleotide">-</td><td>-</td></tr><tr><th>Nucleotides in Local Column</th>   <td id="NucleotideY">-</td><td>-</td></tr>');
-    document.write('<tr><th>Position in Column</th><td id="PositionInColumn">-</td><td></td></tr><tr><th>Nucleotides Per Column</th><td id="iNucleotidesPerColumn">-</td><td></td></tr>');
-    document.write('<tr><th>Aspect Ratio</th><td id="aspectRatio">-</td><td></td></tr><tr><th>Viewport dimensions</th><td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr></table>');
+    document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
+      '<div id="getSequenceButton"><br /><a onclick="getSequence()"> Fetch Sequence </a></div>' +
+      '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:160px;">' +
+        '<div id="SeqDisplayTarget"></div>' +
+        '<div id="SequenceFragmentInstruction" style="display: block;margin-top: -25px;">' +
+          'Press "x" key using keyboard to copy this fragment to Result Log</div>' +
+        '<div id="status_box">' +
+          '<span style="font-weight: bolder;color: darkgrey;font-family: sans-serif;">Status: </span>' +
+          '<div id="status"></div>' +
+      '</div>' +
+      '</div>' +
+      '<table class="output" style="border: 1px solid #000000;visibility:hidden;display:none;">' +
+        '<tr><th class="name">' +
+        '</th><th class="value">Pixels</th><th class="value">Points</th></tr>' +
+        '<tr><th>Mouse position</th><td id="mousePixels">-</td><td id="mousePoints">-</td></tr>' +
+        '<tr><th>X, Y</th><td id="nucleotideNumberX">-</td><td id="nucleotideNumberY">-</td><td></td></tr>' +
+        '<tr><th>(X, Y)</th><td id="NucleotideNumberX">-</td><td id="NucleotideNumberY">-</td></tr>' +
+        '<tr><th>Column Number</th><td id="ColumnNumber">-</td><td id="ColumnRemainder">-</td></tr>' +
+        '<tr><th>Nucleotide Number</th><td id="Nucleotide">-</td><td>-</td></tr>' +
+        '<tr><th>Nucleotides in Local Column</th>   <td id="NucleotideY">-</td><td>-</td></tr>' +
+        '<tr><th>Position in Column</th><td id="PositionInColumn">-</td><td></td></tr>' +
+        '<tr><th>Nucleotides Per Column</th><td id="iNucleotidesPerColumn">-</td><td></td></tr>' +
+        '<tr><th>Aspect Ratio</th><td id="aspectRatio">-</td><td></td></tr>' +
+        '<tr><th>Viewport dimensions</th>' +
+        '<td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr>' +
+      '</table>');
 }
 
 
