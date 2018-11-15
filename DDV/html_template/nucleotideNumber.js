@@ -19,7 +19,7 @@ var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
 var fragmentid = "";
 var sequence_data_loaded = 0;
-var sequence_data_viewer_initialized = 0;
+var sequence_data_viewer_initialized = false;
 
 function init_all(){
     /** Iterates through each chromosome container and initializes and OpenSeaDragon
@@ -102,11 +102,13 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
 function nucleotide_coordinates_to_sequence_index(index_from_xy){
     cursor_in_a_title = false;
     var contig_name = "";
+    var contig_index = "";
     var index_inside_contig = 0;
     var file_coordinates = "";
     for (var i = 0; i < ContigSpacingJSON.length; i++) {
         var contig = ContigSpacingJSON[i];
         if (contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
+            contig_index = i;
             if (contig.xy_title_start > index_from_xy) { //we overshot and haven't reached title
                 break;
             }
@@ -124,7 +126,8 @@ function nucleotide_coordinates_to_sequence_index(index_from_xy){
     }
     return {contig_name: contig_name,
         index_inside_contig: index_inside_contig,
-        file_coordinates: file_coordinates};
+        file_coordinates: file_coordinates,
+        contig_index: contig_index};
 }
 
 
@@ -207,16 +210,18 @@ function showNucleotideNumber(event, viewer) {
                 start = Nucleotide - 1;
                 stop = Nucleotide;
             }
-            theSequence = contigs[position_info.contig_name].substring(start, stop);
-            //theSequence = theSequence.replace(/\s+/g, '')
-            //user visible indices start at 1, not 0
-            fragmentid = position_info.contig_name + ": (" +
-              numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
-            visible_seq_obj.setSequence(theSequence, fragmentid);
-            visible_seq_obj.setSelection(remainder, remainder);
+            if(contigs.hasOwnProperty(position_info.contig_name)){
+                theSequence = contigs[position_info.contig_name].substring(start, stop);
+                //theSequence = theSequence.replace(/\s+/g, '')
+                fragmentid = position_info.contig_name + ": (" +
+                  numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
+                visible_seq_obj.setSequence(theSequence, fragmentid);
+                visible_seq_obj.setSelection(remainder, remainder);
 
-            $('#SequenceFragmentInstruction').show();
-
+                $('#SequenceFragmentInstruction').show();
+            }else{
+                getSequence(position_info.contig_index)
+            }
         }
         else {
             visible_seq_obj.clearSequence("");
@@ -298,29 +303,26 @@ function read_contigs(sequence_received) {
     }
     return contigs
 }
-function initSequence (sequence_received) {
-    read_contigs(sequence_received); // TODO: file specific contigs =
-
+function init_sequence_view() {
     visible_seq_obj = new Biojs.Sequence({
-        sequence : "",
-        target : "SeqDisplayTarget",
-        format : 'FASTA',
-        columns : {size:columnWidthInNucleotides,spacedEach:0} ,
+        sequence: "",
+        target: "SeqDisplayTarget",
+        format: 'FASTA',
+        columns: {size: columnWidthInNucleotides, spacedEach: 0},
         formatSelectorVisible: false,
         fontSize: '18px',
     });
-    sequence_data_viewer_initialized=1;
+    sequence_data_viewer_initialized = true;
     visible_seq_obj.clearSequence("");
     $('#SequenceFragmentInstruction').hide();
+}
+function initSequence (sequence_received) {
+    read_contigs(sequence_received); // TODO: file specific contigs =
 }
 
 function processInitSequenceError() {
     //do nothing
 };
-
-addLoadEvent(init_all);
-addLoadEvent(get_all_sequences);
-
 
 function outputTable() {
     document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
@@ -362,3 +364,8 @@ function processError() {
     $("#outfile").prepend("<br />Error.  Connection problem. <div class='resultdivider'></div>");
     $("#status").html("Completed with error." );
 }
+
+addLoadEvent(init_all);
+addLoadEvent(init_sequence_view);  // could be dependent on a button press
+// addLoadEvent(get_all_sequences);
+
