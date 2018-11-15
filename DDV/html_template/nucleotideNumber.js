@@ -20,6 +20,7 @@ var theSequence = "";
 var fragmentid = "";
 var sequence_data_loaded = 0;
 var sequence_data_viewer_initialized = false;
+var file_transfer_in_progress = false;
 
 function init_all(){
     /** Iterates through each chromosome container and initializes and OpenSeaDragon
@@ -282,14 +283,16 @@ function get_all_sequences() {
 
 function getSequence(contig_index) {
     var fasta_path = "chunks/" + fasta_source[0] + "/" + contig_index + ".fa";
-
-    $.ajax({xhr: loading_function,
-        type: "GET",
-        url: fasta_path,
-        contentType: "text/html",
-        success: initSequence,
-        error: processInitSequenceError
-    });
+    if(!file_transfer_in_progress){
+        file_transfer_in_progress = true;
+        $.ajax({xhr: loading_function,
+            type: "GET",
+            url: fasta_path,
+            contentType: "text/html",
+            success: initSequence,
+            error: processInitSequenceError
+        });
+    }
 }
 
 function read_contigs(sequence_received) {
@@ -318,6 +321,7 @@ function init_sequence_view() {
 }
 function initSequence (sequence_received) {
     read_contigs(sequence_received); // TODO: file specific contigs =
+    file_transfer_in_progress = false;
 }
 
 function processInitSequenceError() {

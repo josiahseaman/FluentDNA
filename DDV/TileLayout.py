@@ -248,8 +248,10 @@ class TileLayout(object):
     def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
         bare_file = os.path.basename(fasta)
         fasta_destination = os.path.join(output_folder, bare_file)
-        if extract_contigs or sort_contigs:
+        if not no_webpage:  # these support the webpage
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
+        #also make single file
+        if extract_contigs or sort_contigs:
             length_sum = sum([len(c.seq) for c in self.contigs])
             fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
