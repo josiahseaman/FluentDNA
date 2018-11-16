@@ -262,7 +262,8 @@ function loading_function()
             var percentComplete = (evt.loaded / evt.total) * 100;
             //Do something with download progress
             if (percentComplete < 100) {
-                $("#status").html("<img src='img/loading.gif' /> Loading sequence data: " +
+                $("#status").html("<img src='img/loading.gif' /> Loading sequence data.  " +
+                  "Hover your mouse over the sequence you wish to see: " +
                   parseFloat(percentComplete).toFixed(2) + "% complete");
             }
         }
@@ -325,7 +326,7 @@ function initSequence (sequence_received) {
 }
 
 function processInitSequenceError() {
-    //do nothing
+    file_transfer_in_progress = false;
 };
 
 function outputTable() {

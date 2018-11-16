@@ -58,7 +58,7 @@ class AnnotatedTrackLayout(ParallelLayout):
         """Drawing Annotations labels"""
         if self.genome_processed == self.annotation_phase:
             pass
-        else:
+        else:  # restore annotation layout and print labels
             self.levels = self.each_layout[self.annotation_phase]
             self.genome_processed = 0
             self.read_contigs_and_calc_padding(self.annotation_fasta)

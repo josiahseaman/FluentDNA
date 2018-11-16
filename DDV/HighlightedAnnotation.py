@@ -75,7 +75,7 @@ class HighlightedAnnotation(TileLayout):
         genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
-                                       (255, 255, 255, 0), simple_entry=True)
+                                       (0,0,0, 0), simple_entry=True)
         if self.query_annotation is not None:
             self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
                                        (50, 50, 50, 255), shadows=True)

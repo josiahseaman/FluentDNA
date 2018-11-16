@@ -58,7 +58,7 @@ class TileLayout(object):
                  low_contrast=False, base_width=None, font_name=font_filename, border_width=3):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
-        self.fasta_source = []  # to be added in output_fasta for each file
+        self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
@@ -262,7 +262,7 @@ class TileLayout(object):
             except shutil.SameFileError:
                 pass  # not a problem
 
-        self.fasta_source.append(bare_file)
+        self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
@@ -479,13 +479,13 @@ class TileLayout(object):
             copytree(html_template, output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
-                            "fasta_source": str(self.fasta_source),
+                            "fasta_sources": str(self.fasta_sources),
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": str(self.origin),
                             "ColumnPadding": str(self.levels[2].padding),
                             "columnWidthInNucleotides": str(self.levels[1].chunk_size),
-                            "layout_levels": self.levels_json(),
+                            "layout_levels": self.levels_json(self.levels),
                             "ContigSpacingJSON": self.contig_json(),
                             "includeDensity": 'false',
                             "ipTotal": str(self.image_length),
@@ -554,9 +554,9 @@ class TileLayout(object):
         return "[" + ',\n'.join([str(x) for x in json]) + "]"
 
 
-    def levels_json(self):
+    def levels_json(self, levels):
         json = []
-        for level in self.levels:
+        for level in levels:
             json.append({"modulo": level.modulo, "chunk_size": level.chunk_size,
                          "padding": level.padding, "thickness": level.thickness})
         return str(json)

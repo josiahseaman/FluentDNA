@@ -22,7 +22,7 @@ class ParallelLayout(TileLayout):
         if column_widths is None:  # just copies the TileLayout levels several times
             column_widths = [self.base_width] * n_genomes
 
-        self.each_layout = []  # one layout per genome (or data source)
+        self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
         all_columns_height = self.base_width * 10
         columns = self.levels[2]
         cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
@@ -167,3 +167,6 @@ class ParallelLayout(TileLayout):
         # if total_progress != 0:
         super(ParallelLayout, self).draw_title(total_progress, contig)
 
+    def levels_json(self, ignored):
+        """Include only the last layout, with correct origin"""
+        return super(ParallelLayout, self).levels_json(self.each_layout[-1])
