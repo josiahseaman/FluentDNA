@@ -276,14 +276,14 @@ function loading_function()
 }
 
 function get_all_sequences() {
-    var fasta_path = fasta_source[0];
+    var fasta_path = fasta_sources[0];
     for(let [index, contig] of ContigSpacingJSON.entries()){
         getSequence(0, index); // dispatch one request for each contig
     }
 }
 
 function getSequence(fasta_index, contig_index) {
-    var fasta_path = "chunks/" + fasta_source[fasta_index] + "/" + contig_index + ".fa";
+    var fasta_path = "chunks/" + fasta_sources[fasta_index] + "/" + contig_index + ".fa";
     if(!file_transfer_in_progress){
         file_transfer_in_progress = true;
         $.ajax({xhr: loading_function,
@@ -330,7 +330,8 @@ function processInitSequenceError() {
 };
 
 function outputTable() {
-    document.write('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
+    if (layout_levels.length){
+    $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
       '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
       '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
         '<div id="SeqDisplayTarget"></div>' +
@@ -356,6 +357,10 @@ function outputTable() {
         '<tr><th>Viewport dimensions</th>' +
         '<td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr>' +
       '</table>');
+    }
+    else{//provide sequence download for minimal support
+        //$('#outputContainer').append('');//TODO: sequence download link
+    }
 }
 
 
@@ -370,6 +375,7 @@ function processError() {
     $("#status").html("Completed with error." );
 }
 
+addLoadEvent(outputTable); // Builds HTML
 addLoadEvent(init_all);
 addLoadEvent(init_sequence_view);  // could be dependent on a button press
 // addLoadEvent(get_all_sequences);

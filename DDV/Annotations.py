@@ -18,7 +18,7 @@ class GFF(object):
             = self._import_gff(annotation_file)
 
     def _import_gff(self, annotation_file):
-        assert os.path.isfile(annotation_file)
+        assert os.path.isfile(annotation_file), "File does not exist:" + annotation_file
 
         specimen = None
         gff_version = '2'

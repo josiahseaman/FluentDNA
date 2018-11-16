@@ -208,7 +208,7 @@ class Ideogram(HighlightedAnnotation):
                                           False, '+', canvas, horizontal_centering=True, center_vertical=True,
                                           chop_text=False)
 
-    def levels_json(self):
+    def levels_json(self, ignored):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles
     def contig_json(self):
         return '[]'  # There's no reasonable way to encode mouse position in rectangles
