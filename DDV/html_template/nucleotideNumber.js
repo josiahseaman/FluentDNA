@@ -221,7 +221,7 @@ function showNucleotideNumber(event, viewer) {
 
                 $('#SequenceFragmentInstruction').show();
             }else{
-                getSequence(position_info.contig_index)
+                getSequence(0, position_info.contig_index)
             }
         }
         else {
@@ -278,12 +278,12 @@ function loading_function()
 function get_all_sequences() {
     var fasta_path = fasta_source[0];
     for(let [index, contig] of ContigSpacingJSON.entries()){
-        getSequence(index); // dispatch one request for each contig
+        getSequence(0, index); // dispatch one request for each contig
     }
 }
 
-function getSequence(contig_index) {
-    var fasta_path = "chunks/" + fasta_source[0] + "/" + contig_index + ".fa";
+function getSequence(fasta_index, contig_index) {
+    var fasta_path = "chunks/" + fasta_source[fasta_index] + "/" + contig_index + ".fa";
     if(!file_transfer_in_progress){
         file_transfer_in_progress = true;
         $.ajax({xhr: loading_function,

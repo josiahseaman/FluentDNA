@@ -21,8 +21,6 @@ import os
 import numpy as np
 from functools import reduce
 
-from TileLayout import hex_to_rgb
-
 
 class Ideogram(HighlightedAnnotation):
     def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,

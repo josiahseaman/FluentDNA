@@ -1,12 +1,11 @@
 import math
 from DNASkittleUtils.Contigs import read_contigs
 from itertools import chain
-from  os.path import join, basename
+from os.path import join, basename
 
-from Annotations import find_universal_prefix, extract_gene_name
-from DDV.Annotations import create_fasta_from_annotation, GFF
+from DDV.Annotations import create_fasta_from_annotation, GFF, find_universal_prefix, extract_gene_name
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDVUtils import filter_by_contigs
+from DDV.DDVUtils import filter_by_contigs
 
 
 class AnnotatedTrackLayout(ParallelLayout):

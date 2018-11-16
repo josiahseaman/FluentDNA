@@ -49,7 +49,7 @@ from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, bas
     hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
-from DDV.Ideogram import Ideogram
+# from DDV.Ideogram import Ideogram
 from DDV.HighlightedAnnotation import HighlightedAnnotation
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
@@ -226,16 +226,16 @@ def ddv(args):
     elif args.layout == 'ideogram':
         assert args.radix, "You must provide a --radix argument for Ideograms."
         radix_settings = eval(args.radix)
-        if len(radix_settings) == 4 and \
-            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
-            type(radix_settings[2]) == type(radix_settings[3]) == type(1):
-            layout = Ideogram(radix_settings,
-                              ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
-                              repeat_annotation=args.repeat_annotation,
-                              low_contrast=args.low_contrast, use_titles=args.use_titles)
-            create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
-        else:
-            print("Invalid radix settings.  Follow the example.")
+        # if len(radix_settings) == 4 and \
+        #     type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
+        #     type(radix_settings[2]) == type(radix_settings[3]) == type(1):
+        #     layout = Ideogram(radix_settings,
+        #                       ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
+        #                       repeat_annotation=args.repeat_annotation,
+        #                       low_contrast=args.low_contrast, use_titles=args.use_titles)
+        #     create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
+        # else:
+        #     print("Invalid radix settings.  Follow the example.")
         done(args, args.output_dir)
 
 
