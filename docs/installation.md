@@ -28,7 +28,7 @@ Then open your browser and enter the URL: `http://localhost:8000/`
 To run FluentDNA from your own python script I recommend looking at fluentdna.py for examples such as `create_tile_layout_viz_from_fasta()`
 
 ### Example Commands
-Check out the file [example_DDV_commands.txt](https://github.com/josiahseaman/FluentDNA/docs/example_DDV_commands.txt for more examples.
+Check out the file https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/example_DDV_commands.txt for more examples.
 
 ## Support Contact
 If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
