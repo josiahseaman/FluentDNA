@@ -13,8 +13,9 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
-
-
+#############################################################################
+# IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
+#############################################################################
 print("Setting up Python...")
 
 if getattr(sys, 'frozen', False):
@@ -46,16 +47,18 @@ import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
-    hold_console_for_windows
+    hold_console_for_windows, beep
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.AnnotatedGenome import  AnnotatedGenomeLayout
+from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
+from DDV.Ideogram import Ideogram
+from DDV.HighlightedAnnotation import HighlightedAnnotation
 from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
 from DDV.TileLayout import TileLayout
 from DDV.TransposonLayout import TransposonLayout
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
-
+from DNASkittleUtils.Contigs import write_contigs_to_file, read_contigs
 
 if sys.platform == 'win32':
     OS_DIR = 'windows'
@@ -120,6 +123,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
+    beep()
     hold_console_for_windows()
     sys.exit(0)
 
@@ -133,61 +137,43 @@ def ddv(args):
 
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
-        output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+        layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast)
-        layout.generate_html(output_dir, args.output_name)
+        layout.generate_html(args.output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
-        create_deepzoom_stack(args.image, os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(args.image, os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
-        done(args, output_dir)
+        done(args, args.output_dir)
 
     elif args.layout == "tiled":  # Typical Use Case
         # TODO: allow batch of tiling layout by chromosome
-        if args.quick:
-            output_dir = os.path.dirname(os.path.abspath(args.fasta))  # just place the image next to the fasta
-        else:
-            output_dir = make_output_dir_with_suffix(base_path, '')
-        create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name)
-        done(args, output_dir)
+        create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name)
+        done(args, args.output_dir)
 
-    # ==========TODO: separate views that support batches of chromosomes============= #
-    if args.layout == 'transposon':
+    # ==========TODO: separate views that support batches of contigs============= #
+    elif args.layout == 'transposon':
         layout = TransposonLayout()
-        output_dir = make_output_dir_with_suffix(base_path, '')
-        # if len(args.chromosomes) != 1:
-        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--chromosomes chr12'")
-        layout.process_all_repeats(args.fasta, output_dir, just_the_name(output_dir), args.ref_annotation, args.chromosomes)
+        # if len(args.contigs) != 1:
+        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--contigs chr12'")
+        layout.process_all_repeats(args.fasta, args.output_dir, just_the_name(args.output_dir), args.ref_annotation, args.contigs)
         print("Done with Transposons")
-        done(args, output_dir)
+        done(args, args.output_dir)
 
-    if args.layout == 'alignment':
-        output_dir = make_output_dir_with_suffix(base_path, '')
+    elif args.layout == 'alignment':
         layout = MultipleAlignmentLayout(sort_contigs=args.sort_contigs)
         layout.process_all_alignments(args.fasta,
-                                      output_dir,
+                                      args.output_dir,
                                       args.output_name)
-        if not args.no_webpage:
-            layout.generate_html(output_dir, args.output_name)
-            final_output_location = layout.final_output_location
-            del layout
-            print("Creating Deep Zoom Structure from Generated Image...")
-            create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                                  os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-            print("Done creating Deep Zoom Structure.")
-        else:
-            del layout
+        finish_webpage(args, layout, args.output_name)
         print("Done with Alignments")
-        done(args, output_dir)
+        done(args, args.output_dir)
 
-    if args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
+    elif args.layout == "parallel":  # Parallel genome column layout OR quad comparison columns
         if not args.chain_file:  # life is simple
-            # TODO: allow batch of tiling layout by chromosome
-            # TODO: support drag and drop
-            output_dir = make_output_dir_with_suffix(base_path, '')
-            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, output_dir, args.output_name,
-                                            [args.fasta] + args.extra_fastas)
-            sys.exit(0)
+            # TODO: support drag and drop of multiple files
+            create_parallel_viz_from_fastas(args, len(args.extra_fastas) + 1, args.output_dir,
+                                            args.output_name, [args.fasta] + args.extra_fastas)
+            done(args, args.output_dir)
         else:  # parse chain files, possibly in batch
             chain_parser = ChainParser(chain_name=args.chain_file,
                                        first_source=args.fasta,
@@ -198,22 +184,28 @@ def ddv(args):
                                        no_titles=args.no_titles,
                                        squish_gaps=args.squish_gaps,
                                        show_translocations_only=args.show_translocations_only,
-                                       aligned_only=args.aligned_only)
+                                       aligned_only=args.aligned_only,
+                                       extract_contigs=args.contigs)
             print("Creating Gapped and Unique Fastas from Chain File...")
-            batches = chain_parser.parse_chain(args.chromosomes)
+            batches = chain_parser.parse_chain(args.contigs)
             del chain_parser
             print("Done creating Gapped and Unique.")
-            for batch in batches:  # multiple chromosomes, multiple views
-                create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder,
-                                                args.output_name, batch.fastas)
+            for batch in batches:  # multiple contigs, multiple views
+                create_parallel_viz_from_fastas(args, len(batch.fastas),
+                                                batch.output_folder, batch.output_folder,
+                                                batch.fastas)
             done(args, SERVER_HOME)
+    elif args.layout == "annotation_track":
+        layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
+        layout.render_genome(args.output_dir, args.output_name, args.contigs)
+        finish_webpage(args, layout, args.output_name)
+        done(args, args.output_dir)
     elif args.layout == "annotated":
-        output_dir = make_output_dir_with_suffix(base_path, '')
-        layout = AnnotatedGenomeLayout(args.fasta,
-                                       args.ref_annotation)
-        layout.render_genome(output_dir, args.output_name,)
-        finish_webpage(args, layout, output_dir, args.output_name)
-        done(args, output_dir)
+        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
+        layout.process_file(args.fasta, args.output_dir, args.output_name,
+                            args.no_webpage, args.contigs)
+        finish_webpage(args, layout, args.output_name)
+        done(args, args.output_dir)
 
     elif args.layout == "unique":
         """UniqueOnlyChainParser(chain_name='data\\hg38ToPanTro4.over.chain',
@@ -226,12 +218,29 @@ def ddv(args):
                                                     output_prefix=base_path,
                                                     trial_run=args.trial_run,
                                                     separate_translocations=args.separate_translocations)
-        batches = unique_chain_parser.parse_chain(args.chromosomes)
+        batches = unique_chain_parser.parse_chain(args.contigs)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
-        for batch in batches:
-            create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
+        combine_files(batches, args, args.output_name)
+        # for batch in batches:
+        #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
+
+    elif args.layout == 'ideogram':
+        assert args.radix, "You must provide a --radix argument for Ideograms."
+        radix_settings = eval(args.radix)
+        if len(radix_settings) == 4 and \
+            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
+            type(radix_settings[2]) == type(radix_settings[3]) == type(1):
+            layout = Ideogram(radix_settings,
+                              ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
+                              repeat_annotation=args.repeat_annotation,
+                              low_contrast=args.low_contrast, use_titles=args.use_titles)
+            create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
+        else:
+            print("Invalid radix settings.  Follow the example.")
+        done(args, args.output_dir)
+
 
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
@@ -246,16 +255,13 @@ def ddv(args):
                                         show_translocations_only=args.show_translocations_only,
                                         aligned_only=args.aligned_only)
         print("Creating Aligned Annotations using Chain File...")
-        batches = anno_align.parse_chain(args.chromosomes)
+        batches = anno_align.parse_chain(args.contigs)
         del anno_align
         print("Done creating Gapped Annotations.")
-        for batch in batches:  # multiple chromosomes, multiple views
-            create_parallel_viz_from_fastas(args, len(batch.fastas), batch.output_folder, args.output_name,
+        for batch in batches:  # multiple contigs, multiple views
+            create_parallel_viz_from_fastas(args, len(batch.fastas), args.output_dir, args.output_name,
                                             batch.fastas)
         done(args, SERVER_HOME)
-
-    elif args.layout == "original":
-        raise NotImplementedError("Original layout is not implemented!")
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
@@ -263,50 +269,42 @@ def ddv(args):
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
-    layout.process_file(output_dir, output_name, fastas)
-    final_output_location = layout.final_output_location
-    del layout
-    try:
-        for extra_fasta in fastas:
-            shutil.copy(extra_fasta, os.path.join(output_dir, os.path.basename(extra_fasta)))
-    except shutil.Error:
-        pass  # Same file is not a problem.  shutil.SameFileError is not defined in 2.7
-    print("Done creating Large Image and HTML.")
-    print("Creating Deep Zoom Structure from Generated Image...")
-    create_deepzoom_stack(os.path.join(output_dir, final_output_location),
-                          os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
-    print("Done creating Deep Zoom Structure.")
+    layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
 
-    if args.run_server:
-        run_server(output_dir)
+    finish_webpage(args, layout, output_name)
 
 
 
-def create_tile_layout_viz_from_fasta(args, fasta, output_dir, output_name, layout=None):
+def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
-        layout = TileLayout(use_titles=not args.no_titles, sort_contigs=args.sort_contigs,
+        layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width)
-    layout.process_file(fasta, output_dir, output_name)
-    try:
-        shutil.copy(fasta, os.path.join(output_dir, os.path.basename(fasta)))
-    except shutil.SameFileError:
-        pass  # not a problem
-    finish_webpage(args, layout, output_dir, output_name)
+    layout.process_file(fasta, args.output_dir, output_name, args.no_webpage, args.contigs)
+
+    finish_webpage(args, layout, output_name)
 
 
-def finish_webpage(args, layout, output_dir, output_name):
-    layout_final_output_location = layout.final_output_location
-    print("Done creating Large Image at ", layout_final_output_location)
+def combine_files(batches, args, output_name):
+    from itertools import chain
+    contigs = list(chain(*[read_contigs(batch.fastas[0]) for batch in batches]))
+    fasta_output = output_name + '.fa'
+    write_contigs_to_file(fasta_output, contigs)
+    create_tile_layout_viz_from_fasta(args, fasta_output, output_name)
+
+
+def finish_webpage(args, layout, output_name):
+    final_location = layout.final_output_location
+    print("Done creating Large Image at ", final_location)
     if not args.no_webpage:
-        layout.generate_html(output_dir, output_name)
+        layout.generate_html(args.output_dir, output_name)
         del layout
         print("Creating Deep Zoom Structure from Generated Image...")
-        create_deepzoom_stack(os.path.join(output_dir, layout_final_output_location),
-                              os.path.join(output_dir, 'GeneratedImages', "dzc_output.xml"))
+        create_deepzoom_stack(os.path.join(args.output_dir, final_location),
+                              os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
     else:
-        del layoutz
+        del layout
 
 from gooey import Gooey
 from gooey import GooeyParser
@@ -324,8 +322,10 @@ def main():
               # "The scaffolds will be sorted by length for best layout."
               "Recommend you open large files with 'Windows Photo Viewer'.")
         sys.argv[1] = '--fasta=' + sys.argv[1]
-        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
         sys.argv.append("--quick")
+    if "--quick" in sys.argv:
+        sys.argv.append("--no_webpage")  # don't generate a full webpage (deepzoom is time consuming)
+
         # sys.argv.append("--sort_contigs")
     
     input_files_group = parser.add_argument_group(
@@ -368,9 +368,10 @@ def main():
     basic_options_group.add_argument("-l", "--layout",
                         type=str,
                         help="The type of layout to perform. Will autodetect between Tiled and "
-                        "Parallel. Really only need if you want the Original DDV layout or Unique only layout.",
-                        choices=["tiled", "parallel", "alignment", "annotated",
-                                 "unique", "transposon", "original" ],
+                            "Parallel. Only needed if you want non-default option like 'alignment', "
+                             "'unique' or 'annotation_track'.",
+                        choices=["tiled", "annotated", "ideogram", "alignment", "annotation_track",
+                                 "parallel", "unique", "transposon"],
                         dest="layout")  # Don't set a default so we can do error checking on it later
     input_files_group.add_argument("-x", "--extrafastas",
                         nargs='+',
@@ -446,7 +447,17 @@ def main():
                         dest="query_annotation",
                         widget='FileChooser'
                         )
+    basic_options_group.add_argument("-rp", "--repeat_annotation",
+                        type=str,
+                        help="Path to Annotation File for Repeats which will be shaded.",
+                        dest="repeat_annotation")
 
+    basic_options_group.add_argument("-aw", "--annotation_width",
+                        help="Overrides the default 100 pixel column width for annotations. "
+                        "annotation_width=1 will only sample one pixel per display line, "
+                        "skipping intermediate intervals.  If annotated features are less than"
+                        "base_width / annotation_width bp in length it's possible they won't be visible.",
+                        dest="annotation_width")
     ### Other
     input_files_group.add_argument("-i", "--image",
                         type=str,
@@ -454,6 +465,12 @@ def main():
                              "No layout will be performed if an image is passed in.",
                         dest="image",
                         widget='FileChooser')
+    basic_options_group.add_argument("-rx", "--radix",
+                        type=str,
+                        help="String that is a python literal for the radix settings. "
+                             "x and y radices, and scale\n"
+                             "Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'",
+                        dest="radix")
 
     ### About
     about_group = parser.add_argument_group(
@@ -476,13 +493,26 @@ def main():
     # Errors
     if args.base_width:
         args.base_width = int(args.base_width)
-    if args.layout == "original":
-        parser.error("The 'original' layout is not yet implemented in Python!")  # TODO: Implement the original layout
+    if args.annotation_width:
+        args.annotation_width = int(args.annotation_width)
+
+    #Layout Defaults
     if not args.layout:
-        if args.ref_annotation and args.fasta:
-            args.layout = "annotated"
-        # elif args.ref_annotation:
-        #     args.layout = "annotation_only"
+        if args.extra_fastas:  # separate because unique can use a chain file without extra_fastas
+            args.layout = 'parallel'
+        if args.fasta:
+            if args.radix:
+                args.layout = 'ideogram'
+            elif args.chain_file:
+                if not args.extra_fastas:
+                    args.layout = 'unique'
+            elif args.ref_annotation or args.query_annotation or args.repeat_annotation:
+                args.layout = "annotated"
+            else:
+                args.layout = 'tiled'
+    if args.image and not args.layout:
+        args.layout = "NONE"
+
 
     if args.image and (args.fasta or args.layout or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! "
@@ -499,13 +529,13 @@ def main():
         parser.error("When doing a Parallel, you must at least define 'extrafastas'!")
     # if args.layout and args.layout == 'unique' and args.extra_fastas:
     #     parser.error("For Unique view, you don't need to specify 'extrafastas'.")
-    # if args.chromosomes and not (args.chain_file or args.layout == 'transposon'):
-    #     parser.error("Listing 'Chromosomes' is only relevant when parsing Chain Files or Repeats!")
+    # if args.contigs and not (args.chain_file or args.layout == 'transposon'):
+    #     parser.error("Listing 'contigs' is only relevant when parsing Chain Files or Repeats!")
     # if args.extra_fastas and "parallel" not in args.layout:
     #     parser.error("The 'extrafastas' argument is only used when doing a Parallel layout!")
     if args.chain_file and args.layout not in ["parallel", "unique"]:
         parser.error("The 'chainfile' argument is only used when doing a Parallel or Unique layout!")
-    if args.chain_file and len(args.extra_fastas) > 1:
+    if args.chain_file and args.extra_fastas and len(args.extra_fastas) > 1:
         parser.error("Chaining more than two samples is currently not supported! Please only specify one 'extrafastas' when using a Chain input.")
     if args.layout == "unique" and not args.chain_file:
         parser.error("You must have a 'chainfile' to make a Unique layout!")
@@ -513,13 +543,9 @@ def main():
         parser.error("It just doesn't make sense to ask to show translocations in context while separating them.  You've got to pick one or the other.")
 
     # Set post error checking defaults
-    if not args.image and not args.layout and args.fasta:
-        args.layout = "tiled"
-    if args.image and not args.layout:
-        args.layout = "NONE"
-
-    if not args.chromosomes and args.chain_file and args.layout != 'unique':
-        args.chromosomes = ['chr21']
+    if not args.contigs and args.chain_file and args.layout != 'unique':
+        print("Error: you must list the name of a contig you wish to display for an alignment.\n"
+              "Example: --contigs chrM chrX --chain_file=input.chain.liftover", file=sys.stderr)
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore
@@ -535,6 +561,15 @@ def main():
             args.output_name = os.path.basename(os.path.splitext(either_name)[0])
     if args.output_name:
         args.output_name = args.output_name.strip()
+    args.use_titles = not args.no_titles
+
+    #Output directory: after args.output_name is set
+    SERVER_HOME, base_path = base_directories(args.output_name)
+    if args.quick:
+        args.output_dir = os.path.dirname(
+            os.path.abspath(args.fasta))  # just place the image next to the fasta
+    else:
+        args.output_dir = make_output_dir_with_suffix(base_path, '')
 
     ddv(args)
 
