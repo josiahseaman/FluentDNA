@@ -42,10 +42,11 @@ class Chain(object):
         self.entries.append(ChainEntry(size, gap_query, gap_ref))
 
 
-def chain_file_to_list(chain_name):
+def chain_file_to_list(chain_name, extract_contigs=None):
     """Return a list of Chain objects from a liftover .chain filename"""
     all_chains = []
     new_chain = None
+    skipping_current_chain = False
     with open(chain_name, 'r') as infile:
         for line in infile.readlines():
             if line.startswith('#'):
@@ -53,8 +54,16 @@ def chain_file_to_list(chain_name):
             if line.startswith('chain'):
                 if new_chain is not None:
                     all_chains.append(new_chain)
-                new_chain = Chain(line)
-            else:
+                    new_chain = None
+                current_chain = Chain(line)
+                if extract_contigs is None \
+                        or current_chain.qName in extract_contigs \
+                        or current_chain.tName in extract_contigs:
+                    new_chain = current_chain
+                    skipping_current_chain = False
+                else:
+                    skipping_current_chain = True
+            elif not skipping_current_chain:
                 new_chain.add_entry(line)
     if new_chain is not None:
         all_chains.append(new_chain)

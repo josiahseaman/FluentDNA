@@ -160,9 +160,6 @@ Figure 1 in the paper can be seen at Nucleotide Position 548,505 which correspon
 
 ***
 
-
-
-
 ## History
 This project is a fork of the C# DDV developed at Concordia University.
 https://github.com/photomedia/DDV/
@@ -170,3 +167,6 @@ https://github.com/photomedia/DDV/
 DDV Licence:
 https://github.com/photomedia/DDV/blob/master/DDV-license.txt
 
+
+## Support Contact
+If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.

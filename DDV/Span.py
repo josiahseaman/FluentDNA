@@ -102,6 +102,9 @@ class Span(object):
             else:
                 raise e
 
+    def set_of_points(self):
+        return set(range(self.begin, self.end))
+
 
 
 class AlignedSpans(object):

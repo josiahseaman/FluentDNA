@@ -9,7 +9,6 @@ from PIL import ImageFont
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.TileLayout import TileLayout, font_filename, level_layout_factory
-from DDV.DDVUtils import LayoutLevel
 
 
 class ParallelLayout(TileLayout):
@@ -23,7 +22,7 @@ class ParallelLayout(TileLayout):
         if column_widths is None:  # just copies the TileLayout levels several times
             column_widths = [self.base_width] * n_genomes
 
-        self.each_layout = []  # one layout per genome (or data source)
+        self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
         all_columns_height = self.base_width * 10
         columns = self.levels[2]
         cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
@@ -69,10 +68,12 @@ class ParallelLayout(TileLayout):
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename, extract_contigs)
                 self.draw_nucleotides()
-                self.draw_titles()
+                if index == self.n_genomes -1: #last one
+                    self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
-                self.output_fasta(output_folder, filename, False, extract_contigs)
+                self.output_fasta(output_folder, filename, False, extract_contigs, self.sort_contigs)
+
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
@@ -142,11 +143,12 @@ class ParallelLayout(TileLayout):
         self.palette[gap_char] = background
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         """Parallel Layouts have a special title which describes the first (main) alignment.
         So padding for their title does not need to be included."""
         # Get original values and level
-        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
+        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress,
+                                                                                      next_segment_length)
         # no larger than 1 full column or text will overlap
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size
@@ -165,3 +167,6 @@ class ParallelLayout(TileLayout):
         # if total_progress != 0:
         super(ParallelLayout, self).draw_title(total_progress, contig)
 
+    def levels_json(self, ignored):
+        """Include only the last layout, with correct origin"""
+        return super(ParallelLayout, self).levels_json(self.each_layout[-1])

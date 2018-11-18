@@ -1,7 +1,7 @@
 from DDV import VERSION
 from setuptools import setup, find_packages
 
-utils_ver = '1.0.10'
+utils_ver = '1.0.11'
 setup(
     name='DDV',
     version=VERSION,
@@ -11,6 +11,8 @@ setup(
     license='BSD',
     packages=find_packages(exclude=('build', 'obj', 'www-data')),
     include_package_data=True,
+    package_data={'DDV': ['html_template/*', 'example_data/*',
+                          'html_template/img/*', 'example_data/alignments/*',]},
     scripts=['DDV/fluentdna.py'],
     install_requires=[
         'Pillow>=3.2.0',
@@ -18,6 +20,7 @@ setup(
         'psutil>=4.3.1',
         'blist>=1.3.6',
         'natsort>=5.1.1',
+        'numpy>=1.13.3',
         'DNASkittleUtils>=' + utils_ver,
     ],
     dependency_links=[

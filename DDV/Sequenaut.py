@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from DDV.TileLayout import TileLayout
 from DDV.fluentdna import create_tile_layout_viz_from_fasta
-from DDV.DDVUtils import make_output_dir_with_suffix, base_directories
+from DDV.DDVUtils import make_output_dir_with_suffix, base_directories, interpolate
 
 
 def hasDepth(listLike):
@@ -17,19 +17,6 @@ def hasDepth(listLike):
             listLike[0], "__getitem__")
     except:
         return False
-
-
-def interpolate(A, B, start, end, position):
-    if start == end:
-        return A
-    progress = (position - start) / (end - start)  # progress goes from 0.0 p1  to 1.0 p2
-    inverse = 1.0 - progress
-    sample = A * inverse + B * progress
-    return sample
-
-
-def linspace(start, end, steps):
-    return [interpolate(start, end, 0, steps - 1, i) for i in range(steps)]
 
 
 def countNucleotides(seq, oligomerSize):
@@ -183,11 +170,11 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
 
 
 def run_sequenaut(args):
-    SERVER_HOME, base_path = base_directories(args)
+    SERVER_HOME, base_path = base_directories(args.output_name)
     # TODO: allow batch of tiling layout by chromosome
     output_dir = make_output_dir_with_suffix(base_path, '')
     renderer = Sequenaut(layout=args.layout, oligomer_size=args.oligomer_size, peak=args.peak, baseline=args.baseline, log_scale=not args.linear_scale)
-    create_tile_layout_viz_from_fasta(args, args.fasta, output_dir, args.output_name, renderer)
+    create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, renderer)
     sys.exit(0)
 
 
