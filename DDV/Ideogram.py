@@ -251,3 +251,22 @@ if __name__ == "__main__":
                         os.path.splitext(input.split('_')[-1])[0])
 
     beep(200)
+
+    """
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 14" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_14_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 13" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_13_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 12" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_12_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 11" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_11_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 10" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_10_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 09" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_09_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 08" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_08_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 07" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_07_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 06" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_06_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 05" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_05_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 04" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_04_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 03" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_03_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 02" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_02_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --ref_annotation="D:\Genomes\Malaria\Pfalciparum.noseq_filtered.gff3" --outname="Plasmodium falciparum 3D7 01" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],1,1)" --quick --contigs Pf3D7_01_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --outname="Plasmodium falciparum 3D7 API" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],2,2)" --quick --contigs Pf3D7_API_v3
+    .\FluentDNA.exe --fasta="D:\Genomes\Malaria\PlasmoDB-39_Pfalciparum3D7_Genome.fasta" --outname="Plasmodium falciparum 3D7 Pf_M76611" --radix="([3,3,3,3, 7], [5,3,3,3,3,53],2,2)" --quick --contigs Pf_M76611
+    """

@@ -135,7 +135,7 @@ def ddv(args):
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
-                            low_contrast=args.low_contrast)
+                            low_contrast=args.low_contrast, base_width=args.base_width)
         layout.generate_html(args.output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
@@ -198,7 +198,9 @@ def ddv(args):
         finish_webpage(args, layout, args.output_name)
         done(args, args.output_dir)
     elif args.layout == "annotated":
-        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
+        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
+                                       use_titles=args.use_titles, sort_contigs=args.sort_contigs,
+                                       low_contrast=args.low_contrast, base_width=args.base_width)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)

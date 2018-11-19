@@ -29,7 +29,7 @@ exe = EXE(pyz,
    exclude_binaries=True,
    name='FluentDNA',
    debug=False,
-   strip=False,
+   strip=None, #strip=False,
    upx=True,
    console=True,
    icon='favicon.ico')

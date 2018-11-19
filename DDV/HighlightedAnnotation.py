@@ -72,7 +72,7 @@ class HighlightedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        genic_color = (255, 255, 255, 46)  # faint highlighter for genic regions
+        genic_color = (255, 255, 255, 40)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
                                        (0,0,0, 0), simple_entry=True)
@@ -107,6 +107,8 @@ class HighlightedAnnotation(TileLayout):
 
         if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
             universal_prefix = find_universal_prefix(regions)
+            if not universal_prefix:
+                universal_prefix = 'PF3D7_'
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, label_color, universal_prefix,
                                         use_suppression=simple_entry)  # labels on top
@@ -118,7 +120,7 @@ class HighlightedAnnotation(TileLayout):
         markup_canvas = markup_image.load()
         self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:
-            exon_color = (255, 255, 255, 67)  # white highlighter.  This is less disruptive overall
+            exon_color = (255, 255, 255, 50)  # white highlighter.  This is less disruptive overall
             self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
         if shadows:
             try:
@@ -211,8 +213,8 @@ class HighlightedAnnotation(TileLayout):
 
     def draw_annotation_labels(self, markup_image, annotated_regions, label_color,
                                universal_prefix='', use_suppression=False):
-        """        :type use_suppression: bool supress lines of text that would overlap and crowd
- :type annotated_regions: list(AnnotatedRegion)
+        """:type use_suppression: bool supress lines of text that would overlap and crowd
+           :type annotated_regions: list(AnnotatedRegion)
         """
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
@@ -225,31 +227,35 @@ class HighlightedAnnotation(TileLayout):
             else:
                 last_unsuppressed_progress = region.start
             try:
-                pts = [pt for pt in region.points]
+                if not region.points:
+                    print(extract_gene_name(region), "has empty coordinates.")
+                    break
+                pts = region.points
                 left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
                 top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
 
                 width, height, left, right, top = self.handle_multi_column_annotations(region, left, right,
                                                                                        top, bottom)
-                vertical_label = height > width
-                upper_left = [left, top]
+                if width:  # Some annotations at the edge of columns aren't placable
+                    vertical_label = height > width
+                    upper_left = [left, top]
 
-                # Title orientation and size
-                if vertical_label:
-                    width, height = height, width  # swap
+                    # Title orientation and size
+                    if vertical_label:
+                        width, height = height, width  # swap
 
-                font_size_by_width  = max(9, int((min(3000, width) * 0.09)))  # found eq with two reference points
-                font_size_by_height = max(9, int((min(3000, height * 18) * 0.09)))
-                if height <= 244: # 398580bp = 1900 width, 243 height
-                    font_size_by_height = min(font_size_by_height, int(1900 * .09))  # 171 max font size in one fiber
-                font_size = min(font_size_by_width, font_size_by_height)
-                if height < 11:
-                    height = 11  # don't make the area so small it clips the text
-                    upper_left[1] -= 2
+                    font_size_by_width  = max(9, int((min(3000, width) * 0.09)))  # found eq with two reference points
+                    font_size_by_height = max(9, int((min(3000, height * 18) * 0.09)))
+                    if height <= 244: # 398580bp = 1900 width, 243 height
+                        font_size_by_height = min(font_size_by_height, int(1900 * .09))  # 171 max font size in one fiber
+                    font_size = min(font_size_by_width, font_size_by_height)
+                    if height < 11:
+                        height = 11  # don't make the area so small it clips the text
+                        upper_left[1] -= 2
 
-                self.write_label(extract_gene_name(region, universal_prefix), width, height, font_size, 18,
-                                 upper_left, vertical_label, region.strand, markup_image,
-                                 label_color=label_color)
+                    self.write_label(extract_gene_name(region, universal_prefix), width, height,
+                                     font_size, 18, upper_left, vertical_label, region.strand,
+                                     markup_image, label_color=label_color)
             except BaseException as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
@@ -259,10 +265,13 @@ class HighlightedAnnotation(TileLayout):
             median_point = len(region.points) // 2 + min(region.start, region.end)
             s = median_point // self.base_width * self.base_width  # beginning of the line holding median
             left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
-            right = self.position_on_screen(s + self.base_width - 1)[0]  # end of one line
+            right = self.position_on_screen(s + self.base_width - 2)[0]  # end of one line
             filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
-            top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
-            height = len(filtered) // self.base_width
+            if filtered:
+                top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
+                height = min(1, len(filtered) // self.base_width)
+            else:
+                return 0, 0, left, right, top
         else:
             height = len(region.points) // self.base_width
         width = self.base_width

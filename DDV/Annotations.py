@@ -36,7 +36,7 @@ class GFF(object):
                     if "gff-version" in line:
                         gff_version = line.split()[1]
                         if int(gff_version) != '2':
-                            print("WARNING: Expecting GFF Version 2, not  %s!" % gff_version)
+                            print("WARNING: GFF3 entries for gene and mRNA with different names may cause overlapping labels!")
                     elif "genome-build" in line:
                         specimen = line.split()[1]
                     elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
