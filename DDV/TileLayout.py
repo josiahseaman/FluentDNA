@@ -8,6 +8,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 
+import sys
 from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
@@ -51,11 +52,24 @@ def level_layout_factory(modulos, padding=None):
     return levels
 
 
+def parse_custom_layout(custom_layout):
+    if custom_layout is not None:
+        custom = eval(custom_layout)
+        if len(custom) == 2 and hasattr(custom[0], '__iter__') and hasattr(custom[1], '__iter__'):
+            modulos, padding = custom
+            if all([type(i) == type(7) for i in modulos + padding]) and \
+                            len(modulos) == len(padding):
+                return modulos, padding
+        print('Custom layout must be formatted as two integer lists of euqal length.\n'
+                  'For example: --custom_layout="([10,100,100,10,3,999], [0,0,0,3,18,108,200])"', file=sys.stderr)
+    return False, False
+
 
 class TileLayout(object):
 
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None, font_name=font_filename, border_width=3):
+                 low_contrast=False, base_width=None, font_name=font_filename, border_width=3,
+                 custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.fasta_sources = []  # to be added in output_fasta for each file
@@ -66,6 +80,14 @@ class TileLayout(object):
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         self.base_width = base_width if base_width is not None else 100
+        modulos, padding = parse_custom_layout(custom_layout)
+        if modulos:
+            self.base_width = modulos[0]  # custom layout will override base_width
+        else:  # default layout
+            modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
+            padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+        self.levels = level_layout_factory(modulos, padding=padding)
+
         self.title_skip_padding = self.base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
@@ -83,10 +105,6 @@ class TileLayout(object):
         self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
         self.image_length = 0
-
-        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
-        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
-        self.levels = level_layout_factory(modulos, padding=padding)
 
         self.tile_label_size = self.levels[3].chunk_size
         self.border_width = border_width

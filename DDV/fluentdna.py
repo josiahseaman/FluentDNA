@@ -135,7 +135,8 @@ def ddv(args):
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
-                            low_contrast=args.low_contrast, base_width=args.base_width)
+                            low_contrast=args.low_contrast, base_width=args.base_width,
+                            custom_layout=args.custom_layout)
         layout.generate_html(args.output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
@@ -200,7 +201,8 @@ def ddv(args):
     elif args.layout == "annotated":
         layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
                                        use_titles=args.use_titles, sort_contigs=args.sort_contigs,
-                                       low_contrast=args.low_contrast, base_width=args.base_width)
+                                       low_contrast=args.low_contrast, base_width=args.base_width,
+                                       custom_layout=args.custom_layout)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)
@@ -278,7 +280,8 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
     print("Creating Large Image from Input Fasta...")
     if layout is None:
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
-                            low_contrast=args.low_contrast, base_width=args.base_width)
+                            low_contrast=args.low_contrast, base_width=args.base_width,
+                            custom_layout=args.custom_layout)
     layout.process_file(fasta, args.output_dir, output_name, args.no_webpage, args.contigs)
 
     finish_webpage(args, layout, output_name)
@@ -451,6 +454,12 @@ def main():
                              "x and y radices, and scale\n"
                              "Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'",
                         dest="radix")
+    parser.add_argument("-cl", "--custom_layout",
+                        type=str,
+                        help='Changes the layout based on ([number of repeating units], [padding between units])'
+                             'Custom layout must be formatted as two integer lists of euqal length.\n'
+                             'For example: --custom_layout="([10,100,100,10,3,999], [0,0,0,3,18,108])"',
+                        dest="custom_layout")
     parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
