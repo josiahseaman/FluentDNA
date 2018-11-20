@@ -1,8 +1,13 @@
-# On Linux Systems, after installation, DDV2 will be on your path and you can call the following commands from a terminal.
+Commands for the pre-packaged executable releases can be found in Test_suite_end_to_end.bat.
+This file contains example of how you can use FluentDNA as a python package.  In most cases,
+you'll need to provide a full path to fluentdna.py and the example_data/ directory in your
+python site-pacakages.
+
+
+# On Linux Systems, after installation, FluentDNA will be on your path and you can call the following commands from a terminal.
 # Note that if you installed FluentDNA in a virtual environment, you will need to activate that first.
 
 fluentdna.py --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
-fluentdna.py --fasta="data/break_996.fa" --layout=transposon
 fluentdna.py --runserver
 fluentdna.py "data/phiX.fa"
 

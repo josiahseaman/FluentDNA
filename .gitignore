@@ -1,11 +1,21 @@
 # Project specific ignores
+.ipynb_checkpoints/
+build/
+current_release/
+dist/
+env/
+env365/
+install_test/
+release/
 www-data/to_process
 www-data/dnadata
 build.bat
 release.bat
 scraps/
 env_fresh/
-*.chain
+DDV/data/
+DDV/www-data/
+
 
 # Created by .ignore support plugin (hsz.mobi)
 *.pyc
