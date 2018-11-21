@@ -27,24 +27,24 @@ class ParallelLayout(TileLayout):
         columns = self.levels[2]
         cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
         cluster_width += columns.padding * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = floor(10600 / cluster_width)
+        column_clusters_per_mega_row = 10600 // cluster_width
 
+        p = 6  # padding_between_layouts
         for nth_genome in range(n_genomes):
             standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
-            standard_step_pad = cluster_width - standard_modulos[0] + 6
-            standard_padding = [0, 0, standard_step_pad, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
-            self.each_layout.append(level_layout_factory(standard_modulos, standard_padding))
+            standard_step_pad = cluster_width - standard_modulos[0] + p
+            standard_padding = [0, 0, standard_step_pad, p*3, p*(3**2), p*(3**3), p*(3**4)]
+            # steps inside a column bundle, not exactly the same as bundles steps
+            thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
+            origin = (sum(thicknesses), 0)
+            self.each_layout.append(level_layout_factory(standard_modulos, standard_padding, origin))
 
         self.levels = self.each_layout[0]
-
-        # steps inside a column bundle, not exactly the same as bundles steps
-        thicknesses = [self.each_layout[i][0].modulo + 6 for i in range(n_genomes)]
-        self.column_offsets = [sum(thicknesses[:i]) for i in range(n_genomes)]
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
         self.using_background_colors = False
-        self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
+        self.origin = [p, self.levels[3].thickness + p]  # start with one row for a title, but not subsequent rows
         self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
 

@@ -32,9 +32,11 @@ class AnnotatedTrackLayout(ParallelLayout):
                                      annotation_width=self.annotation_width,
                                      base_width=self.base_width)
         super(AnnotatedTrackLayout, self).process_file(output_folder,
-                                                       output_file_name=output_file_name,
-                                                       fasta_files=[self.annotation_fasta, self.fasta_file],
-                                                       no_webpage=False, extract_contigs=extract_contigs)
+               output_file_name=output_file_name,
+               fasta_files=[self.annotation_fasta, self.fasta_file],
+               no_webpage=False, extract_contigs=extract_contigs)
+        if self.annotation_phase == 0:
+            self.fasta_sources = self.fasta_sources[1:]  # drop annotation fasta
 
     def changes_per_genome(self):
         self.levels = self.each_layout[self.genome_processed]

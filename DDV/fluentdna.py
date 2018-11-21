@@ -16,7 +16,7 @@ import sys
 #############################################################################
 # IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
 #############################################################################
-print("Setting up Python...")
+# print("Setting up Python...")
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)

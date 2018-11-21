@@ -34,9 +34,21 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
-def level_layout_factory(modulos, padding=None):
-    if padding is None:
-        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+class LayoutFrame(list):
+    """Container class for the origin and LayoutLevels.  There should be one
+     LayoutFrame per FASTA source (TileLayout.fasta_sources).
+     In every other way this will act like a list containing only the levels."""
+    def __init__(self, origin, levels):
+        self.origin = origin
+        self.levels = levels
+        super(LayoutFrame, self).__init__(self.levels)
+
+    def to_json(self):
+        return str({"origin": self.origin,
+                    "levels": self.levels})
+
+
+def level_layout_factory(modulos, padding, origin):
     # noinspection PyListCreation
     levels = [
         LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
@@ -44,16 +56,11 @@ def level_layout_factory(modulos, padding=None):
     ]
     for i in range(2, len(modulos)):
         levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
-    # levels.append(LayoutLevel("RowInTile", modulos[3], levels=levels))  # [3]
-    # levels.append(LayoutLevel("TileColumn", modulos[4], levels=levels))  # [4]
-    # levels.append(LayoutLevel("TileRow", modulos[5], levels=levels))  # [5]
-    # levels.append(LayoutLevel("PageColumn", modulos[6], levels=levels))  # [6]
-    return levels
+    return LayoutFrame(origin, levels)
 
 
 
 class TileLayout(object):
-
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
                  low_contrast=False, base_width=None, font_name=font_filename, border_width=3):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
@@ -86,7 +93,7 @@ class TileLayout(object):
 
         modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
         padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
-        self.levels = level_layout_factory(modulos, padding=padding)
+        self.levels = level_layout_factory(modulos, padding)
 
         self.tile_label_size = self.levels[3].chunk_size
         self.border_width = border_width
