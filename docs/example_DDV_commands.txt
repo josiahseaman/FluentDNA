@@ -20,7 +20,6 @@ fluentydna.py --fasta="example_data/gnetum_sample.fa" --outname="Gnetum montanum
 #    and change the path to the DDV2 script to match the path to your new environment location.
 
 python3 DRIVE:\\python34\Lib\site-packages\DDV\fluentdna.py --fasta="data/BATG-0.5__mitochondrion.fa" --outname="Multipart fasta test"
-python3 DRIVE:\\python34\Lib\site-packages\DDV\fluentdna.py --fasta="data/break_996.fa" --layout=transposon
 python3 DRIVE:\\python34\Lib\site-packages\DDV\fluentdna.py --runserver
 python3 DRIVE:\\python34\Lib\site-packages\DDV\fluentdna.py "data/phiX.fa"
 

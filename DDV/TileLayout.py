@@ -8,13 +8,15 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 
+import sys
 from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
 
 from DDV import gap_char
-from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette, \
+from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
     make_output_dir_with_suffix, filter_by_contigs
+from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory
 
 small_title_bp = 10000
 font_filename = "Arial.ttf"
@@ -32,31 +34,6 @@ except IOError:
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
-
-
-class LayoutFrame(list):
-    """Container class for the origin and LayoutLevels.  There should be one
-     LayoutFrame per FASTA source (TileLayout.fasta_sources).
-     In every other way this will act like a list containing only the levels."""
-    def __init__(self, origin, levels):
-        self.origin = origin
-        self.levels = levels
-        super(LayoutFrame, self).__init__(self.levels)
-
-    def to_json(self):
-        return str({"origin": self.origin,
-                    "levels": self.levels})
-
-
-def level_layout_factory(modulos, padding, origin):
-    # noinspection PyListCreation
-    levels = [
-        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
-        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
-    ]
-    for i in range(2, len(modulos)):
-        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
-    return LayoutFrame(origin, levels)
 
 
 
@@ -89,16 +66,18 @@ class TileLayout(object):
         self.pixels = None
         self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
+        self.contig_memory = []
         self.image_length = 0
 
         modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
         padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
-        self.levels = level_layout_factory(modulos, padding)
+        self.border_width = border_width
+        origin = [max(self.border_width, padding[2]),
+                  max(self.border_width, padding[2])]
+        self.each_layout = [level_layout_factory(modulos, padding, origin)]
+        self.i_layout = 0
 
         self.tile_label_size = self.levels[3].chunk_size
-        self.border_width = border_width
-        self.origin = [max(self.border_width, self.levels[2].padding),
-                       max(self.border_width, self.levels[2].padding)]
         if self.use_fat_headers:
             self.enable_fat_headers()
 
@@ -140,8 +119,13 @@ class TileLayout(object):
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
+    @property
+    def levels(self):
+        return self.each_layout[self.i_layout]
 
-
+    @levels.setter
+    def levels(self, val):
+        self.each_layout[self.i_layout] = val
 
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
@@ -185,7 +169,7 @@ class TileLayout(object):
             self.levels = self.levels[:6]
             self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
             self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
-            self.origin[1] += self.levels[5].padding  # padding comes before, not after
+            self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name,
@@ -257,17 +241,18 @@ class TileLayout(object):
         fasta_destination = os.path.join(output_folder, bare_file)
         if not no_webpage:  # these support the webpage
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
+            self.remember_contig_spacing()
         #also make single file
         if extract_contigs or sort_contigs:
             length_sum = sum([len(c.seq) for c in self.contigs])
             fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
         else:
-            try:
-                if not no_webpage:
+            if not no_webpage:
+                try:
                     shutil.copy(fasta, fasta_destination)
-            except shutil.SameFileError:
-                pass  # not a problem
+                except shutil.SameFileError:
+                    pass  # not a problem
 
         self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
@@ -373,7 +358,7 @@ class TileLayout(object):
     def position_on_screen(self, progress):
         # column padding for various markup = self.levels[2].padding
         xy = self.relative_position(progress)
-        return (xy[0] + self.origin[0], xy[1] + self.origin[1])
+        return (xy[0] + self.levels.origin[0], xy[1] + self.levels.origin[1])
 
 
     def draw_pixel(self, character, x, y):
@@ -470,11 +455,11 @@ class TileLayout(object):
             if coordinate_in_chunk > 1:
                 # not cumulative, just take the max size for either x or y
                 width_height[part] = max(width_height[part], level.thickness * coordinate_in_chunk)
-        width_height = [sum(x) for x in zip(width_height, self.origin)]  # , [self.levels[2].padding] * 2
+        width_height = [sum(x) for x in zip(width_height, self.levels.origin)]  # , [self.levels[2].padding] * 2
         width_height[0] += self.levels[2].padding   # add column padding to both sides
         width_height[1] += self.levels[2].padding   # column padding used as a proxy for vertical padding
-        width_height[0] += self.origin[0]  # add in origin offset
-        width_height[1] += self.origin[1]
+        width_height[0] += self.levels.origin[0]  # add in origin offset
+        width_height[1] += self.levels.origin[1]
         return int(width_height[0]), int(width_height[1])
 
 
@@ -487,13 +472,13 @@ class TileLayout(object):
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
+                            "each_layout": self.all_layouts_json(),
+                            "ContigSpacingJSON": self.contig_json(),
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
-                            "image_origin": str(self.origin),
+                            "image_origin": '[0,0]',
                             "ColumnPadding": str(self.levels[2].padding),
                             "columnWidthInNucleotides": str(self.levels[1].chunk_size),
-                            "layout_levels": self.levels_json(self.levels),
-                            "ContigSpacingJSON": self.contig_json(),
                             "includeDensity": 'false',
                             "ipTotal": str(self.image_length),
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
@@ -557,16 +542,16 @@ class TileLayout(object):
         return json
 
     def contig_json(self):
-        json = self.contig_struct()
-        return "[" + ',\n'.join([str(x) for x in json]) + "]"
-
-
-    def levels_json(self, levels):
+        """This method 100% relies on remember_contig_spacing() being called beforehand,
+        typically because output_fasta() was called for a webpage"""
         json = []
-        for level in levels:
-            json.append({"modulo": level.modulo, "chunk_size": level.chunk_size,
-                         "padding": level.padding, "thickness": level.thickness})
-        return str(json)
+        for source in self.contig_memory:  # all files that have been processed
+            json.append([x for x in source])  # ',\n'.join(
+        if not json:
+            print("Warning: no sequence position data was stored for the webpage.", file=sys.stderr)
+        contigs_per_file = str(json)
+        return contigs_per_file
+
 
     def get_packed_coordinates(self):
         """An attempted speed up for draw_nucleotides() that was the same speed.  In draw_nucleotides() the
@@ -598,6 +583,15 @@ class TileLayout(object):
 
     def additional_html_content(self, html_content):
         return {}  # override in children
+
+    def all_layouts_json(self):
+        records = []
+        for i, layout in enumerate(self.each_layout):
+            records.append(layout.to_json())
+        return str(records)
+
+    def remember_contig_spacing(self):
+        self.contig_memory.append(self.contig_struct())
 
 
 def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):

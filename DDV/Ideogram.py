@@ -100,7 +100,7 @@ class Ideogram(HighlightedAnnotation):
             y = int(curr_pos[0])
             curr_pos[place % 2] += parities[place // 2, place % 2]
             try:
-                self.draw_pixel(next(seq_iter), x + self.origin[0], y + self.origin[1])
+                self.draw_pixel(next(seq_iter), x + self.levels.origin[0], y + self.levels.origin[1])
             except StopIteration:
                 break  # reached end of sequence
             except IndexError:
@@ -126,8 +126,8 @@ class Ideogram(HighlightedAnnotation):
             prevprev_pos[:] = prev_pos[:]
             prev_pos[:] = curr_pos[:]
             # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * x_scale + self.origin[0])
-            y = int(prev_pos[0] * y_scale + self.origin[1])
+            x = int(prev_pos[1] * x_scale + self.levels.origin[0])
+            y = int(prev_pos[0] * y_scale + self.levels.origin[1])
             if points_file:
                 print("{} {}".format(x, y), file=points_file)
             curr_pos[place % 2] += parities[place // 2, place % 2]
@@ -166,7 +166,7 @@ class Ideogram(HighlightedAnnotation):
         """WARNING: This will not work until after self.draw_loop_optimized
          has populated self.point_mapping"""
         x, y = self.point_mapping[progress]
-        return x + self.origin[0], y + self.origin[1]
+        return x + self.levels.origin[0], y + self.levels.origin[1]
 
     def relative_position(self, progress):
         return self.point_mapping[progress]
@@ -182,10 +182,10 @@ class Ideogram(HighlightedAnnotation):
         n_coils = np.ceil(image_length / nucleotide_width )
         y_needed = int(np.ceil(n_coils / y_body))
         self.y_radices[-1] = y_needed
-        width = nucleotide_width * self.x_scale + self.origin[0] * 2
+        width = nucleotide_width * self.x_scale + self.levels.origin[0] * 2
         padding_per_coil = 6
         nuc_height = reduce(int.__mul__, self.y_radices) + padding_per_coil * y_needed
-        height = nuc_height * self.y_scale + self.origin[1]*2 + 10
+        height = nuc_height * self.y_scale + self.levels.origin[1]*2 + 10
 
         if self.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
             self.y_radices[-1] += 1

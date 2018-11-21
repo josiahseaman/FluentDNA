@@ -35,11 +35,9 @@ class AnnotatedTrackLayout(ParallelLayout):
                output_file_name=output_file_name,
                fasta_files=[self.annotation_fasta, self.fasta_file],
                no_webpage=False, extract_contigs=extract_contigs)
-        if self.annotation_phase == 0:
-            self.fasta_sources = self.fasta_sources[1:]  # drop annotation fasta
 
     def changes_per_genome(self):
-        self.levels = self.each_layout[self.genome_processed]
+        super(AnnotatedTrackLayout, self).changes_per_genome()
         self.activate_high_contrast_colors()
         if self.genome_processed == self.annotation_phase:  # Use softer colors for annotations
             self.activate_natural_colors()
@@ -60,7 +58,7 @@ class AnnotatedTrackLayout(ParallelLayout):
         if self.genome_processed == self.annotation_phase:
             pass
         else:  # restore annotation layout and print labels
-            self.levels = self.each_layout[self.annotation_phase]
+            self.i_layout = self.annotation_phase
             self.genome_processed = 0
             self.read_contigs_and_calc_padding(self.annotation_fasta)
             self.draw_annotation_labels()
@@ -100,7 +98,6 @@ class AnnotatedTrackLayout(ParallelLayout):
                         height = max(min_height, bottom_right[1] - upper_left[1])
                         self.write_title(name, width, height, font_size, title_lines, title_width, upper_left,
                                          False, self.image)
-
         print("Done Drawing annotation labels")
 
     def additional_html_content(self, html_content):

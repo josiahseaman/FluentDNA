@@ -86,7 +86,7 @@ class MultipleAlignmentLayout(TransposonLayout):
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
-        self.origin[1] += self.levels[5].padding  # One full Row of padding for Title
+        self.levels.origin[1] += self.levels[5].padding  # One full Row of padding for Title
         start_time = datetime.now()
         self.translate_gapped_fastas_to_contigs(input_fasta_folder)
         print("Converted contigs :", datetime.now() - start_time)

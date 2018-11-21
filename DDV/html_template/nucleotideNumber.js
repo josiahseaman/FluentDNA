@@ -100,14 +100,14 @@ function classic_layout_mouse_position(nucNumX, nucNumY) {
     return Nucleotide;
 }
 
-function nucleotide_coordinates_to_sequence_index(index_from_xy){
+function nucleotide_coordinates_to_sequence_index(index_from_xy, source_index){
     cursor_in_a_title = false;
     var contig_name = "";
     var contig_index = "";
     var index_inside_contig = 0;
     var file_coordinates = "";
-    for (var i = 0; i < ContigSpacingJSON.length; i++) {
-        var contig = ContigSpacingJSON[i];
+    for (var i = 0; i < ContigSpacingJSON[source_index].length; i++) {
+        var contig = ContigSpacingJSON[source_index][i];
         if (contig.xy_seq_end > index_from_xy) { // we're in range of the right contig
             contig_index = i;
             if (contig.xy_title_start > index_from_xy) { //we overshot and haven't reached title
@@ -128,12 +128,13 @@ function nucleotide_coordinates_to_sequence_index(index_from_xy){
     return {contig_name: contig_name,
         index_inside_contig: index_inside_contig,
         file_coordinates: file_coordinates,
-        contig_index: contig_index};
+        contig_index: contig_index,
+        fasta_index: source_index};//so we can getSequence() the right file
 }
 
 
-function tiled_layout_mouse_position(nucNumX, nucNumY) {
-    //global variable layout_levels set by Form1.cs
+function tiled_layout_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
+    //global variable each_layout set by index.html and python generate_html()
     var index_from_xy = 0;
     var xy_remaining = [nucNumX, nucNumY];
     for (var i = layout_levels.length - 1; i >= 0; i--) {
@@ -149,7 +150,7 @@ function tiled_layout_mouse_position(nucNumX, nucNumY) {
             return "";//check for invalid coordinate (margins)
         }
     }
-    var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy);
+    var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy, source_index);
     return position_info;
 }
 
@@ -185,16 +186,25 @@ function showNucleotideNumber(event, viewer) {
     }
 
     if ((nucNumX != "-") && (nucNumY != "-")) {
-        position_info = tiled_layout_mouse_position(nucNumX, nucNumY);
-        information_to_show = $.isNumeric(position_info.file_coordinates)
+        for (var i = 0; i < each_layout.length; i++) {
+            var relX = nucNumX - each_layout[i].origin[0]
+            var relY = nucNumY - each_layout[i].origin[1]
+            if (relX > -1 && relY > -1){
+                position_info = tiled_layout_mouse_position(relX, relY, each_layout[i].levels, i);
+                information_to_show = $.isNumeric(position_info.file_coordinates)
+                if(information_to_show){
+                    break;
+                }
+            }
+        }
     }
 
     var display = information_to_show ? position_info.index_inside_contig : "-";
     if(cursor_in_a_title){
         display = position_info.contig_name;
+    }else{
+        document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
     }
-    document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
-
     //show sequence fragment
     if (sequence_data_viewer_initialized) {
         var lineNumber = "";
@@ -203,7 +213,7 @@ function showNucleotideNumber(event, viewer) {
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
             var start = Math.max(0, (lineNumber - 1) * columnWidthInNucleotides); // not before begin of seq
-            var stop = Math.min(ipTotal, (lineNumber + 2) * columnWidthInNucleotides); //+2 = +1 start then + width of column
+            var stop = Math.max(start, (lineNumber + 2) * columnWidthInNucleotides); //+2 = +1 start then + width of column
             if(lineNumber == 0){ // first line of the contig
                 remainder -= columnWidthInNucleotides;
             }
@@ -221,7 +231,7 @@ function showNucleotideNumber(event, viewer) {
 
                 $('#SequenceFragmentInstruction').show();
             }else{
-                getSequence(0, position_info.contig_index)
+                getSequence(position_info.fasta_index, position_info.contig_index)
             }
         }
         else {
@@ -330,7 +340,7 @@ function processInitSequenceError() {
 };
 
 function outputTable() {
-    if (layout_levels.length){
+    if (each_layout.length){
     $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
       '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
       '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
