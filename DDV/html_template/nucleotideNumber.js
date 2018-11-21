@@ -5,8 +5,6 @@ var cursor_in_a_title = false;
 var ColumnNumber = 0;
 var ColumnRemainder = "";
 var PositionInColumn = "";
-var iNucleotidesPerColumn = columnWidthInNucleotides * originalImageHeight;
-var ColumnWidth = ColumnPadding + columnWidthInNucleotides;
 var originalAspectRatio = originalImageHeight / originalImageWidth;
 var Nucleotide = "";
 var NucleotideY = "-";
@@ -83,31 +81,6 @@ function init(container_id, source_folder) {
 
 function numberWithCommas(x) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function classic_layout_mouse_position(nucNumX, nucNumY) {
-    var Nucleotide = "";
-
-    ColumnNumber = Math.floor(nucNumX / ColumnWidth);
-    ColumnRemainder = nucNumX % ColumnWidth;
-
-    PositionInColumn = ColumnRemainder + 1;
-    NucleotideY = columnWidthInNucleotides * nucNumY;
-
-    if ((ColumnRemainder <= ColumnWidth) && (ColumnRemainder >= columnWidthInNucleotides )) {
-        ColumnNumber = "";
-        PositionInColumn = "";
-        pointerStatus = "Outside of Image (Inbetween Columns)";
-    }
-    else {
-        Nucleotide = iNucleotidesPerColumn * ColumnNumber + NucleotideY + PositionInColumn;
-        if (Nucleotide > ipTotal) {
-            //End of Sequence
-            Nucleotide = "";
-        }
-
-    }
-    return Nucleotide;
 }
 
 function nucleotide_coordinates_to_sequence_index(index_from_xy, source_index){
@@ -219,6 +192,7 @@ function showNucleotideNumber(event, viewer) {
     if (sequence_data_viewer_initialized) {
         var lineNumber = "";
         if (information_to_show && position_info.index_inside_contig) {
+            var columnWidthInNucleotides = each_layout[position_info.fasta_index].levels[0].modulo
             Nucleotide = position_info.index_inside_contig;
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
@@ -236,6 +210,8 @@ function showNucleotideNumber(event, viewer) {
                 //theSequence = theSequence.replace(/\s+/g, '')
                 fragmentid = position_info.contig_name + ": (" +
                   numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
+                //#62 BioJS sequence display dynamically changes to match the number of columns in the current layout
+                visible_seq_obj.setNumCols(columnWidthInNucleotides);
                 visible_seq_obj.setSequence(theSequence, fragmentid);
                 visible_seq_obj.setSelection(remainder, remainder);
 
@@ -372,7 +348,6 @@ function outputTable() {
         '<tr><th>Nucleotide Number</th><td id="Nucleotide">-</td><td>-</td></tr>' +
         '<tr><th>Nucleotides in Local Column</th>   <td id="NucleotideY">-</td><td>-</td></tr>' +
         '<tr><th>Position in Column</th><td id="PositionInColumn">-</td><td></td></tr>' +
-        '<tr><th>Nucleotides Per Column</th><td id="iNucleotidesPerColumn">-</td><td></td></tr>' +
         '<tr><th>Aspect Ratio</th><td id="aspectRatio">-</td><td></td></tr>' +
         '<tr><th>Viewport dimensions</th>' +
         '<td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr>' +

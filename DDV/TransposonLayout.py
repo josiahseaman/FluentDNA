@@ -18,8 +18,8 @@ from DDV import gap_char
 
 class TransposonLayout(TileLayout):
     def __init__(self, **kwargs):
-        print("Warning: Transposon Layout is an experimental feature not currently supported.",
-              file=sys.stderr)
+        # print("Warning: Transposon Layout is an experimental feature not currently supported.",
+        #       file=sys.stderr)
         super(TransposonLayout, self).__init__(**kwargs)
         self.using_mixed_widths = False
         self.repeat_entries = None
