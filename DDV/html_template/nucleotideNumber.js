@@ -13,7 +13,17 @@ var NucleotideY = "-";
 var nucNumX = 0;
 var nucNumY = 0;
 
-var contigs = {};
+/**
+ fasta_sources, each_layout, ContigSpacingJSON, and contigs are a complete set:
+ each is a list with one entry per fasta_source file.  Their indices all match and
+ can be used in tandem to fetch different piece of information.
+* fasta_sources lists the file names also uses as /chunks/ directories
+* each_layout has one LayoutLevels array per file that describes the coordinate frame and origin
+* ContigSpacingJSON is the individual contig names placed inside that coordinate frame
+* Contigs has a separate object for each file in case some files have duplicate contig names
+   This is dynamically loaded from getSequence() and stores actual sequences by name
+ */
+var contigs = fasta_sources.map(function() { return {} });
 var visible_seq_obj;
 var theSequenceSplit = []; // used globally by density service
 var theSequence = "";
@@ -221,8 +231,8 @@ function showNucleotideNumber(event, viewer) {
                 start = Nucleotide - 1;
                 stop = Nucleotide;
             }
-            if(contigs.hasOwnProperty(position_info.contig_name)){
-                theSequence = contigs[position_info.contig_name].substring(start, stop);
+            if(contigs[position_info.fasta_index].hasOwnProperty(position_info.contig_name)){
+                theSequence = contigs[position_info.fasta_index][position_info.contig_name].substring(start, stop);
                 //theSequence = theSequence.replace(/\s+/g, '')
                 fragmentid = position_info.contig_name + ": (" +
                   numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
@@ -300,20 +310,23 @@ function getSequence(fasta_index, contig_index) {
             type: "GET",
             url: fasta_path,
             contentType: "text/html",
-            success: initSequence,
+            success: function (sequence_received) {
+                file_transfer_in_progress = false;
+                read_contigs(sequence_received, fasta_index);
+            },
             error: processInitSequenceError
         });
     }
 }
 
-function read_contigs(sequence_received) {
+function read_contigs(sequence_received, fasta_index) {
     //read_contigs equiv in javascript
-    theSequenceSplit = sequence_received.split(/^>|\n>/);// begin line, caret  ">");
+    theSequenceSplit = sequence_received.split(/\r?\n(?=>)/);// begin line, caret  ">");
     for (let contig_s of theSequenceSplit) {
         var lines = contig_s.split(/\r?\n/);
-        var title = lines[0]
+        var title = lines[0].slice(1)
         var seq = lines.slice(1).join('');
-        contigs[title] = seq;
+        contigs[fasta_index][title] = seq;
     }
     return contigs
 }
@@ -330,10 +343,7 @@ function init_sequence_view() {
     visible_seq_obj.clearSequence("");
     $('#SequenceFragmentInstruction').hide();
 }
-function initSequence (sequence_received) {
-    read_contigs(sequence_received); // TODO: file specific contigs =
-    file_transfer_in_progress = false;
-}
+
 
 function processInitSequenceError() {
     file_transfer_in_progress = false;
