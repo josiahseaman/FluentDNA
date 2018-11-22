@@ -21,32 +21,6 @@ class keydefaultdict(defaultdict):
             return ret
 
 
-class LayoutLevel(object):
-    def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
-        self.modulo = modulo
-        if chunk_size is not None:
-            self.chunk_size = chunk_size
-            self._padding = padding
-            self.thickness = thickness
-        else:
-            child = levels[-1]
-            self.chunk_size = child.modulo * child.chunk_size
-            self._padding = padding or child.padding * 3  # 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
-            last_parallel = levels[-2]
-            self.thickness = last_parallel.modulo * last_parallel.thickness + self.padding
-
-    @property
-    def padding(self):
-        return self._padding
-
-    @padding.setter
-    def padding(self, value):
-        original_thickness = self.thickness - self._padding
-        self._padding = value
-        self.thickness = original_thickness + value
-
-
-
 def multi_line_height(font, multi_line_title, txt):
     sum_line_spacing = ImageDraw.Draw(txt).multiline_textsize(multi_line_title, font)[1]
     descender = font.getsize('y')[1] - font.getsize('A')[1]
