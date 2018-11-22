@@ -413,7 +413,7 @@ class TileLayout(object):
         upper_left = list(upper_left)  # to make it mutable
         font = self.get_font(self.font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
-        txt = Image.new('RGBA', (width, height))
+        txt = Image.new('RGBA', (width, height))#, color=(0,0,0,255))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
                                            fill=(0, 0, 0, 255))

@@ -1,4 +1,6 @@
 import sys
+from PIL import Image, ImageDraw
+from DDV.DDVUtils import multi_line_height
 
 
 class LayoutLevel(object):
@@ -68,6 +70,40 @@ class LayoutFrame(list):
         # column padding for various markup = self.levels[2].padding
         xy = self.relative_position(progress)
         return xy[0] + self.origin[0], xy[1] + self.origin[1]
+
+
+    def write_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label,
+                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
+                    label_color=(50, 50, 50, 255)):
+        """write_label() made to nicely draw single line gene labels from annotation
+        :param horizontal_centering:
+        """
+        upper_left = list(upper_left)  # to make it mutable
+        shortened = contig_name[-title_width:]  # max length 18.  Last characters are most unique
+        txt = Image.new('RGBA', (width, height))#, color=(0,0,0,50))
+        txt_canvas = ImageDraw.Draw(txt)
+        text_width = txt_canvas.textsize(shortened, font)[0]
+        if not chop_text and text_width > width:
+            txt = Image.new('RGBA', (text_width, height))  # TODO performance around txt_canvas
+            txt_canvas = ImageDraw.Draw(txt)
+        if center_vertical or vertical_label:  # Large labels are centered in the column to look nice,
+            # rotation indicates strand in big text
+            vertically_centered = (height // 2) - multi_line_height(font, shortened, txt)//2
+        else:  # Place label at the beginning of gene based on strand
+            vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
+            if strand == "+":
+                vertically_centered = 0  # top of the box
+        txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
+                                           fill=label_color)
+        if vertical_label:
+            rotation_direction = 90 if strand == '-' else -90
+            txt = txt.rotate(rotation_direction, expand=True)
+            upper_left[1] += -4 if strand == '-' else 4
+        if horizontal_centering:
+            margin = width - text_width
+            upper_left[0] += margin // 2
+        canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
+
 
 
 def level_layout_factory(modulos, padding, origin):

@@ -69,12 +69,6 @@ class AnnotatedTrackLayout(ParallelLayout):
 
 
     def prepare_annotation_labels(self):
-        #
-        # self.draw_annotation_labels(self.image, regions, label_color, universal_prefix,
-        #                             use_suppression=simple_entry)  # labels on top
-        #
-
-
         self.i_layout = self.annotation_phase
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
@@ -83,30 +77,30 @@ class AnnotatedTrackLayout(ParallelLayout):
         print("Removing Universal Prefix from annotations:", universal_prefix)
         for sc_index, scaffold in enumerate(layout):  # Exact match required (case sensitive)
             scaff_name = scaffold["name"].split()[0]
-            if scaff_name in labels.keys():
-                for entry in labels[scaff_name]:
-                    if entry.feature in ['gene', 'mRNA']:
-                        progress = (entry.start ) // self.base_width *\
-                                   self.annotation_width + scaffold["xy_seq_start"]
-                        end = (entry.end) // self.base_width *\
-                                   self.annotation_width + scaffold["xy_seq_start"]
-                        name = extract_gene_name(entry, universal_prefix)
-                        if name.startswith('989535t12'):
-                            print('here')
-                        upper_left = self.position_on_screen(progress + 2)
-                        bottom_right = self.position_on_screen(end - 2)
-                        width = bottom_right[0] - upper_left[0]
-                        font_size = 9
-                        title_width = 18
-                        title_lines = math.ceil(len(name) / title_width)
-                        # most gene names aren't unique at 9 characters
-                        min_height = 13 if title_lines == 1 else 26
-                        height = max(min_height, bottom_right[1] - upper_left[1])
-                        vertical = True# height > width
-                        if vertical:
-                            width, height = height, width
-                        self.write_title(name, width, height, font_size, title_lines, title_width, upper_left,
-                                         vertical, self.image)
+            if scaff_name not in labels.keys():
+                continue
+            for entry in labels[scaff_name]:
+                if entry.feature in ['gene', 'mRNA']:
+                    progress = (entry.start ) // self.base_width *\
+                               self.annotation_width + scaffold["xy_seq_start"]
+                    end = (entry.end) // self.base_width *\
+                               self.annotation_width + scaffold["xy_seq_start"]
+                    name = extract_gene_name(entry, universal_prefix)
+                    width, height, left, right, top, bottom = \
+                        handle_multi_column_annotations(self.levels, progress, end)
+                    font_size = 9
+                    title_width = 18
+                    title_lines = math.ceil(len(name) / title_width)
+                    # most gene names aren't unique at 9 characters
+                    min_height = 13 if title_lines == 1 else 26
+                    height = max(min_height, height)
+                    vertical = False #height > width
+                    if vertical:
+                        width, height = height, width
+                        # left, top, right, bottom = bottom, left, top, right
+                    font = self.get_font(self.font_name, font_size)
+                    self.levels.write_label(name, width, height, font, title_width,
+                                            [left, top], vertical, entry.strand, self.image)
         print("Done Drawing annotation labels")
 
     def additional_html_content(self, html_content):
@@ -124,22 +118,27 @@ class AnnotatedTrackLayout(ParallelLayout):
     @property
     def annotation_width(self):
         return self.each_layout[self.annotation_phase].levels[0].modulo
-#
-#
-# def handle_multi_column_annotations(coordinate_frame, start, stop):
-#     multi_column = abs(right - left) > self.base_width
-#     if multi_column:  # pick the biggest column to contain the label, ignore others
-#         median_point = len(region.points) // 2 + min(region.start, region.end)
-#         s = median_point // self.base_width * self.base_width  # beginning of the line holding median
-#         left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
-#         right = self.position_on_screen(s + self.base_width - 2)[0]  # end of one line
-#         filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
-#         if filtered:
-#             top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
-#             height = min(1, len(filtered) // self.base_width)
-#         else:
-#             return 0, 0, left, right, top
-#     else:
-#         height = len(region.points) // self.base_width
-#     width = self.base_width
-#     return width, height, left, right, top
+
+
+def handle_multi_column_annotations(coord_frame, start, stop):
+    interval = abs(stop - start)
+    upper_left = coord_frame.position_on_screen(start + 2)
+    bottom_right = coord_frame.position_on_screen(stop - 2)
+    multi_column = abs(bottom_right[0] - upper_left[0]) > coord_frame.base_width
+    if True:#multi_column:  # pick the biggest column to contain the label, ignore others
+        median_point = interval // 2 + min(start, stop)
+        s = median_point // coord_frame.base_width * coord_frame.base_width  # beginning of the line holding median
+        left = coord_frame.position_on_screen(s)[0]  # x coordinate of beginning of line
+        right = coord_frame.position_on_screen(s + coord_frame.base_width - 2)[0]  # end of one line
+        #top is the start or  top of the column
+        #bottom is the stop or bottom of the column
+        column_step = coord_frame.levels[2].chunk_size
+        top_of_column = median_point // column_step * column_step
+        top = max(start, top_of_column)
+        bottom = min(stop, top_of_column + column_step - 2)
+        top, bottom = coord_frame.position_on_screen(top)[1], coord_frame.position_on_screen(bottom)[1]
+        height = abs(bottom - top)
+    # else:
+    #     height = interval // coord_frame.base_width
+    width = coord_frame.base_width
+    return width, height, left, right, top, bottom

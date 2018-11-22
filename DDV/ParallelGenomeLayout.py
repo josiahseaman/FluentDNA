@@ -164,5 +164,4 @@ class ParallelLayout(TileLayout):
 
 
     def draw_title(self, total_progress, contig):
-        # if total_progress != 0:
         super(ParallelLayout, self).draw_title(total_progress, contig)

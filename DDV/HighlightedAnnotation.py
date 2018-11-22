@@ -5,7 +5,6 @@ import sys
 from PIL import Image, ImageFont, ImageDraw
 
 from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
-from DDV.DDVUtils import multi_line_height
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout, hex_to_rgb
 from DDV.DDVUtils import linspace
@@ -250,12 +249,28 @@ class HighlightedAnnotation(TileLayout):
                     if height < 11:
                         height = 11  # don't make the area so small it clips the text
                         upper_left[1] -= 2
+                    font = self.get_font(self.font_name, font_size)
+                    current_color = tuple(label_color) # must be tuple
+                    if font_size >= 14:
+                        alpha = 235 / 255
+                        if font_size > 30:
+                            alpha = 200 / 255
+                        current_color = (label_color[0], label_color[1], label_color[2], int(current_color[3] * alpha))
 
-                    self.write_label(extract_gene_name(region, universal_prefix), width, height,
-                                     font_size, 18, upper_left, vertical_label, region.strand,
-                                     markup_image, label_color=label_color)
+                    self.draw_label(extract_gene_name(region, universal_prefix), width, height,
+                                 font, 18, upper_left, vertical_label, region.strand,
+                                 markup_image, label_color=current_color)
             except BaseException as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
+
+    def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label,
+                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
+                    label_color=(50, 50, 50, 255)):
+        self.levels.write_label(contig_name, width, height,
+                                font, title_width, upper_left, vertical_label, strand,
+                                canvas, horizontal_centering=horizontal_centering,
+                                center_vertical=center_vertical, chop_text=chop_text,
+                                label_color=label_color)
 
     def handle_multi_column_annotations(self, region, left, right, top, bottom):
         multi_column = abs(right - left) > self.base_width
@@ -274,45 +289,6 @@ class HighlightedAnnotation(TileLayout):
             height = len(region.points) // self.base_width
         width = self.base_width
         return width, height, left, right, top
-
-    def write_label(self, contig_name, width, height, font_size, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
-                    label_color=(50, 50, 50, 255)):
-        """write_label() made to nicely draw single line gene labels from annotation
-        :param horizontal_centering:
-        """
-        font = self.get_font(self.font_name, font_size)
-        upper_left = list(upper_left)  # to make it mutable
-        shortened = contig_name[-title_width:]  # max length 18.  Last characters are most unique
-        txt = Image.new('RGBA', (width, height))
-        txt_canvas = ImageDraw.Draw(txt)
-        text_width = txt_canvas.textsize(shortened, font)[0]
-        if not chop_text and text_width > width:
-            txt = Image.new('RGBA', (text_width, height))  # TODO performance around txt_canvas
-            txt_canvas = ImageDraw.Draw(txt)
-        if center_vertical or vertical_label:  # Large labels are centered in the column to look nice,
-            # rotation indicates strand in big text
-            vertically_centered = (height // 2) - multi_line_height(font, shortened, txt)//2
-        else:  # Place label at the beginning of gene based on strand
-            vertically_centered = height - multi_line_height(font, shortened, txt)  # bottom
-            if strand == "+":
-                vertically_centered = 0  # top of the box
-        if font_size >= 14:
-            alpha = 235 / 255
-            if font_size > 30:
-                alpha = 200 / 255
-            label_color = (label_color[0], label_color[1], label_color[2], int(label_color[3] * alpha))
-        txt_canvas.multiline_text((0, max(0, vertically_centered)), shortened, font=font,
-                                           fill=label_color)
-        if vertical_label:
-            rotation_direction = 90 if strand == '-' else -90
-            txt = txt.rotate(rotation_direction, expand=True)
-            upper_left[1] += -4 if strand == '-' else 4
-        if horizontal_centering:
-            margin = width - text_width
-            upper_left[0] += margin // 2
-        canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
-        del txt
 
 
 def getNeighbors(x, y):
