@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from DDV import gap_char
 from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
     make_output_dir_with_suffix, filter_by_contigs
-from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory
+from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
 font_filename = "Arial.ttf"
@@ -39,7 +39,7 @@ def hex_to_rgb(h):
 
 class TileLayout(object):
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None, font_name=font_filename, border_width=3,
+                 low_contrast=False, base_width=100, font_name=font_filename, border_width=3,
                  custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
@@ -50,16 +50,7 @@ class TileLayout(object):
         self.using_spectrum = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
-        self.base_width = base_width if base_width is not None else 100
-        modulos, padding = parse_custom_layout(custom_layout)
-        if modulos:
-            self.base_width = modulos[0]  # custom layout will override base_width
-        else:  # default layout
-            modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
-            padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
-        self.levels = level_layout_factory(modulos, padding=padding)
-
-        self.title_skip_padding = self.base_width  # skip one line. USER: Change this
+        self.title_skip_padding = base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
         self.font_name = font_name
@@ -78,8 +69,10 @@ class TileLayout(object):
         self.contig_memory = []
         self.image_length = 0
 
-        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
-        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+        modulos, padding = parse_custom_layout(custom_layout)
+        if not modulos:
+            modulos = [base_width, base_width * 10, 100, 10, 3, 4, 999]
+            padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
         self.border_width = border_width
         origin = [max(self.border_width, padding[2]),
                   max(self.border_width, padding[2])]
@@ -135,6 +128,12 @@ class TileLayout(object):
     @levels.setter
     def levels(self, val):
         self.each_layout[self.i_layout] = val
+
+    @property
+    def base_width(self):
+        """Shorthand for the column width value that is used often.  This can change
+        based on the current self.i_layout."""
+        return self.levels[0].modulo
 
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
@@ -352,22 +351,11 @@ class TileLayout(object):
         return 0, 0, 0
 
 
-    def relative_position(self, progress):
-        """ Readable unoptimized version:
-            Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
-        xy = [0, 0]
-        for i, level in enumerate(self.levels):
-            if progress < level.chunk_size:
-                return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
-            part = i % 2
-            coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
-            xy[part] += level.thickness * coordinate_in_chunk
-        return [int(xy[0]), int(xy[1])]
+    def relative_position(self, progress):  #Alias for layout: Optimize?
+        return self.levels.relative_position(progress)
 
-    def position_on_screen(self, progress):
-        # column padding for various markup = self.levels[2].padding
-        xy = self.relative_position(progress)
-        return (xy[0] + self.levels.origin[0], xy[1] + self.levels.origin[1])
+    def position_on_screen(self, progress):  #Alias for layout: Optimize?
+        return self.levels.position_on_screen(progress)
 
 
     def draw_pixel(self, character, x, y):

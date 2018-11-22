@@ -12,7 +12,7 @@ from DDV.Layouts import level_layout_factory
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes, low_contrast=False, base_width=None, column_widths=None):
+    def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None):
         # This layout is best used on one chromosome at a time.
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
@@ -23,13 +23,13 @@ class ParallelLayout(TileLayout):
             column_widths = [self.base_width] * n_genomes
 
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
-        all_columns_height = self.base_width * 10
         p = 6  # padding_between_layouts
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
         column_clusters_per_mega_row = 10600 // cluster_width
 
         for nth_genome in range(n_genomes):
+            all_columns_height = base_width * 10
             standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
             standard_step_pad = cluster_width - standard_modulos[0] + p
             standard_padding = [0, 0, standard_step_pad, p*3, p*(3**2), p*(3**3), p*(3**4)]
@@ -69,9 +69,13 @@ class ParallelLayout(TileLayout):
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
                 self.output_fasta(output_folder, filename, False, extract_contigs, self.sort_contigs)
-
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
+            traceback.print_exc()
+        try:
+            self.draw_extras()
+        except BaseException as e:
+            print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
         # self.draw_the_viz_title(fasta_files)  # Needs padding in origins to work
         self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable

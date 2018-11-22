@@ -107,8 +107,6 @@ class HighlightedAnnotation(TileLayout):
 
         if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
             universal_prefix = find_universal_prefix(regions)
-            if not universal_prefix:
-                universal_prefix = 'PF3D7_'
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, label_color, universal_prefix,
                                         use_suppression=simple_entry)  # labels on top

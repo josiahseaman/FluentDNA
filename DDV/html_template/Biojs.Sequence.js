@@ -291,7 +291,7 @@ Biojs.Sequence = Biojs.extend(
 			this._requestSequence( this.opt.id );
 
 		} else {
-			this.clearSequence("No sequence available", "../biojs/css/images/warning_icon.png");
+			this.clearSequence("No sequence available");// "../biojs/css/images/warning_icon.png");
 		}
 
 	},
@@ -341,13 +341,13 @@ Biojs.Sequence = Biojs.extend(
 
 				} catch (e) {
 					Biojs.console.log("Error decoding response data: " + e.message );
-					self.clearSequence("No sequence available", "../biojs/css/images/warning_icon.png");
+					self.clearSequence("No sequence available");//, "../biojs/css/images/warning_icon.png");
 				}
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
 				Biojs.console.log("Error decoding response data: " + textStatus );
-				self.clearSequence("Error requesting the sequence to the server " + this.url , "../biojs/css/images/warning_icon.png");
+				self.clearSequence("Error requesting the sequence to the server " + this.url);// , "../biojs/css/images/warning_icon.png");
 			}
 		});
     },

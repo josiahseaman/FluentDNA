@@ -380,11 +380,13 @@ def main():
                         help="Path to secondary FASTA files to process when doing Parallel layout.",
                         dest="extra_fastas")
     parser.add_argument("-bw", "--base_width",
+                        default=100,
+                        type=int,
+                        dest="base_width",
                         help="Overrides the default 100bp column width in standard --layout=tiled. "
                         "Use this only if you are trying to accomplish something custom. "
                         "The rest of the layout will ratio adjust, so base_width=200 will produce "
-                        "columns that are 2,000 lines tall and rows containing 40 Mbp, etc.",
-                        dest="base_width")
+                        "columns that are 2,000 lines tall and rows containing 40 Mbp, etc.",)
 
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
@@ -436,6 +438,8 @@ def main():
                         dest="repeat_annotation")
 
     parser.add_argument("-aw", "--annotation_width",
+                        default=20,
+                        type=int,
                         help="Overrides the default 100 pixel column width for annotations. "
                         "annotation_width=1 will only sample one pixel per display line, "
                         "skipping intermediate intervals.  If annotated features are less than"
@@ -474,10 +478,6 @@ def main():
         sys.exit(0)
 
     # Errors
-    if args.base_width:
-        args.base_width = int(args.base_width)
-    if args.annotation_width:
-        args.annotation_width = int(args.annotation_width)
 
     #Layout Defaults
     if not args.layout:
