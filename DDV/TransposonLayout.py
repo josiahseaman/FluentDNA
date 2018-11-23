@@ -20,9 +20,12 @@ class TransposonLayout(TileLayout):
     def __init__(self, **kwargs):
         # print("Warning: Transposon Layout is an experimental feature not currently supported.",
         #       file=sys.stderr)
+        kwargs.update({'sort_contigs': True})  # important for mega row heigh handling
         super(TransposonLayout, self).__init__(**kwargs)
         self.repeat_entries = None
         self.column_height = 400
+        self.next_origin = [self.border_width, 30] # margin for titles, incremented each MSA
+
 
 
     def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
@@ -69,7 +72,6 @@ class TransposonLayout(TileLayout):
         else:
             self.column_height = 1000
 
-        self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
         print("Image is ", self.image.width, "x", self.image.height)
@@ -98,15 +100,20 @@ class TransposonLayout(TileLayout):
         print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
-    def layout_based_on_repeat_size(self, width, height=None):
+    def layout_based_on_repeat_size(self, contig, width, height=None):
         """change layout to match dimensions of the repeat"""
-        if height is None:
-            height = self.column_height
-        else:
-            self.column_height = height
+        height = math.ceil(len(contig.seq) / width)
+        # height = self.column_height if height is None else height
+
+        # skip to next mega row
+        if self.next_origin[0] + width + 1 >= self.image.width:
+            self.next_origin[0] = self.border_width
+            self.next_origin[1] += self.levels[3].thickness  # self.column_height
+
         modulos = [width, height, 9999, 9999]
         padding = [0, 0, 20, 20 * 3]
-        self.each_layout.append(level_layout_factory(modulos, padding, [0, 0]))
+        self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
+        self.next_origin[0] += width + 20  # scoot next_origin by width we just used up
         self.i_layout = len(self.each_layout) - 1  # select current layout
 
 
@@ -123,7 +130,7 @@ class TransposonLayout(TileLayout):
         edge of the allocated image."""
         for contig in self.contigs:
             assert contig.consensus_width, "You must set the consensus_width in order to use this layout"
-            self.layout_based_on_repeat_size(contig.consensus_width)
+            self.layout_based_on_repeat_size(contig, contig.consensus_width)
 
             contig_progress = 0
             seq_length = len(contig.seq)
@@ -132,9 +139,8 @@ class TransposonLayout(TileLayout):
                 try:
                     x, y = self.position_on_screen(contig_progress)
                     if x + contig.consensus_width + 1 >= self.image.width:
-                        contig_progress = 0  # reset to beginning of line
-                        self.skip_to_next_mega_row(contig)
-                        x, y = self.position_on_screen(contig_progress)
+                        self.fail_to_next_mega_row(contig)
+                        break
                     if y + self.levels[1].modulo >= self.image.height:
                         print("Ran into bottom of image at", contig.name, x,y)
                         return contig  # can't fit anything more
@@ -149,16 +155,14 @@ class TransposonLayout(TileLayout):
                         self.draw_pixel(nuc, x + i, y)
                 except IndexError as e:
                     print("(%i, %i)" % (x,y), "is off the canvas")
-            print("Drew", contig.name, "at", self.position_on_screen(contig_progress))
-            columns_consumed = int(math.ceil(contig_progress / self.levels[2].chunk_size))
-            self.levels.origin[0] += columns_consumed * self.levels[2].thickness
+            print("Drew", contig.name, "ending at", self.position_on_screen(contig_progress))
         print('')
 
 
-    def skip_to_next_mega_row(self, current_contig):
-        print("Skipping to next row:", self.levels.origin)
-        self.levels.origin[0] = self.levels[2].padding  # start at left again
-        self.levels.origin[1] += self.levels[3].thickness  # go to next mega row
+    def fail_to_next_mega_row(self, contig):
+        print("Not enough room to draw", contig.name, "at", self.levels.origin)
+        self.next_origin = [self.border_width,
+                            self.next_origin[1] + len(contig.seq)//contig.consensus_width + 10]
 
 
     def create_repeat_fasta_contigs(self):

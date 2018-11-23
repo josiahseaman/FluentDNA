@@ -114,7 +114,7 @@ def level_layout_factory(modulos, padding, origin):
     ]
     for i in range(2, len(modulos)):
         levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
-    return LayoutFrame(origin, levels)
+    return LayoutFrame(tuple(origin), levels)
 
 
 def parse_custom_layout(custom_layout):

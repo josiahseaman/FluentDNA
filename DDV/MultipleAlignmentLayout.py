@@ -110,6 +110,7 @@ class MultipleAlignmentLayout(TransposonLayout):
         if self.sort_contigs:
             self.contigs.sort(key=lambda x: -x.height)
         self.each_layout = []  # clear any previous constructors
+        self.next_origin = [self.border_width, 30]  # margin for titles, incremented each MSA
         self.draw_nucleotides_in_variable_column_width()  # uses self.contigs and self.layout to draw
 
 
@@ -132,7 +133,6 @@ class MultipleAlignmentLayout(TransposonLayout):
         num_lines = sum(heights)
         self.set_column_height(heights)
         print("Average Width", consensus_width, "Genes", num_lines)
-        self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
 
@@ -147,9 +147,3 @@ class MultipleAlignmentLayout(TransposonLayout):
         except ImportError:
             average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = min(max(heights), average_line_count * 2)
-
-    def skip_to_next_mega_row(self, current_contig):
-        super(MultipleAlignmentLayout, self).skip_to_next_mega_row(current_contig)
-        if self.sort_contigs:
-            print("New height:", current_contig.height)
-            self.layout_based_on_repeat_size(current_contig.consensus_width, current_contig.height)
