@@ -58,6 +58,7 @@ def create_aligned_annotation_fragments(alignment, repeat_entries):
 
 
 def align_annotation(annotation_filename, ref_fasta, query_fasta, chain_file):
+    print("Warning: This feature is currently unsupported")
     chromosome = 'chr19'
     all_repeat_entries = read_repeatmasker_csv(annotation_filename, 'genoName', chromosome)
     repeat_families = set(x.rep_family.replace('?', '#') for x in all_repeat_entries if x.rep_family)

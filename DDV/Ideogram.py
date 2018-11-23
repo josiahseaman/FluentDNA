@@ -201,12 +201,11 @@ class Ideogram(HighlightedAnnotation):
         self.use_titles = True
         super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
 
-    def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
-                    label_color=(50, 50, 50, 255)):
+    def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
+                   canvas, label_color, horizontal_centering=False, center_vertical=False, chop_text=True):
         """Intercept calls from parent and inject some default parameters for Ideograms."""
         self.levels.write_label(contig_name, width, height, font, title_width, upper_left,
-              False, '+', canvas, horizontal_centering=True, center_vertical=True,
+              False, '+', canvas, label_color=label_color, horizontal_centering=True, center_vertical=True,
               chop_text=False)
 
     def levels_json(self, ignored):

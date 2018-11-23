@@ -257,15 +257,14 @@ class HighlightedAnnotation(TileLayout):
                             alpha = 200 / 255
                         current_color = (label_color[0], label_color[1], label_color[2], int(current_color[3] * alpha))
 
-                    self.draw_label(extract_gene_name(region, universal_prefix), width, height,
-                                 font, 18, upper_left, vertical_label, region.strand,
-                                 markup_image, label_color=current_color)
+                    self.draw_label(extract_gene_name(region, universal_prefix), width, height, font, 18,
+                                    upper_left, vertical_label, region.strand, markup_image,
+                                    label_color=current_color)
             except BaseException as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
-    def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label,
-                    strand, canvas, horizontal_centering=False, center_vertical=False, chop_text=True,
-                    label_color=(50, 50, 50, 255)):
+    def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
+                   canvas, label_color, horizontal_centering=False, center_vertical=False, chop_text=True):
         self.levels.write_label(contig_name, width, height,
                                 font, title_width, upper_left, vertical_label, strand,
                                 canvas, horizontal_centering=horizontal_centering,

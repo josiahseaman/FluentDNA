@@ -12,7 +12,7 @@ from DNASkittleUtils.Contigs import Contig, read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
-from DDV.Layouts import LayoutLevel
+from DDV.Layouts import LayoutLevel, level_layout_factory
 from DDV import gap_char
 
 
@@ -21,13 +21,12 @@ class TransposonLayout(TileLayout):
         # print("Warning: Transposon Layout is an experimental feature not currently supported.",
         #       file=sys.stderr)
         super(TransposonLayout, self).__init__(**kwargs)
-        self.using_mixed_widths = False
         self.repeat_entries = None
         self.column_height = 400
 
 
     def create_image_from_preprocessed_alignment(self, input_file_path, consensus_width, num_lines, output_folder, output_file_name):
-        self.using_mixed_widths = False  # use a consistent consensus_width throughout and standard layout levels
+        print("Warning: This feature is currently unsupported")
         self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)  # sets self.layout
         self.read_contigs_and_calc_padding(input_file_path)
         super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
@@ -35,7 +34,6 @@ class TransposonLayout(TileLayout):
 
 
     def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosomes=None):
-        self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.levels.origin[1] += self.levels[5].padding  # One full Row of padding for Title
         start_time = datetime.now()
         self.read_all_files(ref_fasta, repeat_annotation_filename, chromosomes)
@@ -55,14 +53,11 @@ class TransposonLayout(TileLayout):
 
 
     def max_dimensions(self, image_length):
-        if self.using_mixed_widths:
-            rough = int(math.ceil(math.sqrt(image_length * 3)))
-            rough = min(62900, rough)  # hard cap at 4GB images created
-            # Layout should never be more narrow than the widest single element
-            min_width = max(rough, self.levels[2].thickness + (self.levels.origin[0] * 2))
-            return min_width, rough + self.levels.origin[1]
-        else:
-            return super(TransposonLayout, self).max_dimensions(image_length)
+        rough = int(math.ceil(math.sqrt(image_length * 3)))
+        rough = min(62900, rough)  # hard cap at 4GB images created
+        # Layout should never be more narrow than the widest single element
+        min_width = max(rough, self.levels[2].thickness + (self.levels.origin[0] * 2))
+        return min_width, rough + self.levels.origin[1]
 
 
     def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
@@ -109,18 +104,10 @@ class TransposonLayout(TileLayout):
             height = self.column_height
         else:
             self.column_height = height
-        self.levels = [
-            LayoutLevel("X_in_consensus", width, 1, 0),  # [0]
-            LayoutLevel("Instance_line", height, width, 0)  # [1]
-        ]
-        if self.using_mixed_widths:
-            self.levels.append(LayoutLevel("TypeColumn", 999, padding=20, levels=self.levels))  # [2]
-            self.levels.append(LayoutLevel("RowInTile", 999, levels=self.levels))  # [3]
-        else:
-            self.levels.append(LayoutLevel("TypeColumn", 100, padding=20, levels=self.levels))  # [2]
-            self.levels.append(LayoutLevel("RowInTile", 10, levels=self.levels))  # [3]
-            self.levels.append(LayoutLevel("TileColumn", 3, levels=self.levels))  # [4]
-            self.levels.append(LayoutLevel("TileRow", 4, levels=self.levels))  # [5]
+        modulos = [width, height, 9999, 9999]
+        padding = [0, 0, 20, 20 * 3]
+        self.each_layout.append(level_layout_factory(modulos, padding, [0, 0]))
+        self.i_layout = len(self.each_layout) - 1  # select current layout
 
 
     def draw_nucleotides(self):

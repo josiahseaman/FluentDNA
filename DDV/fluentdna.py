@@ -122,7 +122,8 @@ def done(args, output_dir):
         run_server(output_dir)
     beep()
     hold_console_for_windows()
-    sys.exit(0)
+    if __name__ == "__main__":
+        sys.exit(0)
 
 
 def ddv(args):
