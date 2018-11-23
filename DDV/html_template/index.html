@@ -3,27 +3,27 @@
 <head>
     <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
     <title>FluentDNA Visualization Tool: {{title}}</title>
-    <script src='./openseadragon.js' type='text/javascript'></script>
-    <script type='text/javascript' src='./jquery-1.7.min.js'></script>
-    <script src='./openseadragon-scalebar.js' type='text/javascript'></script>
-
     <script type='text/javascript'>
+        var fasta_sources = {{fasta_sources}};
         var originalImageWidth = {{originalImageWidth}};
         var originalImageHeight = {{originalImageHeight}};
         var image_origin = {{image_origin}};
         var ColumnPadding = {{ColumnPadding}};
         var columnWidthInNucleotides = {{columnWidthInNucleotides}};
-        var layoutSelector = {{layoutSelector}};
-        var layout_levels = {{layout_levels}};
-        var ContigSpacingJSON = {{ContigSpacingJSON}};
-        var multipart_file = {{multipart_file}};
         var includeDensity = {{includeDensity}};
 
         var ipTotal = {{ipTotal}};
         var direct_data_file_length = {{direct_data_file_length}};
-        var sbegin = '{{sbegin}}';
+        var sbegin = {{sbegin}};
         var send = {{send}};
+        var each_layout = {{each_layout}};
+        var ContigSpacingJSON = {{ContigSpacingJSON}};
     </script>
+    <script type='text/javascript' src='./openseadragon.js' ></script>
+    <script type='text/javascript' src='./jquery-1.7.min.js'></script>
+    <script type='text/javascript' src='./openseadragon-scalebar.js' ></script>
+    <script type='text/javascript' src='Biojs.js'></script>
+    <script type='text/javascript' src='Biojs.Sequence.js'></script>
     <script src='./nucleotideNumber.js' type='text/javascript'></script>
     <link rel='stylesheet' type='text/css' href='seadragon.css'/>
 </head>
@@ -44,10 +44,9 @@
 <p class='legendHeading'>
 {{legend}}
 </p>
-<script type='text/javascript'>
-    outputTable();
-</script>
-<div id="status"></div>
+<div id="outputContainer"></div>
+
+<div id="outfile"></div>
 <div class='legend-details'>
     <h3>Notes</h3>
     This DNA data visualization interface was generated with <a href='https://github.com/josiahseaman/DDV'>FluentDNA</a>

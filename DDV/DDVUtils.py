@@ -6,10 +6,8 @@ import sys
 import textwrap
 from collections import defaultdict
 from datetime import datetime
-from itertools import chain
 
-from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
-from DNASkittleUtils.DDVUtils import editable_str
+from DNASkittleUtils.Contigs import read_contigs
 from PIL import ImageDraw
 
 
@@ -21,32 +19,6 @@ class keydefaultdict(defaultdict):
         else:
             ret = self[key] = self.default_factory(key)
             return ret
-
-
-class LayoutLevel(object):
-    def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
-        self.modulo = modulo
-        if chunk_size is not None:
-            self.chunk_size = chunk_size
-            self._padding = padding
-            self.thickness = thickness
-        else:
-            child = levels[-1]
-            self.chunk_size = child.modulo * child.chunk_size
-            self._padding = padding or child.padding * 3  # 6 * int(3 ** (len(levels) - 2))  # third level (count=2) should be 6, then 18
-            last_parallel = levels[-2]
-            self.thickness = last_parallel.modulo * last_parallel.thickness + self.padding
-
-    @property
-    def padding(self):
-        return self._padding
-
-    @padding.setter
-    def padding(self, value):
-        original_thickness = self.thickness - self._padding
-        self._padding = value
-        self.thickness = original_thickness + value
-
 
 
 def multi_line_height(font, multi_line_title, txt):
@@ -61,7 +33,7 @@ def pretty_contig_name(contig_name, title_width, title_lines):
     pretty_name = contig_name.replace('_', ' ').replace('|', ' ').replace('chromosome chromosome', 'chromosome')
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)
     pretty_name = regex.sub(r'([^:]*\S):(\S[^:]*)', r'\1: \2', pretty_name)  # don't ask
-    if title_width < 20 and len(pretty_name) > title_width * 1.5:  # this is a suboptimal special case to try and
+    if title_width < 20 and len(pretty_name) > int(title_width * 1.5):  # this is a suboptimal special case to try and
         # cram more characters onto the two lines of the smallest contig titles when there's not enough space
         # For small spaces, cram every last bit into the line labels, there's not much room
         pretty_name = pretty_name[:title_width] + '\n' + pretty_name[title_width:title_width * 2]
@@ -70,19 +42,29 @@ def pretty_contig_name(contig_name, title_width, title_lines):
     return pretty_name
 
 
+def filter_by_contigs(unfiltered, extract_contigs):
+    if extract_contigs is not None:  # winnow down to only extracted contigs
+        filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
+        if filtered_contigs:
+            return filtered_contigs
+        else:
+            print("Warning: No matching contigs were found, so the whole file is being used:",
+                  extract_contigs, file=sys.stderr)
+    return unfiltered
 
-def read_contigs_to_dict(input_file_path):
+def read_contigs_to_dict(input_file_path, extract_contigs=None):
     print("Reading contigs... ", input_file_path)
     start_time = datetime.now()
     contig_list = read_contigs(input_file_path)
+    contig_list = filter_by_contigs(contig_list, extract_contigs)
     contig_dict = {c.name.lower(): c.seq for c in contig_list}  # capitalization!!!!
     print("Read %i FASTA Contigs in:" % len(contig_dict), datetime.now() - start_time)
     return contig_dict
 
 
 def create_deepzoom_stack(input_image, output_dzi):
-    import DDV.deepzoom as deepzoom
-    creator = deepzoom.ImageCreator(tile_size=256,
+    import DDV.deepzoom
+    creator = DDV.deepzoom.ImageCreator(tile_size=256,
                                     tile_overlap=1,
                                     tile_format="png",
                                     resize_filter="antialias")# cubic bilinear bicubic nearest antialias
@@ -101,13 +83,13 @@ def make_output_dir_with_suffix(base_path, suffix):
     return output_dir
 
 
-def base_directories(args):
+def base_directories(output_name):
     if getattr(sys, 'frozen', False):
         BASE_DIR = os.path.dirname(sys.executable)
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
-    base_path = os.path.join(SERVER_HOME, args.output_name) if args.output_name else SERVER_HOME
+    base_path = os.path.join(SERVER_HOME, output_name) if output_name else SERVER_HOME
     return SERVER_HOME, base_path
 
 
@@ -155,13 +137,26 @@ def hold_console_for_windows():
         pass  # probably not windows, so it doesn't matter
 
 
-def beep(duration=300):
+def beep(duration=600):
     try:
         import winsound
         freq = 440  # Hz
         winsound.Beep(freq, duration)
     except ImportError:
         pass  # not a windows machine
+
+
+def interpolate(A, B, start, end, position):
+    if start == end:
+        return A
+    progress = (position - start) / (end - start)  # progress goes from 0.0 p1  to 1.0 p2
+    inverse = 1.0 - progress
+    sample = A * inverse + B * progress
+    return sample
+
+
+def linspace(start, end, steps):
+    return [interpolate(start, end, 0, steps - 1, i) for i in range(steps)]
 
 
 def viridis_palette():
@@ -425,26 +420,3 @@ def viridis_palette():
     palette[254] = (250, 230, 34)
     palette[255] = (253, 231, 36)
     return palette
-
-
-def squish_fasta(scaffolds, annotation_width, base_width):
-    print("Squishing fasta by %i / %i" % (base_width, annotation_width))
-    squished_versions = []
-    skip_size = base_width // annotation_width
-    remainder = base_width - (skip_size * annotation_width)
-    skips = list(chain([skip_size] * (annotation_width - 1), [skip_size + remainder]))
-    for contig in scaffolds:
-        work = editable_str('')
-        i = 0; x = 0
-        while i < len(contig.seq):
-            work.append(contig.seq[i])
-            i += skips[x % annotation_width]
-            x += 1
-        squished_versions.append(Contig(contig.name, ''.join(work)))
-    return squished_versions
-
-if __name__ == '__main__':
-    scaffolds = read_contigs('data/annotation_alignment/chr19_Hg38_gapped_gene_annotation.fa')
-    processed = squish_fasta(scaffolds, 18, 100)
-    write_contigs_to_file('data/annotation_alignment/chr19_Hg38_gapped_gene_annotation_squished_18.fa', processed)
-

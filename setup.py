@@ -1,7 +1,7 @@
 from DDV import VERSION
 from setuptools import setup, find_packages
 
-utils_ver = '1.0.10'
+utils_ver = '1.0.11'
 setup(
     name='DDV',
     version=VERSION,
@@ -20,6 +20,7 @@ setup(
         'psutil>=4.3.1',
         'blist>=1.3.6',
         'natsort>=5.1.1',
+        'numpy>=1.13.3',
         'DNASkittleUtils>=' + utils_ver,
     ],
     dependency_links=[

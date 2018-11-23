@@ -86,7 +86,6 @@ class MultipleAlignmentLayout(TransposonLayout):
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
-        self.origin[1] += self.levels[5].padding  # One full Row of padding for Title
         start_time = datetime.now()
         self.translate_gapped_fastas_to_contigs(input_fasta_folder)
         print("Converted contigs :", datetime.now() - start_time)
@@ -110,8 +109,8 @@ class MultipleAlignmentLayout(TransposonLayout):
             self.contigs.remove(contig)
         if self.sort_contigs:
             self.contigs.sort(key=lambda x: -x.height)
-            self.layout_based_on_repeat_size(self.contigs[0].consensus_width,
-                                             self.contigs[0].height)
+        self.each_layout = []  # clear any previous constructors
+        self.next_origin = [self.border_width, 30]  # margin for titles, incremented each MSA
         self.draw_nucleotides_in_variable_column_width()  # uses self.contigs and self.layout to draw
 
 
@@ -134,7 +133,6 @@ class MultipleAlignmentLayout(TransposonLayout):
         num_lines = sum(heights)
         self.set_column_height(heights)
         print("Average Width", consensus_width, "Genes", num_lines)
-        self.layout_based_on_repeat_size(consensus_width)
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
 
@@ -149,9 +147,3 @@ class MultipleAlignmentLayout(TransposonLayout):
         except ImportError:
             average_line_count = int(ceil(sum(heights) / len(heights)))
         self.column_height = min(max(heights), average_line_count * 2)
-
-    def skip_to_next_mega_row(self, current_contig):
-        super(MultipleAlignmentLayout, self).skip_to_next_mega_row(current_contig)
-        if self.sort_contigs:
-            print("New height:", current_contig.height)
-            self.layout_based_on_repeat_size(current_contig.consensus_width, current_contig.height)

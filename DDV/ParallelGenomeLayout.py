@@ -3,17 +3,16 @@ from __future__ import print_function, division, absolute_import, \
 
 import traceback
 from datetime import datetime
-from math import floor
 
 from PIL import ImageFont
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, font_filename, level_layout_factory
-from DDV.DDVUtils import LayoutLevel
+from DDV.TileLayout import TileLayout, font_filename
+from DDV.Layouts import level_layout_factory
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes, low_contrast=False, base_width=None, column_widths=None):
+    def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None):
         # This layout is best used on one chromosome at a time.
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
@@ -23,29 +22,25 @@ class ParallelLayout(TileLayout):
         if column_widths is None:  # just copies the TileLayout levels several times
             column_widths = [self.base_width] * n_genomes
 
-        self.each_layout = []  # one layout per genome (or data source)
-        all_columns_height = self.base_width * 10
-        columns = self.levels[2]
-        cluster_width = sum(column_widths) + columns.padding * n_genomes  # total thickness of data and padding
-        cluster_width += columns.padding * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = floor(10600 / cluster_width)
+        self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
+        p = 6  # padding_between_layouts
+        cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
+        cluster_width += p * 2  # double up on padding between super columns
+        column_clusters_per_mega_row = 10600 // cluster_width
 
         for nth_genome in range(n_genomes):
+            all_columns_height = base_width * 10
             standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
-            standard_step_pad = cluster_width - standard_modulos[0] + 6
-            standard_padding = [0, 0, standard_step_pad, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
-            self.each_layout.append(level_layout_factory(standard_modulos, standard_padding))
-
-        self.levels = self.each_layout[0]
-
-        # steps inside a column bundle, not exactly the same as bundles steps
-        thicknesses = [self.each_layout[i][0].modulo + 6 for i in range(n_genomes)]
-        self.column_offsets = [sum(thicknesses[:i]) for i in range(n_genomes)]
+            standard_step_pad = cluster_width - standard_modulos[0] + p
+            standard_padding = [0, 0, standard_step_pad, p*3, p*(3**2), p*(3**3), p*(3**4)]
+            # steps inside a column bundle, not exactly the same as bundles steps
+            thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
+            origin = (sum(thicknesses), p)
+            self.each_layout.append(level_layout_factory(standard_modulos, standard_padding, origin))
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
         self.using_background_colors = False
-        self.origin = [6, self.levels[3].thickness + 6]  # start with one row for a title, but not subsequent rows
         self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
         self.column_colors = self.column_colors[:self.n_genomes]
 
@@ -69,20 +64,26 @@ class ParallelLayout(TileLayout):
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename, extract_contigs)
                 self.draw_nucleotides()
-                self.draw_titles()
+                if index == self.n_genomes -1: #last one
+                    self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
-                self.output_fasta(output_folder, filename, False, extract_contigs)
+                self.output_fasta(output_folder, filename, False, extract_contigs, self.sort_contigs)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
-        self.draw_the_viz_title(fasta_files)
+        try:
+            self.draw_extras()
+        except BaseException as e:
+            print('Encountered exception while drawing titles:', '\n')
+            traceback.print_exc()
+        # self.draw_the_viz_title(fasta_files)  # Needs padding in origins to work
         self.generate_html(output_folder, output_file_name)  # only furthest right file is downloadable
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
     def changes_per_genome(self):
-        self.levels = self.each_layout[self.genome_processed]
+        self.i_layout = self.genome_processed
         if self.using_background_colors:
             self.change_background_color(self.genome_processed)
 
@@ -91,7 +92,7 @@ class ParallelLayout(TileLayout):
         genome as it is processed separately.
         """
         x, y = super(ParallelLayout, self).position_on_screen(progress)
-        return [x + self.column_offsets[self.genome_processed], y]
+        return [x, y]
 
     def fill_in_colored_borders(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
@@ -142,11 +143,12 @@ class ParallelLayout(TileLayout):
         self.palette[gap_char] = background
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         """Parallel Layouts have a special title which describes the first (main) alignment.
         So padding for their title does not need to be included."""
         # Get original values and level
-        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress, next_segment_length, multipart_file)
+        reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress,
+                                                                                      next_segment_length)
         # no larger than 1 full column or text will overlap
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size
@@ -162,6 +164,4 @@ class ParallelLayout(TileLayout):
 
 
     def draw_title(self, total_progress, contig):
-        # if total_progress != 0:
         super(ParallelLayout, self).draw_title(total_progress, contig)
-

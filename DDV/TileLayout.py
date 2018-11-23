@@ -9,12 +9,14 @@ from collections import defaultdict
 from datetime import datetime
 
 import sys
-from PIL import Image, ImageDraw, ImageFont
-
 from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
-from DDV.DDVUtils import LayoutLevel, multi_line_height, pretty_contig_name, viridis_palette
+from PIL import Image, ImageDraw, ImageFont
+
 from DDV import gap_char
+from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
+    make_output_dir_with_suffix, filter_by_contigs
+from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
 font_filename = "Arial.ttf"
@@ -34,37 +36,21 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
-def level_layout_factory(modulos, padding=None):
-    if padding is None:
-        padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
-    # noinspection PyListCreation
-    levels = [
-        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
-        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
-    ]
-    for i in range(2, len(modulos)):
-        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
-    # levels.append(LayoutLevel("RowInTile", modulos[3], levels=levels))  # [3]
-    # levels.append(LayoutLevel("TileColumn", modulos[4], levels=levels))  # [4]
-    # levels.append(LayoutLevel("TileRow", modulos[5], levels=levels))  # [5]
-    # levels.append(LayoutLevel("PageColumn", modulos[6], levels=levels))  # [6]
-    return levels
-
 
 class TileLayout(object):
-
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=None, font_name=font_filename):
+                 low_contrast=False, base_width=100, font_name=font_filename, border_width=3,
+                 custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
+        self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.using_spectrum = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
-        self.base_width = base_width if base_width is not None else 100
-        self.title_skip_padding = self.base_width  # skip one line. USER: Change this
+        self.title_skip_padding = base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
         self.font_name = font_name
@@ -80,7 +66,23 @@ class TileLayout(object):
         self.pixels = None
         self.pil_mode = 'RGB'  # no alpha channel means less RAM used
         self.contigs = []
+        self.contig_memory = []
         self.image_length = 0
+
+        modulos, padding = parse_custom_layout(custom_layout)
+        if not modulos:
+            modulos = [base_width, base_width * 10, 100, 10, 3, 4, 999]
+            padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+        self.border_width = border_width
+        origin = [max(self.border_width, padding[2]),
+                  max(self.border_width, padding[2])]
+        self.each_layout = [level_layout_factory(modulos, padding, origin)]
+        self.i_layout = 0
+
+        self.tile_label_size = self.levels[3].chunk_size
+        if self.use_fat_headers:
+            self.enable_fat_headers()
+
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
 
@@ -103,7 +105,7 @@ class TileLayout(object):
         self.palette['X'] = hex_to_rgb('FF6100')
         self.palette['Y'] = hex_to_rgb('4B4BB5')
 
-        self.palette['N'] = (61, 61, 61)  # charcoal grey
+        self.palette['N'] = (122, 122, 122)  # medium grey
         self.palette[gap_char] = (247, 247, 247)  # almost white
         self.palette['.'] = self.palette[gap_char]  # other gap characters
 
@@ -119,24 +121,27 @@ class TileLayout(object):
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
-        modulos = [self.base_width, self.base_width * 10, 100, 10, 3, 4, 999]
-        padding = [0, 0, 6, 6*3, 6*(3**2), 6*(3**3), 6*(3**4)]
-        self.levels = level_layout_factory(modulos, padding=padding)
+    @property
+    def levels(self):
+        return self.each_layout[self.i_layout]
 
-        self.tile_label_size = self.levels[3].chunk_size * 2
-        self.origin = [self.levels[2].padding, self.levels[2].padding]
-        if self.use_fat_headers:
-            self.enable_fat_headers()
+    @levels.setter
+    def levels(self, val):
+        self.each_layout[self.i_layout] = val
 
-
+    @property
+    def base_width(self):
+        """Shorthand for the column width value that is used often.  This can change
+        based on the current self.i_layout."""
+        return self.levels[0].modulo
 
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
         #Base RGB: FF4100, Dist 40
-        self.palette['A'] = hex_to_rgb('FF4100')  # Red
-        self.palette['T'] = hex_to_rgb('FF9F00')  # Yellow
-        self.palette['C'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
-        self.palette['G'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
+        self.palette['G'] = hex_to_rgb('FF4100')  # Red
+        self.palette['C'] = hex_to_rgb('FF9F00')  # Yellow
+        self.palette['T'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
+        self.palette['A'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
         # Original DDV Colors
         # self.palette['A'] = (255, 0, 0)
         # self.palette['G'] = (0, 255, 0)
@@ -160,10 +165,10 @@ class TileLayout(object):
         # self.palette['G'] = hex_to_rgb('4CA47A')  # Green
         # self.palette['C'] = hex_to_rgb('4F6F9B')  # Blue
         # -----Manually Adjusted Colors from Paletton plus contrast------
-        self.palette['A'] = hex_to_rgb('D4403C')  # Red
-        self.palette['T'] = hex_to_rgb('E2AE5B')  # Yellow
-        self.palette['G'] = hex_to_rgb('3FB93F')  # Green
-        self.palette['C'] = hex_to_rgb('2D6C85')  # Blue
+        self.palette['G'] = hex_to_rgb('D4403C')  # Red
+        self.palette['C'] = hex_to_rgb('E2AE5B')  # Yellow
+        self.palette['T'] = hex_to_rgb('2D6C85')  # Blue
+        self.palette['A'] = hex_to_rgb('3FB93F')  # Green
 
     def enable_fat_headers(self):
         if self.use_titles:
@@ -172,14 +177,16 @@ class TileLayout(object):
             self.levels = self.levels[:6]
             self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
             self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
-            self.origin[1] += self.levels[5].padding  # padding comes before, not after
+            self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
+        make_output_dir_with_suffix(output_folder, '')
         start_time = datetime.now()
+        self.final_output_location = output_folder
         self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
-        print("Read contigs :", datetime.now() - start_time)
+        print("Read contigs from", input_file_path, ":", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         print("Initialized Image:", datetime.now() - start_time, "\n")
         try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
@@ -189,24 +196,33 @@ class TileLayout(object):
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
         try:
-            if len(self.contigs) > 1 and self.use_titles:
+            if self.use_titles:
                 print("Drawing %i titles" % sum(len(x.seq) > small_title_bp for x in self.contigs))
                 self.draw_titles()
                 print("Drew Titles:", datetime.now() - start_time)
         except BaseException as e:
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
+        try:
+            self.draw_extras()
+        except BaseException as e:
+            print('Encountered exception while drawing titles:', '\n')
+            traceback.print_exc()
+
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-        fasta_destination = self.output_fasta(output_folder, input_file_path, no_webpage, extract_contigs)
-        if extract_contigs:
-            print("Rendered sequence:", fasta_destination)
+        self.output_fasta(output_folder, input_file_path, no_webpage,
+                                              extract_contigs, self.sort_contigs)
 
+
+    def draw_extras(self):
+        """Placeholder method for child classes"""
+        pass
 
     def draw_nucleotides(self):
         total_progress = 0
         # Layout contigs one at a time
-        for contig in self.contigs:
+        for contig_index, contig in enumerate(self.contigs):
             total_progress += contig.reset_padding + contig.title_padding
             seq_length = len(contig.seq)
             line_width = self.levels[0].modulo
@@ -214,39 +230,46 @@ class TileLayout(object):
                 x, y = self.position_on_screen(total_progress)
                 remaining = min(line_width, seq_length - cx)
                 total_progress += remaining
-                #try:
-                for i in range(remaining):
-                    nuc = contig.seq[cx + i]
-                    # if nuc != gap_char:
-                    self.draw_pixel(nuc, x + i, y)
-                #except IndexError:
-                #    print("Cursor fell off the image at", x,y)
-                if cx % 100000 == 0:
-                    print('\r', str(total_progress / self.image_length * 100)[:6], '% done:', contig.name,
-                          end="")  # pseudo progress bar
+                try:
+                    for i in range(remaining):
+                        nuc = contig.seq[cx + i]
+                        # if nuc != gap_char:
+                        self.draw_pixel(nuc, x + i, y)
+                except IndexError:
+                   print("Cursor fell off the image at", x,y)
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
+            if len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0:
+                print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
+                      flush=True)  # pseudo progress bar
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage=False, extract_contigs=None, ):
-        fasta_destination = os.path.join(output_folder, os.path.basename(fasta))
-        if extract_contigs:
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
+        bare_file = os.path.basename(fasta)
+        fasta_destination = os.path.join(output_folder, bare_file)
+        if not no_webpage:  # these support the webpage
+            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
+            self.remember_contig_spacing()
+        #also make single file
+        if extract_contigs or sort_contigs:
             length_sum = sum([len(c.seq) for c in self.contigs])
             fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
         else:
-            try:
-                if not no_webpage:
+            if not no_webpage:
+                try:
                     shutil.copy(fasta, fasta_destination)
-            except shutil.SameFileError:
-                pass  # not a problem
+                except shutil.SameFileError:
+                    pass  # not a problem
+
+        self.fasta_sources.append(bare_file)
+        print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
-        multipart_file = len(self.contigs) > 1
 
         # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
         #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
@@ -261,7 +284,7 @@ class TileLayout(object):
         for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
             title_length = len(contig.name) + 1  # for tracking where we are in the SEQUENCE file
-            reset, title, tail = self.calc_padding(total_progress, length, multipart_file)
+            reset, title, tail = self.calc_padding(total_progress, length)
 
             contig.reset_padding = reset
             contig.title_padding = title
@@ -283,33 +306,19 @@ class TileLayout(object):
             self.using_spectrum = True
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
-        self.contigs = self.filter_by_contigs(self.contigs, extract_contigs)
+        self.contigs = filter_by_contigs(self.contigs, extract_contigs)
         return self.calc_all_padding()
-
-    def filter_by_contigs(self, unfiltered, extract_contigs):
-        if extract_contigs is not None:  # winnow down to only extracted contigs
-            filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
-            if filtered_contigs:
-                return filtered_contigs
-            else:
-                print("Warning: No matching contigs were found, so the whole file is being used:",
-                      extract_contigs, file=sys.stderr)
-        return unfiltered
 
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
-        print("This will require approximately %s MB of RAM, or half that with --no_webpage" %
-              "{:,}".format(width*height * 3 // 1048576 * 4))  # 3 channels, quadruple size for zoom tiles
-        self.image = Image.new(self.pil_mode, (width, height), "white")
+        self.image = Image.new(self.pil_mode, (width, height), hex_to_rgb('#FFFFFF'))#ui_grey)
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
 
-    def calc_padding(self, total_progress, next_segment_length, multipart_file):
+    def calc_padding(self, total_progress, next_segment_length):
         min_gap = (20 + 6) * self.base_width  # 20px font height, + 6px vertical padding  * 100 nt per line
-        if not multipart_file:
-            return 0, 0, 0
 
         for i, current_level in enumerate(self.levels):
             if next_segment_length + min_gap < current_level.chunk_size:
@@ -342,17 +351,11 @@ class TileLayout(object):
         return 0, 0, 0
 
 
-    def position_on_screen(self, progress):
-        """ Readable unoptimized version:
-        Maps a nucleotide index to an x,y coordinate based on the rules set in self.levels"""
-        xy = list(self.origin)  # column padding for various markup = self.levels[2].padding
-        for i, level in enumerate(self.levels):
-            if progress < level.chunk_size:
-                return int(xy[0]), int(xy[1])  # somehow a float snuck in here once
-            part = i % 2
-            coordinate_in_chunk = int(progress // level.chunk_size) % level.modulo
-            xy[part] += level.thickness * coordinate_in_chunk
-        return int(xy[0]), int(xy[1])
+    def relative_position(self, progress):  #Alias for layout: Optimize?
+        return self.levels.relative_position(progress)
+
+    def position_on_screen(self, progress):  #Alias for layout: Optimize?
+        return self.levels.position_on_screen(progress)
 
 
     def draw_pixel(self, character, x, y):
@@ -387,10 +390,10 @@ class TileLayout(object):
         if contig.title_padding >= self.levels[3].chunk_size:
             font_size = 380  # full row labels for chromosomes
             title_width = 50  # approximate width
-        if contig.title_padding == self.tile_label_size:  # Tile dedicated to a Title (square shaped)
-            # since this level is square, there's no point in rotating it
-            font_size = 380 * 2  # doesn't really need to be 10x larger than the rows
-            title_width = 50 // 2
+        if contig.title_padding == self.tile_label_size:  # Biggest Title
+            if len(contig.name) < 24:
+                font_size = 380 * 2  # doesn't really need to be 10x larger than the rows
+                title_width = 50 // 2
             if self.use_fat_headers:
                 # TODO add reset_padding from next contig, just in case there's unused space on this level
                 tiles_spanned = int(math.ceil((len(contig.seq) + contig.tail_padding) / self.levels[4].chunk_size))
@@ -410,7 +413,7 @@ class TileLayout(object):
         upper_left = list(upper_left)  # to make it mutable
         font = self.get_font(self.font_name, font_size)
         multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
-        txt = Image.new('RGBA', (width, height))
+        txt = Image.new('RGBA', (width, height))#, color=(0,0,0,255))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
                                            fill=(0, 0, 0, 255))
@@ -449,11 +452,11 @@ class TileLayout(object):
             if coordinate_in_chunk > 1:
                 # not cumulative, just take the max size for either x or y
                 width_height[part] = max(width_height[part], level.thickness * coordinate_in_chunk)
-        width_height = [sum(x) for x in zip(width_height, self.origin)]  # , [self.levels[2].padding] * 2
+        width_height = [sum(x) for x in zip(width_height, self.levels.origin)]  # , [self.levels[2].padding] * 2
         width_height[0] += self.levels[2].padding   # add column padding to both sides
         width_height[1] += self.levels[2].padding   # column padding used as a proxy for vertical padding
-        width_height[0] += self.origin[0]  # add in origin offset
-        width_height[1] += self.origin[1]
+        width_height[0] += self.levels.origin[0]  # add in origin offset
+        width_height[1] += self.levels.origin[1]
         return int(width_height[0]), int(width_height[1])
 
 
@@ -465,34 +468,31 @@ class TileLayout(object):
             copytree(html_template, output_folder)  # copies the whole template directory
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
+                            "fasta_sources": str(self.fasta_sources),
+                            "each_layout": self.all_layouts_json(),
+                            "ContigSpacingJSON": self.contig_json(),
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
-                            "image_origin": str(self.origin),
+                            "image_origin": '[0,0]',
                             "ColumnPadding": str(self.levels[2].padding),
                             "columnWidthInNucleotides": str(self.levels[1].chunk_size),
-                            "layoutSelector": '1',
-                            "layout_levels": self.levels_json(),
-                            "ContigSpacingJSON": self.contig_json(),
-                            "multipart_file": str(len(self.contigs) > 1).lower(),
-                            # "use_fat_headers": str(self.use_fat_headers).lower(),  # use image_origin and layout_levels
                             "includeDensity": 'false',
                             "ipTotal": str(self.image_length),
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
                             "sbegin": '1',
                             "send": str(self.image_length),
-                            "date": datetime.now().strftime("%Y-%m-%d")}
-            html_content['legend'] = """    <strong>Legend:</strong>
-                <img class='legend-icon' src='img/LEGEND-A.png'/>
-                <img class='legend-icon' src='img/LEGEND-T.png'/>
-                <img class='legend-icon' src='img/LEGEND-G.png'/>
-                <img class='legend-icon' src='img/LEGEND-C.png'/>
-                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are blue/green.
-                    A/T rich areas are reddish.  Poly-purines are more yellow (orange/green).
-                    Poly-pyrimidines are more purple (blue/red).
-                    Diffuse natural colors were chosen to be less harsh on the eyes.</span>
-            """
+                            "date": datetime.now().strftime("%Y-%m-%d"),
+                            'legend': """    <strong>Legend:</strong>
+                                <img class='legend-icon' src='img/LEGEND-A.png'/>
+                                <img class='legend-icon' src='img/LEGEND-T.png'/>
+                                <img class='legend-icon' src='img/LEGEND-G.png'/>
+                                <img class='legend-icon' src='img/LEGEND-C.png'/>
+                                <img class='legend-icon' src='img/LEGEND-N.png'/>
+                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
+                                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are red/orange.
+                                    A/T rich areas are green/blue.  
+                                    Color choice is a compromise between less harsh natural colors and high contrast.</span>
+                            """}
             if not self.low_contrast:
                 html_content['legend'] = """    <strong>Legend:</strong>
                                 <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
@@ -501,8 +501,8 @@ class TileLayout(object):
                                 <img class='legend-icon' src='img/LEGEND-C-contrast.png'/>
                                 <img class='legend-icon' src='img/LEGEND-N.png'/>
                                 <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>G/C rich regions are blue/green.
-                                    A/T rich areas are reddish.</span>
+                                <span class='color-explanation'>G/C rich regions are red/orange.
+                                A/T rich areas are green/blue.</span>
                             """
             if self.using_spectrum:
                 html_content['legend'] = """    <strong>Legend:</strong>
@@ -539,16 +539,16 @@ class TileLayout(object):
         return json
 
     def contig_json(self):
-        json = self.contig_struct()
-        return "[" + ',\n'.join([str(x) for x in json]) + "]"
-
-
-    def levels_json(self):
+        """This method 100% relies on remember_contig_spacing() being called beforehand,
+        typically because output_fasta() was called for a webpage"""
         json = []
-        for level in self.levels:
-            json.append({"modulo": level.modulo, "chunk_size": level.chunk_size,
-                         "padding": level.padding, "thickness": level.thickness})
-        return str(json)
+        for source in self.contig_memory:  # all files that have been processed
+            json.append([x for x in source])  # ',\n'.join(
+        if not json:
+            print("Warning: no sequence position data was stored for the webpage.", file=sys.stderr)
+        contigs_per_file = str(json)
+        return contigs_per_file
+
 
     def get_packed_coordinates(self):
         """An attempted speed up for draw_nucleotides() that was the same speed.  In draw_nucleotides() the
@@ -580,4 +580,24 @@ class TileLayout(object):
 
     def additional_html_content(self, html_content):
         return {}  # override in children
+
+    def all_layouts_json(self):
+        records = []
+        for i, layout in enumerate(self.each_layout):
+            records.append(layout.to_json())
+        return str(records)
+
+    def remember_contig_spacing(self):
+        self.contig_memory.append(self.contig_struct())
+
+
+def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
+    chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)
+    try:
+        os.makedirs(chunks_dir, exist_ok=True)
+    except BaseException:
+        pass
+    for i, contig in enumerate(contigs):
+        filename = os.path.join(chunks_dir, '%i.fa' % i)
+        write_contigs_to_file(filename, [contig],verbose=False)
 
