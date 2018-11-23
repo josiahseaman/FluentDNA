@@ -2,10 +2,14 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
+import sys
 from collections import namedtuple
+
 try:
     from blist import blist
 except ImportError:
+    print("WARNING: blist is not installed.  \n",
+          "To get better performance, pip install blist and/or Visual C++ lib 14", file=sys.stderr)
     blist = list  # issue warning if used
 
 
