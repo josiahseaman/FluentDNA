@@ -12,6 +12,7 @@ from DDV.DDVUtils import filter_by_contigs
 class AnnotatedTrackLayout(ParallelLayout):
     def __init__(self, fasta_file, gff_file, annotation_width, **kwargs):
         self.annotation_phase = 0  # Means annotations are first, on the left
+        self.genome_phase = 1  #Genome is second, on the right
         columns = [annotation_width, 100]  # TODO: or base_width
         super(AnnotatedTrackLayout, self).__init__(n_genomes=2, column_widths=columns, **kwargs)
         self.fasta_file = fasta_file
@@ -30,7 +31,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                                      scaffold_lengths=lengths,
                                      output_path=self.annotation_fasta,
                                      annotation_width=self.annotation_width,
-                                     base_width=self.each_layout[1].base_width)
+                                     base_width=self.each_layout[self.genome_phase].base_width)
         #check contig filtering
         super(AnnotatedTrackLayout, self).process_file(output_folder,
                output_file_name=output_file_name,
@@ -69,6 +70,7 @@ class AnnotatedTrackLayout(ParallelLayout):
 
 
     def prepare_annotation_labels(self):
+        genome_width = self.each_layout[self.genome_phase].base_width
         self.i_layout = self.annotation_phase
         labels = self.annotation.annotations  # dict
         layout = self.contig_struct()
@@ -81,11 +83,13 @@ class AnnotatedTrackLayout(ParallelLayout):
                 continue
             for entry in labels[scaff_name]:
                 if entry.feature in ['gene', 'mRNA']:
-                    progress = (entry.start ) // self.base_width *\
+                    progress = (entry.start ) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
-                    end = (entry.end) // self.base_width *\
+                    end = (entry.end) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
                     name = extract_gene_name(entry, universal_prefix)
+                    if name == '989535g01':
+                        print(name, progress)
                     width, height, left, right, top, bottom = \
                         handle_multi_column_annotations(self.levels, progress, end)
                     font_size = 9
@@ -94,10 +98,14 @@ class AnnotatedTrackLayout(ParallelLayout):
                     # most gene names aren't unique at 9 characters
                     min_height = 13 if title_lines == 1 else 26
                     height = max(min_height, height)
-                    vertical = False #height > width
+                    vertical = height > width
                     if vertical:
                         width, height = height, width
                         # left, top, right, bottom = bottom, left, top, right
+                    old_with = width
+                    width = max(title_width * 6, width)  # Don't truncate the width such that no meaningful text shows up
+                    if vertical and entry.strand == '-':  # Anchored on uppef_left, affected by rotation
+                        top -= max(0, abs(width - old_with))
                     font = self.get_font(self.font_name, font_size)
                     self.levels.write_label(name, width, height, font, title_width,
                                             [left, top], vertical, entry.strand, self.image)

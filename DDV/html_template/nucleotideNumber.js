@@ -185,6 +185,7 @@ function showNucleotideNumber(event, viewer) {
     var display = information_to_show ? position_info.index_inside_contig : "-";
     if(cursor_in_a_title){
         display = position_info.contig_name;
+        document.getElementById("Nucleotide").innerHTML = display;
     }else{
         document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
     }
