@@ -133,7 +133,7 @@ class TileLayout(object):
     def base_width(self):
         """Shorthand for the column width value that is used often.  This can change
         based on the current self.i_layout."""
-        return self.levels[0].modulo
+        return self.levels.base_width
 
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
@@ -474,8 +474,6 @@ class TileLayout(object):
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": '[0,0]',
-                            "ColumnPadding": str(self.levels[2].padding),
-                            "columnWidthInNucleotides": str(self.levels[1].chunk_size),
                             "includeDensity": 'false',
                             "ipTotal": str(self.image_length),
                             "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding

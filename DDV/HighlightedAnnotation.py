@@ -207,12 +207,11 @@ class HighlightedAnnotation(TileLayout):
 
 
     def draw_annotation_labels(self, markup_image, annotated_regions, start_offset, label_color,
-                               universal_prefix='', use_suppression=False):
+                               universal_prefix='', use_suppression=False, force_orientation=None):
         """:param start_offset: accounting for titles, contig position in the layout
            :type use_suppression: bool supress lines of text that would overlap and crowd
            :type annotated_regions: list(AnnotatedRegion)
         """
-        from AnnotatedTrackLayout import handle_multi_column_annotations
         print("Drawing annotation labels")
         self.fonts = {9: ImageFont.load_default()}  # clear font cache, this may be a different font
         last_unsuppressed_progress = 0
@@ -232,10 +231,11 @@ class HighlightedAnnotation(TileLayout):
                 # top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
 
                 width, height, left, right, top, bottom = \
-                    handle_multi_column_annotations(self.levels,
-                                                    region.start+start_offset,
+                    self.levels.handle_multi_column_annotations(region.start+start_offset,
                                                     region.end+start_offset)
-                vertical_label = height > width
+                vertical_label = height > width and (force_orientation != 'horizontal')
+                if force_orientation == 'vertical':
+                    vertical_label = True
                 upper_left = [left, top]
 
                 # Title orientation and size
@@ -261,7 +261,7 @@ class HighlightedAnnotation(TileLayout):
                 self.draw_label(extract_gene_name(region, universal_prefix), width, height, font, 18,
                                 upper_left, vertical_label, region.strand, markup_image,
                                 label_color=current_color)
-            except BaseException as e:
+            except ValueError as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
     def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
@@ -271,24 +271,6 @@ class HighlightedAnnotation(TileLayout):
                                 canvas, horizontal_centering=horizontal_centering,
                                 center_vertical=center_vertical, chop_text=chop_text,
                                 label_color=label_color)
-
-    def handle_multi_column_annotations(self, region, left, right, top, bottom):
-        multi_column = abs(right - left) > self.base_width
-        if multi_column:  # pick the biggest column to contain the label, ignore others
-            median_point = len(region.points) // 2 + min(region.start, region.end)
-            s = median_point // self.base_width * self.base_width  # beginning of the line holding median
-            left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
-            right = self.position_on_screen(s + self.base_width - 2)[0]  # end of one line
-            filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
-            if filtered:
-                top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
-                height = min(1, len(filtered) // self.base_width)
-            else:
-                return 0, 0, left, right, top
-        else:
-            height = len(region.points) // self.base_width
-        width = self.base_width
-        return width, height, left, right, top
 
 
 def getNeighbors(x, y):

@@ -91,7 +91,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                     if name == '989535g01':
                         print(name, progress)
                     width, height, left, right, top, bottom = \
-                        handle_multi_column_annotations(self.levels, progress, end)
+                        self.levels.handle_multi_column_annotations(progress, end)
                     font_size = 9
                     title_width = 18
                     title_lines = math.ceil(len(name) / title_width)
@@ -127,26 +127,3 @@ class AnnotatedTrackLayout(ParallelLayout):
     def annotation_width(self):
         return self.each_layout[self.annotation_phase].levels[0].modulo
 
-
-def handle_multi_column_annotations(coord_frame, start, stop):
-    interval = abs(stop - start)
-    upper_left = coord_frame.position_on_screen(start + 2)
-    bottom_right = coord_frame.position_on_screen(stop - 2)
-    multi_column = abs(bottom_right[0] - upper_left[0]) > coord_frame.base_width
-    if True:#multi_column:  # pick the biggest column to contain the label, ignore others
-        median_point = interval // 2 + min(start, stop)
-        s = median_point // coord_frame.base_width * coord_frame.base_width  # beginning of the line holding median
-        left = coord_frame.position_on_screen(s)[0]  # x coordinate of beginning of line
-        right = coord_frame.position_on_screen(s + coord_frame.base_width - 2)[0]  # end of one line
-        #top is the start or  top of the column
-        #bottom is the stop or bottom of the column
-        column_step = coord_frame.levels[2].chunk_size
-        top_of_column = median_point // column_step * column_step
-        top = max(start, top_of_column)
-        bottom = min(stop, top_of_column + column_step - 2)
-        top, bottom = coord_frame.position_on_screen(top)[1], coord_frame.position_on_screen(bottom)[1]
-        height = abs(bottom - top)
-    # else:
-    #     height = interval // coord_frame.base_width
-    width = coord_frame.base_width
-    return width, height, left, right, top, bottom
