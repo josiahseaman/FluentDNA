@@ -76,6 +76,7 @@ class TileLayout(object):
         self.border_width = border_width
         origin = [max(self.border_width, padding[2]),
                   max(self.border_width, padding[2])]
+        self.layout_algorithm = "0"  # rastered tile layout
         self.each_layout = [level_layout_factory(modulos, padding, origin)]
         self.i_layout = 0
 
@@ -176,7 +177,7 @@ class TileLayout(object):
             self.use_fat_headers = True
             self.levels = self.levels[:6]
             self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-            self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+            self.levels.append(LayoutLevel(999, levels=self.levels))  # [6] PageColumn
             self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
@@ -469,6 +470,7 @@ class TileLayout(object):
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
+                            "layout_algorithm": self.layout_algorithm,
                             "each_layout": self.all_layouts_json(),
                             "ContigSpacingJSON": self.contig_json(),
                             "originalImageWidth": str(self.image.width if self.image else 1),

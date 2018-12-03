@@ -12,6 +12,7 @@ than 3:5 = 0.6) see https://arxiv.org/pdf/0806.4787.pdf
 try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
 import sys
+from itertools import chain
 
 from DNASkittleUtils.Contigs import read_contigs
 
@@ -21,18 +22,31 @@ import os
 import numpy as np
 from functools import reduce
 
-from Layouts import LayoutFrame
+from Layouts import LayoutFrame, LayoutLevel
 
 
 class IdeogramCoordinateFrame(LayoutFrame):
     def __init__(self, x_radices, y_radices, x_scale, y_scale, border_width):
-        self.levels = []
         self.point_mapping = [] # for annotation and testing purposes
         self.origin = (border_width, border_width)
+        self.fibre_padding = 3
         self.x_radices = x_radices
         self.y_radices = y_radices
         self.x_scale = x_scale
         self.y_scale = y_scale
+
+        #levels creation
+        modulos = list(chain(*zip(x_radices, y_radices)))
+        padding = [0] * len(modulos)
+        padding[-1] = self.fibre_padding  # very last y layer has padding to match hacked_padding()
+        # This has the side effect that coordinates are wrong for the last half of the last
+        # block in each row where hacked padding comes in the middle and mouse padding is at the end
+        levels = [LayoutLevel(modulos[0], 1, padding[0]),
+                  LayoutLevel(modulos[1], modulos[0], padding[1])]
+        for i in range(2, len(modulos)):
+            levels.append(LayoutLevel(modulos[i], padding=padding[i], levels=levels))
+        self.levels = levels
+
         super(LayoutFrame, self).__init__(self.levels)  # levels is our iterable
         #Itering levels is less helpful in Ideogram than it is in regular LayoutFrame
 
@@ -45,6 +59,9 @@ class IdeogramCoordinateFrame(LayoutFrame):
 
 
     def build_coordinate_mapping(self, sequence_length):
+        while self.levels[-1].chunk_size > sequence_length:
+            self.levels = self.levels[:-1]  # drop unnecessary levels used in mouse calculation
+
         ndim_x = len(self.x_radices)
         ndim_y = len(self.y_radices)
         max_dim = max(ndim_x, ndim_y)
@@ -90,7 +107,7 @@ class IdeogramCoordinateFrame(LayoutFrame):
             if place // 2 == len(self.x_radices) - 1:
                 if curr_pos[1] == max_x or curr_pos[1] == min_x:
                     if odd == 1:
-                        curr_pos[0] += 3  # y coordinates are in [0]
+                        curr_pos[0] += self.fibre_padding  # y coordinates are in [0]
                     odd = (odd + 1) % 2
         return odd
 
@@ -175,6 +192,7 @@ class Ideogram(HighlightedAnnotation):
         coordinates = IdeogramCoordinateFrame(x_radices, y_radices, x_scale, y_scale, self.border_width)
         self.each_layout = [coordinates]  # overwrite anything else
         self.i_layout = 0
+        self.layout_algorithm = "1"  # non-raster peano space filling curve
 
 
 
@@ -261,11 +279,6 @@ class Ideogram(HighlightedAnnotation):
         self.levels.write_label(contig_name, width, height, font, title_width, upper_left,
               False, '+', canvas, label_color=label_color, horizontal_centering=True, center_vertical=True,
               chop_text=False)
-
-    def levels_json(self, ignored):
-        return '[]'  # There's no reasonable way to encode mouse position in rectangles
-    def contig_json(self):
-        return '[]'  # There's no reasonable way to encode mouse position in rectangles
 
 
 def increment(digits, radices, place):

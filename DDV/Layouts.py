@@ -4,7 +4,7 @@ from DDV.DDVUtils import multi_line_height
 
 
 class LayoutLevel(object):
-    def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
+    def __init__(self, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
         self.modulo = modulo
         if chunk_size is not None:
             self.chunk_size = chunk_size
@@ -134,11 +134,11 @@ class LayoutFrame(list):
 def level_layout_factory(modulos, padding, origin):
     # noinspection PyListCreation
     levels = [
-        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
-        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
+        LayoutLevel(modulos[0], 1, padding[0]),  # [0] XInColumn
+        LayoutLevel(modulos[1], modulos[0], padding[1])  # [1] LineInColumn
     ]
     for i in range(2, len(modulos)):
-        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
+        levels.append(LayoutLevel(modulos[i], padding=padding[i], levels=levels))  # [i] ColumnInRow
     return LayoutFrame(tuple(origin), levels)
 
 
