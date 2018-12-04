@@ -39,6 +39,8 @@ class FluentDNACase(unittest.TestCase):
         fluent('--fasta="example_data/hg38_chr20_sample.fa" --radix="([3,3,3,3,3, 27], [5,3,3,3,3,3,53],1,1)" --ref_annotation="example_data/Hg38_genes_chr20_sample.gff" --outname="Test Ideogram" --layout=ideogram')
     def test_custom_layout(self):
         fluent('--custom_layout="([2,3,5,7,11,13,17,999], [0,0,0,0,0,0,1,6])"  --fasta="example_data/hg38_chr19_sample.fa" --outname="Test Custom Layout"')
+    def test_multiple_file_retrieval(self):
+        fluent('--fasta=data/translocation/chr21_hg38_gapped.fa --extrafastas data/translocation/chr21_hg38_unique.fa data/translocation/panTro5_to_hg38_chr21_unique.fa data/translocation/panTro5_to_hg38_chr21_gapped.fa --outname="Test Multiple File Retrieval"')
 
     @unittest.skip("Skipped: server never closes")
     def test_server(self):

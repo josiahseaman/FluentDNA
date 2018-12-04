@@ -484,7 +484,7 @@ def main():
     if not args.layout:
         if args.extra_fastas:  # separate because unique can use a chain file without extra_fastas
             args.layout = 'parallel'
-        if args.fasta:
+        elif args.fasta:
             if args.radix:
                 args.layout = 'ideogram'
             elif args.chain_file:
