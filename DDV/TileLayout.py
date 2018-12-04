@@ -114,11 +114,12 @@ class TileLayout(object):
         if self.low_contrast:
             self.activate_natural_colors()
 
-        # Used in translocations, not amino acids:  B J O U Z
+        # Used in translocations:  - . _
+        # not amino acids:  B J O U Z
         self.palette['-'] = self.palette[gap_char]
-        self.palette['J'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
+        self.palette['.'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
+        self.palette['_'] = hex_to_rgb('#FFEEED')  #FFE7E5 red
         self.palette['B'] = hex_to_rgb('#FFF0EF')  #EAFFE5 green
-        self.palette['O'] = hex_to_rgb('#FFEEED')  #FFE7E5 red
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 

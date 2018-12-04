@@ -97,9 +97,9 @@ class ChainParser(object):
         TranslocationMark = namedtuple('TranslocationMark', ['char', 'fill', 'legend', 'color'])
         self.translocation_types = [
             TranslocationMark('T', '-', 'syntenic', hex_to_rgb('#FFFFFF')),  #
-            TranslocationMark('A', 'J', 'inversion', hex_to_rgb('#E5F3FF')),  #  blue
+            TranslocationMark('A', '.', 'inversion', hex_to_rgb('#E5F3FF')),  #  blue
             TranslocationMark('C', 'B', 'intrachromosomal', hex_to_rgb('#EAFFE5')),  #  green
-            TranslocationMark('G', 'O', 'interchromosomal', hex_to_rgb('#FFEEED')),  #  red
+            TranslocationMark('G', '_', 'interchromosomal', hex_to_rgb('#FFEEED')),  #  red
             TranslocationMark('C', 'Z', 'duplicated', hex_to_rgb('#F8E5FF')),  #  purple
             TranslocationMark('N', 'U', 'lost_duplicate', hex_to_rgb('#FFF3E5'))]  #  orange
 
