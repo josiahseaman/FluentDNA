@@ -222,12 +222,14 @@ function showNucleotideNumber(event, viewer) {
         }
     }
 
-    var display = information_to_show ? position_info.index_inside_contig : "-";
+
     if(cursor_in_a_title){
-        display = position_info.contig_name;
-        document.getElementById("Nucleotide").innerHTML = display;
+        document.getElementById("Nucleotide").innerHTML = position_info.contig_name;
     }else{
-        document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
+        var display_number = information_to_show ? position_info.index_inside_contig : "-";
+        document.getElementById("Nucleotide").innerHTML = numberWithCommas(display_number);
+        var display_file = information_to_show ? fasta_sources[position_info.fasta_index] : "Sequence under Cursor";
+        document.getElementById("FileUnderCursor").innerHTML = display_file;
     }
     //show sequence fragment
     if (sequence_data_viewer_initialized) {
@@ -371,7 +373,7 @@ function processInitSequenceError() {
 
 function outputTable() {
     if (each_layout.length){
-    $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
+       $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th id="FileUnderCursor">Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    '+
       '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
       '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
         '<div id="SeqDisplayTarget"></div>' +
