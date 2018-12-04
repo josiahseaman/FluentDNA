@@ -37,7 +37,7 @@ class TransposonLayout(TileLayout):
 
 
     def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosomes=None):
-        self.levels.origin[1] += self.levels[5].padding  # One full Row of padding for Title
+        self.levels.origin = (self.levels.origin[0], self.levels.origin[1] + self.levels[5].padding)  # One full Row of padding for Title
         start_time = datetime.now()
         self.read_all_files(ref_fasta, repeat_annotation_filename, chromosomes)
 
@@ -68,7 +68,8 @@ class TransposonLayout(TileLayout):
             consensus_width = sum([x.rep_end for x in self.repeat_entries]) // len(self.repeat_entries)  # rough approximation of size
             num_lines = len(self.repeat_entries)
             print("Average Width", consensus_width, "Entries", num_lines)
-            self.set_column_height()
+            heights = self.repeat_entries_to_heights()
+            self.set_column_height(heights)
         else:
             self.column_height = 1000
 
@@ -108,7 +109,7 @@ class TransposonLayout(TileLayout):
         # skip to next mega row
         if self.next_origin[0] + width + 1 >= self.image.width:
             self.next_origin[0] = self.border_width
-            self.next_origin[1] += self.levels[3].thickness  # self.column_height
+            self.next_origin[1] += self.levels[3].thickness  #self.column_height #
 
         modulos = [width, height, 9999, 9999]
         padding = [0, 0, 20, 20 * 3]
@@ -207,13 +208,21 @@ class TransposonLayout(TileLayout):
                          vertical_label=False,
                          canvas=self.image)
 
-    def set_column_height(self):
-        counts = defaultdict(lambda: 0)
+    def set_column_height(self, heights):
+        try:
+            from statistics import median
+            average_line_count = int(median(heights))
+        except ImportError:
+            average_line_count = int(math.ceil(sum(heights) / len(heights)))
+        self.column_height = min(max(heights), average_line_count * 2)
+        print("Setting Column Height to %i based on Average line count per Block" % self.column_height)
+
+    def repeat_entries_to_heights(self):
+        rep_count = defaultdict(lambda: 0)
         for x in self.repeat_entries:
-            counts[x.rep_name] += 1
-        average_line_count = int(math.ceil(sum(counts.values()) / len(counts)))
-        print("Setting Column Height to %i based on Average line count per Repeat Name" % (average_line_count * 2))
-        self.column_height = average_line_count * 2
+            rep_count[x.rep_name] += 1
+        heights = sorted([val for val in rep_count.values()])
+        return heights
 
 
 def grab_aligned_repeat(consensus_width, contig, fragment):

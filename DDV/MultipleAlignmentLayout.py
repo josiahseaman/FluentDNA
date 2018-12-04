@@ -136,14 +136,5 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
 
-    def contig_json(self):
-        return '[]'  # not implemented, but must override base class
 
 
-    def set_column_height(self, heights):
-        try:
-            from statistics import median
-            average_line_count = int(median(heights))
-        except ImportError:
-            average_line_count = int(ceil(sum(heights) / len(heights)))
-        self.column_height = min(max(heights), average_line_count * 2)
