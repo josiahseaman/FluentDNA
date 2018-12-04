@@ -36,6 +36,15 @@ body {
 .legend-icon {
     margin-left: 10px;
 }
+.legend-rgb {
+    display:inline-block;
+}
+.legend-rgb span {
+    float: left;
+    width: 15px;
+    height: 15px;
+    margin: 0 5px 0 10px;
+}
 
 ul.selectChromosome {
     margin: 0;

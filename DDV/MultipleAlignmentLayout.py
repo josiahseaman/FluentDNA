@@ -30,6 +30,7 @@ class MultipleAlignmentLayout(TransposonLayout):
         kwargs['sort_contigs'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
+        self.protein_palette = True
         self.sort_contigs = sort_contigs
 
         #### Rasmol 'Amino' Protein colors

@@ -48,6 +48,7 @@ class TileLayout(object):
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.using_spectrum = False
+        self.protein_palette = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         self.title_skip_padding = base_width  # skip one line. USER: Change this
@@ -511,6 +512,29 @@ class TileLayout(object):
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""
+            if self.protein_palette:
+                html_content['legend'] = "    <strong>Legend:</strong>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['A'])+"'></span>Alanine (A)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['C'])+"'></span>Cysteine (C)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['D'])+"'></span>Aspartic acid (D)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['E'])+"'></span>Glutamic acid (E)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['F'])+"'></span>Phenylalanine (F)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['G'])+"'></span>Glycine (G)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['H'])+"'></span>Histidine (H)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['I'])+"'></span>Isoleucine (I)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['K'])+"'></span>Lysine (K)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['L'])+"'></span>Leucine (L)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['M'])+"'></span>Methionine (M)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['N'])+"'></span>Asparagine (N)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['P'])+"'></span>Proline (P)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['Q'])+"'></span>Glutamine (Q)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['R'])+"'></span>Arginine (R)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['S'])+"'></span>Serine (S)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['T'])+"'></span>Threonine (T)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['V'])+"'></span>Valine (V)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['W'])+"'></span>Tryptophan (W)</div>"+\
+                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['Y'])+"'></span>Tyrosine (Y)</div>"
+            # "<div class='legend-rgb'><span style='background:rgb" + str( self.palette['X']) + "'></span>X</div>" + \
             html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
