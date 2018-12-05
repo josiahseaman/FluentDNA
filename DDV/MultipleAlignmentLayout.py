@@ -21,6 +21,12 @@ def collapse_file_to_one_contig(fasta):
                    ''.join([x.seq for x in species]), )
     block.consensus_width = consensus_width
     block.height = len(species)
+
+    block.reset_padding = 0  # TODO migrate to one contig per line
+    block.title_padding = 0  # multiple contigs per alignment file, like original
+    block.tail_padding = 0
+    block.nuc_title_start = 0
+    block.nuc_seq_start = 0
     return block
 
 
@@ -101,6 +107,7 @@ class MultipleAlignmentLayout(TransposonLayout):
             traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        self.output_fasta(output_folder, os.path.basename(input_fasta_folder), False, [], False)
 
 
     def draw_nucleotides(self):

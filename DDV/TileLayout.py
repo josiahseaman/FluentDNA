@@ -262,8 +262,9 @@ class TileLayout(object):
             if not no_webpage:
                 try:
                     shutil.copy(fasta, fasta_destination)
-                except shutil.SameFileError:
+                except (shutil.SameFileError, FileNotFoundError):
                     pass  # not a problem
+                # Comes up in MultipleAlignmentLayout
 
         self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
@@ -464,6 +465,8 @@ class TileLayout(object):
 
 
     def generate_html(self, output_folder, output_file_name):
+        def legend_line(label, palette_key):
+            return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
         try:
             import DDV
             module_path = os.path.dirname(DDV.__file__)
@@ -513,28 +516,28 @@ class TileLayout(object):
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""
             if self.protein_palette:
-                html_content['legend'] = "    <strong>Legend:</strong>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['A'])+"'></span>Alanine (A)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['C'])+"'></span>Cysteine (C)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['D'])+"'></span>Aspartic acid (D)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['E'])+"'></span>Glutamic acid (E)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['F'])+"'></span>Phenylalanine (F)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['G'])+"'></span>Glycine (G)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['H'])+"'></span>Histidine (H)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['I'])+"'></span>Isoleucine (I)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['K'])+"'></span>Lysine (K)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['L'])+"'></span>Leucine (L)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['M'])+"'></span>Methionine (M)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['N'])+"'></span>Asparagine (N)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['P'])+"'></span>Proline (P)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['Q'])+"'></span>Glutamine (Q)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['R'])+"'></span>Arginine (R)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['S'])+"'></span>Serine (S)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['T'])+"'></span>Threonine (T)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['V'])+"'></span>Valine (V)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['W'])+"'></span>Tryptophan (W)</div>"+\
-                "<div class='legend-rgb'><span style='background:rgb"+str(self.palette['Y'])+"'></span>Tyrosine (Y)</div>"
-            # "<div class='legend-rgb'><span style='background:rgb" + str( self.palette['X']) + "'></span>X</div>" + \
+                html_content['legend'] = "<strong>Legend:</strong>"+\
+                    legend_line('Alanine (A)', 'A') +\
+                    legend_line('Cysteine (C)', 'C') +\
+                    legend_line('Aspartic acid (D)', 'D') +\
+                    legend_line('Glutamic acid (E)', 'E') +\
+                    legend_line('Phenylalanine (F)', 'F') +\
+                    legend_line('Glycine (G)', 'G') +\
+                    legend_line('Histidine (H)', 'H') +\
+                    legend_line('Isoleucine (I)', 'I') +\
+                    legend_line('Lysine (K)', 'K') +\
+                    legend_line('Leucine (L)', 'L') +\
+                    legend_line('Methionine (M)', 'M') +\
+                    legend_line('Asparagine (N)', 'N') +\
+                    legend_line('Proline (P)', 'P') +\
+                    legend_line('Glutamine (Q)', 'Q') +\
+                    legend_line('Arginine (R)', 'R') +\
+                    legend_line('Serine (S)', 'S') +\
+                    legend_line('Threonine (T)', 'T') +\
+                    legend_line('Valine (V)', 'V') +\
+                    legend_line('Tryptophan (W)', 'W') +\
+                    legend_line('Tyrosine (Y)', 'Y')+ \
+                    legend_line('Any (X)', 'X')
             html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
