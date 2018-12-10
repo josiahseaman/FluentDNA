@@ -7,28 +7,11 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 import math
-from DNASkittleUtils.CommandLineUtils import just_the_name
-from DNASkittleUtils.Contigs import read_contigs, Contig
 from DDV.TileLayout import hex_to_rgb
 from natsort import natsorted
 
 from DDV.TransposonLayout import TransposonLayout
-
-
-def collapse_file_to_one_contig(fasta):
-    species = read_contigs(fasta)
-    consensus_width = max([len(x.seq) for x in species])
-    block = Contig(just_the_name(fasta),
-                   ''.join([x.seq for x in species]), )
-    block.consensus_width = consensus_width
-    block.height = len(species)
-
-    block.reset_padding = 0  # TODO migrate to one contig per line
-    block.title_padding = 0  # multiple contigs per alignment file, like original
-    block.tail_padding = 0
-    block.nuc_title_start = 0
-    block.nuc_seq_start = 0
-    return block
+from Layouts import level_layout_factory
 
 
 def fastas_in_folder(input_fasta_folder):
@@ -50,6 +33,9 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.protein_palette = True
         self.sort_contigs = sort_contigs
+        self.title_height_px = 10
+        self.x_pad = 20  # whitespace between MSA blocks
+        self.y_pad = 20  # vertical pad to include space for titles
 
         #### Rasmol 'Amino' Protein colors
         # self.palette['A'] = hex_to_rgb('C8C8C8')
@@ -118,11 +104,13 @@ class MultipleAlignmentLayout(TransposonLayout):
             # self.read_contigs_and_calc_padding(single_MSA, None)
             try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
                 self.draw_nucleotides()
-                print("\nDrew Nucleotides:", datetime.now() - start_time)
+                if self.use_titles:
+                    self.draw_titles()
             except Exception as e:
                 print('Encountered exception while drawing nucleotides:', '\n')
                 traceback.print_exc()
             self.output_fasta(output_folder, single_MSA, False, None, False, append_fasta_sources=False)
+        print("\nDrew Nucleotides:", datetime.now() - start_time)
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
@@ -134,23 +122,22 @@ class MultipleAlignmentLayout(TransposonLayout):
         super(TransposonLayout, self).draw_nucleotides()
 
 
-
-
     def calc_all_padding(self):
         total_progress = 0
         seq_start, title_length = 0, 0
         widest_sequence = 0
-        for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
+        for i, contig in enumerate(self.contigs):  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
-            contig.reset_padding = 0
-            contig.title_padding = 0
-            contig.tail_padding = 0
             widest_sequence = max(widest_sequence, length)
             contig.consensus_width = widest_sequence
+            contig.reset_padding = 0
+            #First contig of each MSA has a 10px tall title
+            contig.title_padding = 0 if i != 0 else widest_sequence * self.title_height_px
+            contig.tail_padding = 0
             contig.nuc_title_start = seq_start
             contig.nuc_seq_start = seq_start + title_length
             #at the moment these values are the same but they have different meanings
-            total_progress += length  # pointer in image
+            total_progress += length + contig.title_padding # pointer in image
             seq_start += title_length + length  # pointer in text
         return total_progress
 
@@ -168,10 +155,14 @@ class MultipleAlignmentLayout(TransposonLayout):
         max_w = max([x.consensus_width for source in self.all_contents.values() for x in source])
         max_h = max([len(source) for source in self.all_contents.values()])
         #TODO check if max_h is too large and needs to be interrupted by layout: one full row
-        area = sum([(source[-1].consensus_width +20) * (len(source) + 40) for source in self.all_contents.values()])
+        areas = []
+        for source in self.all_contents.values():
+            areas.append((source[-1].consensus_width + self.x_pad) *
+                         (len(source) + self.y_pad + self.title_height_px))
+        area = sum(areas)
         self.image_length = int(area * 1.2)
         square_dim = int(math.sqrt(self.image_length))
-        image_wh = [max(max_w, square_dim + 400), max(max_h, square_dim)]
+        image_wh = [max(max_w, square_dim), max(max_h, square_dim)]
         self.prepare_image(0, image_wh[0], image_wh[1])
         return image_wh
 
@@ -192,7 +183,10 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.each_layout = []  # delete old defaul layout
         for filename in self.fasta_sources:
             source = self.all_contents[filename]
-            self.layout_based_on_repeat_size(source[0].consensus_width, len(source), image_wh[0])
+            height = len(source) + self.title_height_px
+            width = source[0].consensus_width
+            source[0].title_padding = self.title_height_px * width  # add
+            self.layout_based_on_repeat_size(width, height, image_wh[0])
         self.i_layout = 0 # drawing starts at the beginning
 
 
@@ -205,5 +199,36 @@ class MultipleAlignmentLayout(TransposonLayout):
             self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
 
 
+    def layout_based_on_repeat_size(self, width, height, max_width):
+        """change layout to match dimensions of the repeat
+        """
+
+        # skip to next mega row
+        if self.next_origin[0] + width + 1 >= max_width:
+            self.next_origin[0] = self.border_width
+            self.next_origin[1] += self.current_column_height + self.y_pad
+            self.current_column_height = 1  # reset
+
+        self.current_column_height = max(height, self.current_column_height)
+        modulos = [width, height, 9999, 9999]
+        padding = [0, 0, 20, 20 * 3]
+        self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
+        self.next_origin[0] += width + self.x_pad  # scoot next_origin by width we just used up
+        self.i_layout = len(self.each_layout) - 1  # select current layout
+
+
+    def draw_titles(self):
+        """Draw one title for each file (MSA Block) that includes many contigs.
+        We use a fake contig with no sequence and the name of file, instead of the name of the first
+        line of the MSA."""
+        filename = os.path.basename(self.fasta_sources[self.i_layout])
+        contig_name = os.path.splitext(filename)[0]  # should be basename
+        upper_left = list(self.position_on_screen(0))
+        upper_left[1] -= 2  # bit of margin, should be less than self.border_width
+        font_size = 9  # font sizes: [9, 38, 380, 380 * 2]
+        title_width = self.levels.base_width // 6
+        title_lines = 1
+        self.write_title(contig_name, self.levels.base_width, self.title_height_px, font_size,
+                         title_lines, title_width, upper_left, False, self.image)
 
 

@@ -373,7 +373,7 @@ def main():
                             "Parallel. Only needed if you want non-default option like 'alignment', "
                              "'unique' or 'annotation_track'.",
                         choices=["tiled", "annotated", "ideogram", "alignment", "annotation_track",
-                                 "parallel", "unique", "transposon"],
+                                 "parallel", "unique", ], # "transposon"
                         dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',

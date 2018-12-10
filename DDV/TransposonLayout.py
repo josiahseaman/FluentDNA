@@ -101,23 +101,6 @@ class TransposonLayout(TileLayout):
         print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
-    def layout_based_on_repeat_size(self, width, height, max_width):
-        """change layout to match dimensions of the repeat
-        """
-
-        # skip to next mega row
-        if self.next_origin[0] + width + 1 >= max_width:
-            self.next_origin[0] = self.border_width
-            self.next_origin[1] += self.current_column_height + 20#self.levels[3].thickness  #
-            self.current_column_height = 10  # reset
-
-        self.current_column_height = max(height, self.current_column_height)
-        modulos = [width, height, 9999, 9999]
-        padding = [0, 0, 20, 20 * 3]
-        self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
-        self.next_origin[0] += width + 20  # scoot next_origin by width we just used up
-        self.i_layout = len(self.each_layout) - 1  # select current layout
-
 
     def draw_nucleotides(self):
         processed_contigs = self.create_repeat_fasta_contigs()
