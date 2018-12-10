@@ -7,10 +7,9 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 import math
-from DDV.TileLayout import hex_to_rgb
+from DDV.TileLayout import hex_to_rgb, TileLayout
 from natsort import natsorted
 
-from DDV.TransposonLayout import TransposonLayout
 from Layouts import level_layout_factory
 
 
@@ -24,13 +23,14 @@ def fastas_in_folder(input_fasta_folder):
 
 
 
-class MultipleAlignmentLayout(TransposonLayout):
+class MultipleAlignmentLayout(TileLayout):
     def __init__(self, sort_contigs=False, **kwargs):
         kwargs['low_contrast'] = True
         kwargs['sort_contigs'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
         self.all_contents = {}  # (filename: contigs) output_fasta() determines order of fasta_sources
-        self.using_mixed_widths = True  # we are processing all repeat types with different widths
+        self.current_column_height = 20
+        self.next_origin = [self.border_width, 30] # margin for titles, incremented each MSA
         self.protein_palette = True
         self.sort_contigs = sort_contigs
         self.title_height_px = 10
@@ -90,7 +90,6 @@ class MultipleAlignmentLayout(TransposonLayout):
 
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
-        self.using_mixed_widths = True  # we are processing all repeat types with different widths
         start_time = datetime.now()
         self.preview_all_files(input_fasta_folder)
         self.calculate_mixed_layout()
@@ -115,11 +114,11 @@ class MultipleAlignmentLayout(TransposonLayout):
         print("Output Image in:", datetime.now() - start_time)
 
 
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=False):
         """Layout a whole set of different repeat types with different widths.  Column height is fixed,
         but column width varies constantly.  Wrapping to the next row is determined by hitting the
         edge of the allocated image."""
-        super(TransposonLayout, self).draw_nucleotides()
+        super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
 
 
     def calc_all_padding(self):
@@ -152,8 +151,9 @@ class MultipleAlignmentLayout(TransposonLayout):
         self.pixels = self.image.load()
 
     def initialize_image_by_sequence_dimensions(self):
-        max_w = max([x.consensus_width for source in self.all_contents.values() for x in source])
-        max_h = max([len(source) for source in self.all_contents.values()])
+        margin = self.border_width*2
+        max_w = max([x.consensus_width for source in self.all_contents.values() for x in source]) + margin
+        max_h = max([len(source) + self.title_height_px for source in self.all_contents.values()]) + margin
         #TODO check if max_h is too large and needs to be interrupted by layout: one full row
         areas = []
         for source in self.all_contents.values():

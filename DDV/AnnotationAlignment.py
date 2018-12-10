@@ -18,12 +18,7 @@ from DDV.RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
     filter_repeats_by_chromosome_and_family
 from DDV.Span import alignment_chopping_index, AlignedSpans, Span
 from DDV.TransposonLayout import TransposonLayout
-
 from DDV.DDVUtils import make_output_dir_with_suffix
-
-
-# class AnnotationAlignment(object):
-#     def __init__(self):
 
 
 def create_aligned_annotation_fragments(alignment, repeat_entries):

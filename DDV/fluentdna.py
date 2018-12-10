@@ -55,7 +55,6 @@ from DDV.ChainParser import ChainParser
 from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
 from DDV.AnnotatedAlignment import AnnotatedAlignment
 from DDV.TileLayout import TileLayout
-from DDV.TransposonLayout import TransposonLayout
 from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
 from DNASkittleUtils.Contigs import write_contigs_to_file, read_contigs
 
@@ -150,14 +149,6 @@ def ddv(args):
         done(args, args.output_dir)
 
     # ==========TODO: separate views that support batches of contigs============= #
-    elif args.layout == 'transposon':
-        layout = TransposonLayout()
-        # if len(args.contigs) != 1:
-        #     raise NotImplementedError("Chromosome Argument requires exactly one chromosome e.g. '--contigs chr12'")
-        layout.process_all_repeats(args.fasta, args.output_dir, just_the_name(args.output_dir), args.ref_annotation, args.contigs)
-        print("Done with Transposons")
-        done(args, args.output_dir)
-
     elif args.layout == 'alignment':
         layout = MultipleAlignmentLayout(sort_contigs=args.sort_contigs)
         layout.process_all_alignments(args.fasta,

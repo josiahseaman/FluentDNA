@@ -222,7 +222,7 @@ class TileLayout(object):
         """Placeholder method for child classes"""
         pass
 
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=True):
         total_progress = 0
         # Layout contigs one at a time
         for contig_index, contig in enumerate(self.contigs):
@@ -239,9 +239,9 @@ class TileLayout(object):
                         # if nuc != gap_char:
                         self.draw_pixel(nuc, x + i, y)
                 except IndexError:
-                   print("Cursor fell off the image at", x,y)
+                   print("Cursor fell off the image at", (x,y))
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
-            if len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0:
+            if verbose and (len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0):
                 print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
                       flush=True)  # pseudo progress bar
         print('')

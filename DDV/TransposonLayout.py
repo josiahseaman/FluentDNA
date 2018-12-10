@@ -1,9 +1,19 @@
+""" DEPRECATION WARNING:
+This file is currently unused by FluentDNA.  The original purpose was to show
+a variety of MSA pulled from RepeatMasker annotations across the genome.
+The intent was to visualize the diversity and abundance at each site.
+All the reusable functionality of TransposonLayout has been moved to MultipleAlignmentLayout.
+A fairly small script could process the repeatMasker annotation file into a folder of fasta MSA
+that could be visualized with MultipleAlignmentLayout.
+The crucial values are the within repeat coordinates rep_end.  I found experimentally
+that rooting the MSA on the last nucleotide of each line (not the start) gave the most
+coherent MSA."""
+
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import math
 import traceback
 
-import sys
 from DNASkittleUtils.DDVUtils import editable_str
 from collections import defaultdict
 from datetime import datetime
@@ -12,7 +22,6 @@ from DNASkittleUtils.Contigs import Contig, read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
-from DDV.Layouts import LayoutLevel, level_layout_factory
 from DDV import gap_char
 
 
@@ -20,7 +29,7 @@ class TransposonLayout(TileLayout):
     def __init__(self, **kwargs):
         # print("Warning: Transposon Layout is an experimental feature not currently supported.",
         #       file=sys.stderr)
-        kwargs.update({'sort_contigs': True})  # important for mega row heigh handling
+        kwargs.update({'sort_contigs': True})  # important for mega row height handling
         super(TransposonLayout, self).__init__(**kwargs)
         self.repeat_entries = None
         self.current_column_height = 20
@@ -102,7 +111,7 @@ class TransposonLayout(TileLayout):
 
 
 
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=True):
         processed_contigs = self.create_repeat_fasta_contigs()
         print("Finished creating contigs")
         self.contigs = processed_contigs  # TODO: overwriting self.contigs isn't really great data management
