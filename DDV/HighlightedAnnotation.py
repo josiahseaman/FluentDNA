@@ -194,8 +194,8 @@ class HighlightedAnnotation(TileLayout):
                         if entry.feature == 'gene':
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                             genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                        if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                            regions.append(AnnotatedRegion(entry, self.levels, start_offset))
+                        # if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                        #     regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                         if entry.feature == 'CDS' or entry.feature == 'exon':
                             # hopefully mRNA comes first in the file
                             # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:

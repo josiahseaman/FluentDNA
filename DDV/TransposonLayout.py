@@ -23,7 +23,7 @@ class TransposonLayout(TileLayout):
         kwargs.update({'sort_contigs': True})  # important for mega row heigh handling
         super(TransposonLayout, self).__init__(**kwargs)
         self.repeat_entries = None
-        self.column_height = 400
+        self.current_column_height = 20
         self.next_origin = [self.border_width, 30] # margin for titles, incremented each MSA
 
 
@@ -71,7 +71,7 @@ class TransposonLayout(TileLayout):
             heights = self.repeat_entries_to_heights()
             self.set_column_height(heights)
         else:
-            self.column_height = 1000
+            self.current_column_height = 1000
 
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
@@ -101,16 +101,17 @@ class TransposonLayout(TileLayout):
         print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
-    def layout_based_on_repeat_size(self, contig, width, height=None):
-        """change layout to match dimensions of the repeat"""
-        height = math.ceil(len(contig.seq) / width)
-        # height = self.column_height if height is None else height
+    def layout_based_on_repeat_size(self, width, height, max_width):
+        """change layout to match dimensions of the repeat
+        """
 
         # skip to next mega row
-        if self.next_origin[0] + width + 1 >= self.image.width:
+        if self.next_origin[0] + width + 1 >= max_width:
             self.next_origin[0] = self.border_width
-            self.next_origin[1] += self.levels[3].thickness  #self.column_height #
+            self.next_origin[1] += self.current_column_height + 20#self.levels[3].thickness  #
+            self.current_column_height = 10  # reset
 
+        self.current_column_height = max(height, self.current_column_height)
         modulos = [width, height, 9999, 9999]
         padding = [0, 0, 20, 20 * 3]
         self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
@@ -131,7 +132,8 @@ class TransposonLayout(TileLayout):
         edge of the allocated image."""
         for contig in self.contigs:
             assert contig.consensus_width, "You must set the consensus_width in order to use this layout"
-            self.layout_based_on_repeat_size(contig, contig.consensus_width)
+            height = math.ceil(len(contig.seq) / contig.consensus_width)
+            self.layout_based_on_repeat_size(contig.consensus_width, height, self.image.width)
 
             contig_progress = 0
             seq_length = len(contig.seq)
@@ -214,8 +216,8 @@ class TransposonLayout(TileLayout):
             average_line_count = int(median(heights))
         except ImportError:
             average_line_count = int(math.ceil(sum(heights) / len(heights)))
-        self.column_height = min(max(heights), average_line_count * 2)
-        print("Setting Column Height to %i based on Average line count per Block" % self.column_height)
+        self.current_column_height = min(max(heights), average_line_count * 2)
+        print("Setting Column Height to %i based on Average line count per Block" % self.current_column_height)
 
     def repeat_entries_to_heights(self):
         rep_count = defaultdict(lambda: 0)

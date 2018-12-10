@@ -247,7 +247,8 @@ class TileLayout(object):
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
+                     append_fasta_sources=True):
         bare_file = os.path.basename(fasta)
         fasta_destination = os.path.join(output_folder, bare_file)
         if not no_webpage:  # these support the webpage
@@ -265,8 +266,8 @@ class TileLayout(object):
                 except (shutil.SameFileError, FileNotFoundError):
                     pass  # not a problem
                 # Comes up in MultipleAlignmentLayout
-
-        self.fasta_sources.append(bare_file)
+        if append_fasta_sources:
+            self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
@@ -434,8 +435,11 @@ class TileLayout(object):
         return font
 
     def output_image(self, output_folder, output_file_name):
-        del self.pixels
-        del self.draw
+        try:
+            del self.pixels
+            del self.draw
+        except BaseException:
+            pass  # this is just memory optimization
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')

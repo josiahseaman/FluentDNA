@@ -4,8 +4,9 @@ from __future__ import print_function, division, absolute_import, \
 import os
 import traceback
 from datetime import datetime
-from math import ceil
+from PIL import Image, ImageDraw
 
+import math
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import read_contigs, Contig
 from DDV.TileLayout import hex_to_rgb
@@ -30,11 +31,22 @@ def collapse_file_to_one_contig(fasta):
     return block
 
 
+def fastas_in_folder(input_fasta_folder):
+    from glob import glob
+    # If I was actually given a file name and not a directory, just process the one file
+    if not os.path.isdir(input_fasta_folder) and os.path.exists(input_fasta_folder):
+        return [input_fasta_folder]
+    else:
+        return list(natsorted(glob(os.path.join(input_fasta_folder, '*.fa*'))))
+
+
+
 class MultipleAlignmentLayout(TransposonLayout):
     def __init__(self, sort_contigs=False, **kwargs):
         kwargs['low_contrast'] = True
         kwargs['sort_contigs'] = True
         super(MultipleAlignmentLayout, self).__init__(**kwargs)
+        self.all_contents = {}  # (filename: contigs) output_fasta() determines order of fasta_sources
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         self.protein_palette = True
         self.sort_contigs = sort_contigs
@@ -94,55 +106,104 @@ class MultipleAlignmentLayout(TransposonLayout):
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         self.using_mixed_widths = True  # we are processing all repeat types with different widths
         start_time = datetime.now()
-        self.translate_gapped_fastas_to_contigs(input_fasta_folder)
-        print("Converted contigs :", datetime.now() - start_time)
-
-        self.initialize_image_by_sequence_dimensions()
+        self.preview_all_files(input_fasta_folder)
+        self.calculate_mixed_layout()
+        print("Tallied all contigs :", datetime.now() - start_time)
         print("Initialized Image:", datetime.now() - start_time, "\n")
-        try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
-            self.draw_nucleotides()
-            print("\nDrew Nucleotides:", datetime.now() - start_time)
-        except Exception as e:
-            print('Encountered exception while drawing nucleotides:', '\n')
-            traceback.print_exc()
+        #TODO: sort all layouts with corresponding sequence?
+
+        for file_no, single_MSA in enumerate(self.fasta_sources):
+            self.i_layout = file_no
+            self.contigs = self.all_contents[single_MSA]
+            # self.read_contigs_and_calc_padding(single_MSA, None)
+            try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
+                self.draw_nucleotides()
+                print("\nDrew Nucleotides:", datetime.now() - start_time)
+            except Exception as e:
+                print('Encountered exception while drawing nucleotides:', '\n')
+                traceback.print_exc()
+            self.output_fasta(output_folder, single_MSA, False, None, False, append_fasta_sources=False)
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
-        self.output_fasta(output_folder, os.path.basename(input_fasta_folder), False, [], False)
 
 
     def draw_nucleotides(self):
-        bad_contigs = [c for c in self.contigs if not c.consensus_width]
-        for contig in bad_contigs:
-            print("Error while reading FASTA. Skipping: %s" % contig.name)
-            self.contigs.remove(contig)
-        if self.sort_contigs:
-            self.contigs.sort(key=lambda x: -x.height)
-        self.each_layout = []  # clear any previous constructors
-        self.next_origin = [self.border_width, 30]  # margin for titles, incremented each MSA
-        self.draw_nucleotides_in_variable_column_width()  # uses self.contigs and self.layout to draw
+        """Layout a whole set of different repeat types with different widths.  Column height is fixed,
+        but column width varies constantly.  Wrapping to the next row is determined by hitting the
+        edge of the allocated image."""
+        super(TransposonLayout, self).draw_nucleotides()
 
 
-    def translate_gapped_fastas_to_contigs(self, input_fasta_folder):
-        from glob import glob
-        self.contigs = []
-        # If I was actually given a file name and not a directory, just process the one file
-        if not os.path.isdir(input_fasta_folder) and os.path.exists(input_fasta_folder):
-            self.contigs.append(collapse_file_to_one_contig(input_fasta_folder))
-        else:
-            for fasta in natsorted(glob(os.path.join(input_fasta_folder, '*.fa*'))):
-                block = collapse_file_to_one_contig(fasta)
-                self.contigs.append(block)
-        return self.contigs
 
-    def initialize_image_by_sequence_dimensions(self, consensus_width=None, num_lines=None):
-        consensus_width = sum([x.consensus_width for x in self.contigs]) // len(self.contigs)
-        consensus_width = max(consensus_width, max([x.consensus_width for x in self.contigs]))
-        heights = [x.height for x in self.contigs]
-        num_lines = sum(heights)
-        self.set_column_height(heights)
-        print("Average Width", consensus_width, "Genes", num_lines)
-        self.image_length = consensus_width * num_lines
-        self.prepare_image(self.image_length)
+
+    def calc_all_padding(self):
+        total_progress = 0
+        seq_start, title_length = 0, 0
+        widest_sequence = 0
+        for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
+            length = len(contig.seq)
+            contig.reset_padding = 0
+            contig.title_padding = 0
+            contig.tail_padding = 0
+            widest_sequence = max(widest_sequence, length)
+            contig.consensus_width = widest_sequence
+            contig.nuc_title_start = seq_start
+            contig.nuc_seq_start = seq_start + title_length
+            #at the moment these values are the same but they have different meanings
+            total_progress += length  # pointer in image
+            seq_start += title_length + length  # pointer in text
+        return total_progress
+
+
+
+    def prepare_image(self, image_length, width=None, height=None):
+        if not width or not height:
+            width, height = self.max_dimensions(image_length)
+        print("Image dimensions are", width, "x", height, "pixels")
+        self.image = Image.new(self.pil_mode, (width, height), hex_to_rgb('#FFFFFF'))#ui_grey)
+        self.draw = ImageDraw.Draw(self.image)
+        self.pixels = self.image.load()
+
+    def initialize_image_by_sequence_dimensions(self):
+        max_w = max([x.consensus_width for source in self.all_contents.values() for x in source])
+        max_h = max([len(source) for source in self.all_contents.values()])
+        #TODO check if max_h is too large and needs to be interrupted by layout: one full row
+        area = sum([(source[-1].consensus_width +20) * (len(source) + 40) for source in self.all_contents.values()])
+        self.image_length = int(area * 1.2)
+        square_dim = int(math.sqrt(self.image_length))
+        image_wh = [max(max_w, square_dim + 400), max(max_h, square_dim)]
+        self.prepare_image(0, image_wh[0], image_wh[1])
+        return image_wh
+
+    def calculate_mixed_layout(self):
+        """Do complete layout of image, then decide its dimensions
+        All the layout brains go here"""
+        #TODO: sort contigs
+        # bad_contigs = [c for c in self.contigs if not c.consensus_width]
+        # for contig in bad_contigs:
+        #     print("Error while reading FASTA. Skipping: %s" % contig.name)
+        #     self.contigs.remove(contig)
+        # if self.sort_contigs:
+        #     self.contigs.sort(key=lambda x: -x.height)
+
+        image_wh = self.initialize_image_by_sequence_dimensions()
+
+        #unsorted, largest height per row, tends to be less dense
+        self.each_layout = []  # delete old defaul layout
+        for filename in self.fasta_sources:
+            source = self.all_contents[filename]
+            self.layout_based_on_repeat_size(source[0].consensus_width, len(source), image_wh[0])
+        self.i_layout = 0 # drawing starts at the beginning
+
+
+    def preview_all_files(self, input_fasta_folder):
+        """Populates fasta_sources with files from a directory"""
+        for single_MSA in fastas_in_folder(input_fasta_folder):
+            self.read_contigs_and_calc_padding(single_MSA, None)
+            fasta_name = os.path.basename(single_MSA)
+            self.fasta_sources.append(fasta_name)
+            self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
+
 
 
 
