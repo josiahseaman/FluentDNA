@@ -486,10 +486,6 @@ class TileLayout(object):
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
-                            "ipTotal": str(self.image_length),
-                            "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
-                            "sbegin": '1',
-                            "send": str(self.image_length),
                             "date": datetime.now().strftime("%Y-%m-%d"),
                             'legend': """    <strong>Legend:</strong>
                                 <img class='legend-icon' src='img/LEGEND-A.png'/>

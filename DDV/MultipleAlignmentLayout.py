@@ -150,20 +150,18 @@ class MultipleAlignmentLayout(TileLayout):
         self.draw = ImageDraw.Draw(self.image)
         self.pixels = self.image.load()
 
-    def initialize_image_by_sequence_dimensions(self):
+    def guess_image_dimensions(self):
         margin = self.border_width*2
         max_w = max([x.consensus_width for source in self.all_contents.values() for x in source]) + margin
         max_h = max([len(source) + self.title_height_px for source in self.all_contents.values()]) + margin
         #TODO check if max_h is too large and needs to be interrupted by layout: one full row
         areas = []
         for source in self.all_contents.values():
-            areas.append((source[-1].consensus_width + self.x_pad) *
-                         (len(source) + self.y_pad + self.title_height_px))
+            areas.append((source[-1].consensus_width + self.x_pad) * (len(source) + self.y_pad))
         area = sum(areas)
         self.image_length = int(area * 1.2)
         square_dim = int(math.sqrt(self.image_length))
-        image_wh = [max(max_w, square_dim), max(max_h, square_dim)]
-        self.prepare_image(0, image_wh[0], image_wh[1])
+        image_wh = [max(max_w, 4 * square_dim //3), max(max_h, 2 * square_dim // 3)]
         return image_wh
 
     def calculate_mixed_layout(self):
@@ -177,7 +175,7 @@ class MultipleAlignmentLayout(TileLayout):
         # if self.sort_contigs:
         #     self.contigs.sort(key=lambda x: -x.height)
 
-        image_wh = self.initialize_image_by_sequence_dimensions()
+        image_wh = self.guess_image_dimensions()
 
         #unsorted, largest height per row, tends to be less dense
         self.each_layout = []  # delete old defaul layout
@@ -189,6 +187,10 @@ class MultipleAlignmentLayout(TileLayout):
             self.layout_based_on_repeat_size(width, height, image_wh[0])
         self.i_layout = 0 # drawing starts at the beginning
 
+        adjusted_height = self.next_origin[1] + self.current_column_height + self.y_pad  #could extend image
+        self.prepare_image(0, image_wh[0], adjusted_height)
+
+
 
     def preview_all_files(self, input_fasta_folder):
         """Populates fasta_sources with files from a directory"""
@@ -197,6 +199,10 @@ class MultipleAlignmentLayout(TileLayout):
             fasta_name = os.path.basename(single_MSA)
             self.fasta_sources.append(fasta_name)
             self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
+        if self.sort_contigs:  # do this before self.each_layout is created in order
+            heights = [(len(self.all_contents[fasta_name]), fasta_name) for fasta_name in self.fasta_sources]
+            heights.sort(key=lambda pair: -pair[0])  # largest number of sequences first
+            self.fasta_sources = [pair[1] for pair in heights]  # override old ordering
 
 
     def layout_based_on_repeat_size(self, width, height, max_width):
