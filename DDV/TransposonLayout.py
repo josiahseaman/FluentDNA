@@ -1,9 +1,19 @@
+""" DEPRECATION WARNING:
+This file is currently unused by FluentDNA.  The original purpose was to show
+a variety of MSA pulled from RepeatMasker annotations across the genome.
+The intent was to visualize the diversity and abundance at each site.
+All the reusable functionality of TransposonLayout has been moved to MultipleAlignmentLayout.
+A fairly small script could process the repeatMasker annotation file into a folder of fasta MSA
+that could be visualized with MultipleAlignmentLayout.
+The crucial values are the within repeat coordinates rep_end.  I found experimentally
+that rooting the MSA on the last nucleotide of each line (not the start) gave the most
+coherent MSA."""
+
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import math
 import traceback
 
-import sys
 from DNASkittleUtils.DDVUtils import editable_str
 from collections import defaultdict
 from datetime import datetime
@@ -12,7 +22,6 @@ from DNASkittleUtils.Contigs import Contig, read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
-from DDV.Layouts import LayoutLevel, level_layout_factory
 from DDV import gap_char
 
 
@@ -20,10 +29,10 @@ class TransposonLayout(TileLayout):
     def __init__(self, **kwargs):
         # print("Warning: Transposon Layout is an experimental feature not currently supported.",
         #       file=sys.stderr)
-        kwargs.update({'sort_contigs': True})  # important for mega row heigh handling
+        kwargs.update({'sort_contigs': True})  # important for mega row height handling
         super(TransposonLayout, self).__init__(**kwargs)
         self.repeat_entries = None
-        self.column_height = 400
+        self.current_column_height = 20
         self.next_origin = [self.border_width, 30] # margin for titles, incremented each MSA
 
 
@@ -37,7 +46,7 @@ class TransposonLayout(TileLayout):
 
 
     def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosomes=None):
-        self.levels.origin[1] += self.levels[5].padding  # One full Row of padding for Title
+        self.levels.origin = (self.levels.origin[0], self.levels.origin[1] + self.levels[5].padding)  # One full Row of padding for Title
         start_time = datetime.now()
         self.read_all_files(ref_fasta, repeat_annotation_filename, chromosomes)
 
@@ -68,9 +77,10 @@ class TransposonLayout(TileLayout):
             consensus_width = sum([x.rep_end for x in self.repeat_entries]) // len(self.repeat_entries)  # rough approximation of size
             num_lines = len(self.repeat_entries)
             print("Average Width", consensus_width, "Entries", num_lines)
-            self.set_column_height()
+            heights = self.repeat_entries_to_heights()
+            self.set_column_height(heights)
         else:
-            self.column_height = 1000
+            self.current_column_height = 1000
 
         self.image_length = consensus_width * num_lines
         self.prepare_image(self.image_length)
@@ -100,24 +110,8 @@ class TransposonLayout(TileLayout):
         print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
 
 
-    def layout_based_on_repeat_size(self, contig, width, height=None):
-        """change layout to match dimensions of the repeat"""
-        height = math.ceil(len(contig.seq) / width)
-        # height = self.column_height if height is None else height
 
-        # skip to next mega row
-        if self.next_origin[0] + width + 1 >= self.image.width:
-            self.next_origin[0] = self.border_width
-            self.next_origin[1] += self.levels[3].thickness  # self.column_height
-
-        modulos = [width, height, 9999, 9999]
-        padding = [0, 0, 20, 20 * 3]
-        self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
-        self.next_origin[0] += width + 20  # scoot next_origin by width we just used up
-        self.i_layout = len(self.each_layout) - 1  # select current layout
-
-
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=True):
         processed_contigs = self.create_repeat_fasta_contigs()
         print("Finished creating contigs")
         self.contigs = processed_contigs  # TODO: overwriting self.contigs isn't really great data management
@@ -130,7 +124,8 @@ class TransposonLayout(TileLayout):
         edge of the allocated image."""
         for contig in self.contigs:
             assert contig.consensus_width, "You must set the consensus_width in order to use this layout"
-            self.layout_based_on_repeat_size(contig, contig.consensus_width)
+            height = math.ceil(len(contig.seq) / contig.consensus_width)
+            self.layout_based_on_repeat_size(contig.consensus_width, height, self.image.width)
 
             contig_progress = 0
             seq_length = len(contig.seq)
@@ -207,13 +202,21 @@ class TransposonLayout(TileLayout):
                          vertical_label=False,
                          canvas=self.image)
 
-    def set_column_height(self):
-        counts = defaultdict(lambda: 0)
+    def set_column_height(self, heights):
+        try:
+            from statistics import median
+            average_line_count = int(median(heights))
+        except ImportError:
+            average_line_count = int(math.ceil(sum(heights) / len(heights)))
+        self.current_column_height = min(max(heights), average_line_count * 2)
+        print("Setting Column Height to %i based on Average line count per Block" % self.current_column_height)
+
+    def repeat_entries_to_heights(self):
+        rep_count = defaultdict(lambda: 0)
         for x in self.repeat_entries:
-            counts[x.rep_name] += 1
-        average_line_count = int(math.ceil(sum(counts.values()) / len(counts)))
-        print("Setting Column Height to %i based on Average line count per Repeat Name" % (average_line_count * 2))
-        self.column_height = average_line_count * 2
+            rep_count[x.rep_name] += 1
+        heights = sorted([val for val in rep_count.values()])
+        return heights
 
 
 def grab_aligned_repeat(consensus_width, contig, fragment):

@@ -89,14 +89,14 @@ class GFF(object):
                         else:
                             attributes = {}
 
-                        annotation = self.Annotation(chromosome, ID,
-                                                     source, feature,
-                                                     start, end,
-                                                     score, strand,
-                                                     frame, attributes, line)
-
-                        annotations[chromosome].append(annotation)
-                        chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], annotation.end)
+                        chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], end)
+                        if feature != 'chromosome':  # chromosomes don't have strand or frame
+                            annotation = self.Annotation(chromosome, ID,
+                                                         source, feature,
+                                                         start, end,
+                                                         score, strand,
+                                                         frame, attributes, line)
+                            annotations[chromosome].append(annotation)
                     except IndexError as e:
                         print(e, line)
 
@@ -104,16 +104,16 @@ class GFF(object):
 
     class Annotation(object):
         def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attributes, line):
-            assert isinstance(chromosome, str)
-            assert isinstance(ID, int)
-            assert isinstance(source, str)
-            assert isinstance(feature, str)
-            assert isinstance(start, int)
-            assert isinstance(end, int)
-            assert score is None or isinstance(score, float)
-            assert isinstance(strand, str)
-            assert frame is None or isinstance(frame, int)
-            assert isinstance(attributes, dict)
+            assert isinstance(chromosome, str), line
+            assert isinstance(ID, int), line
+            assert isinstance(source, str), line
+            assert isinstance(feature, str), line
+            assert isinstance(start, int), line
+            assert isinstance(end, int), line
+            assert score is None or isinstance(score, float), line
+            assert isinstance(strand, str), line
+            assert frame is None or isinstance(frame, int), line
+            assert isinstance(attributes, dict), line
 
             self.chromosome = chromosome
             self.ID = ID

@@ -48,6 +48,7 @@ class TileLayout(object):
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.using_spectrum = False
+        self.protein_palette = False
         self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         self.title_skip_padding = base_width  # skip one line. USER: Change this
@@ -76,6 +77,7 @@ class TileLayout(object):
         self.border_width = border_width
         origin = [max(self.border_width, padding[2]),
                   max(self.border_width, padding[2])]
+        self.layout_algorithm = "0"  # rastered tile layout
         self.each_layout = [level_layout_factory(modulos, padding, origin)]
         self.i_layout = 0
 
@@ -113,11 +115,12 @@ class TileLayout(object):
         if self.low_contrast:
             self.activate_natural_colors()
 
-        # Used in translocations, not amino acids:  B J O U Z
+        # Used in translocations:  - . _
+        # not amino acids:  B J O U Z
         self.palette['-'] = self.palette[gap_char]
-        self.palette['J'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
+        self.palette['.'] = hex_to_rgb('#E5F3FF')  #E5F3FF blue
+        self.palette['_'] = hex_to_rgb('#FFEEED')  #FFE7E5 red
         self.palette['B'] = hex_to_rgb('#FFF0EF')  #EAFFE5 green
-        self.palette['O'] = hex_to_rgb('#FFEEED')  #FFE7E5 red
         self.palette['Z'] = hex_to_rgb('#F9EDFF')  #F8E5FF pink
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
@@ -133,7 +136,7 @@ class TileLayout(object):
     def base_width(self):
         """Shorthand for the column width value that is used often.  This can change
         based on the current self.i_layout."""
-        return self.levels[0].modulo
+        return self.levels.base_width
 
     def activate_high_contrast_colors(self):
         # # -----Nucleotide Colors! Paletton Stark ------
@@ -176,7 +179,7 @@ class TileLayout(object):
             self.use_fat_headers = True
             self.levels = self.levels[:6]
             self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-            self.levels.append(LayoutLevel("PageColumn", 999, levels=self.levels))  # [6]
+            self.levels.append(LayoutLevel(999, levels=self.levels))  # [6] PageColumn
             self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
             self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
@@ -219,7 +222,7 @@ class TileLayout(object):
         """Placeholder method for child classes"""
         pass
 
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=True):
         total_progress = 0
         # Layout contigs one at a time
         for contig_index, contig in enumerate(self.contigs):
@@ -236,15 +239,16 @@ class TileLayout(object):
                         # if nuc != gap_char:
                         self.draw_pixel(nuc, x + i, y)
                 except IndexError:
-                   print("Cursor fell off the image at", x,y)
+                   print("Cursor fell off the image at", (x,y))
             total_progress += contig.tail_padding  # add trailing white space after the contig sequence body
-            if len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0:
+            if verbose and (len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0):
                 print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
                       flush=True)  # pseudo progress bar
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
+                     append_fasta_sources=True):
         bare_file = os.path.basename(fasta)
         fasta_destination = os.path.join(output_folder, bare_file)
         if not no_webpage:  # these support the webpage
@@ -259,10 +263,11 @@ class TileLayout(object):
             if not no_webpage:
                 try:
                     shutil.copy(fasta, fasta_destination)
-                except shutil.SameFileError:
+                except (shutil.SameFileError, FileNotFoundError):
                     pass  # not a problem
-
-        self.fasta_sources.append(bare_file)
+                # Comes up in MultipleAlignmentLayout
+        if append_fasta_sources:
+            self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
         return fasta_destination
 
@@ -430,8 +435,11 @@ class TileLayout(object):
         return font
 
     def output_image(self, output_folder, output_file_name):
-        del self.pixels
-        del self.draw
+        try:
+            del self.pixels
+            del self.draw
+        except BaseException:
+            pass  # this is just memory optimization
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')
@@ -461,6 +469,8 @@ class TileLayout(object):
 
 
     def generate_html(self, output_folder, output_file_name):
+        def legend_line(label, palette_key):
+            return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
         try:
             import DDV
             module_path = os.path.dirname(DDV.__file__)
@@ -469,18 +479,13 @@ class TileLayout(object):
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
+                            "layout_algorithm": self.layout_algorithm,
                             "each_layout": self.all_layouts_json(),
                             "ContigSpacingJSON": self.contig_json(),
                             "originalImageWidth": str(self.image.width if self.image else 1),
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": '[0,0]',
-                            "ColumnPadding": str(self.levels[2].padding),
-                            "columnWidthInNucleotides": str(self.levels[1].chunk_size),
                             "includeDensity": 'false',
-                            "ipTotal": str(self.image_length),
-                            "direct_data_file_length": str(self.image_length),  # TODO: this isn't right because includes padding
-                            "sbegin": '1',
-                            "send": str(self.image_length),
                             "date": datetime.now().strftime("%Y-%m-%d"),
                             'legend': """    <strong>Legend:</strong>
                                 <img class='legend-icon' src='img/LEGEND-A.png'/>
@@ -510,6 +515,29 @@ class TileLayout(object):
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""
+            if self.protein_palette:
+                html_content['legend'] = "<strong>Legend:</strong>"+\
+                    legend_line('Alanine (A)', 'A') +\
+                    legend_line('Cysteine (C)', 'C') +\
+                    legend_line('Aspartic acid (D)', 'D') +\
+                    legend_line('Glutamic acid (E)', 'E') +\
+                    legend_line('Phenylalanine (F)', 'F') +\
+                    legend_line('Glycine (G)', 'G') +\
+                    legend_line('Histidine (H)', 'H') +\
+                    legend_line('Isoleucine (I)', 'I') +\
+                    legend_line('Lysine (K)', 'K') +\
+                    legend_line('Leucine (L)', 'L') +\
+                    legend_line('Methionine (M)', 'M') +\
+                    legend_line('Asparagine (N)', 'N') +\
+                    legend_line('Proline (P)', 'P') +\
+                    legend_line('Glutamine (Q)', 'Q') +\
+                    legend_line('Arginine (R)', 'R') +\
+                    legend_line('Serine (S)', 'S') +\
+                    legend_line('Threonine (T)', 'T') +\
+                    legend_line('Valine (V)', 'V') +\
+                    legend_line('Tryptophan (W)', 'W') +\
+                    legend_line('Tyrosine (Y)', 'Y')+ \
+                    legend_line('Any (X)', 'X')
             html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()

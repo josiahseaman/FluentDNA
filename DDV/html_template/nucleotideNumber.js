@@ -115,6 +115,42 @@ function nucleotide_coordinates_to_sequence_index(index_from_xy, source_index){
         fasta_index: source_index};//so we can getSequence() the right file
 }
 
+/** Mouse cursor logic for the Ideogram peano layout needs to account for fractal
+ * direction switching at each layout level.  Otherwise, similar to
+ * tiled_layout_mouse_position()
+ * Javascript uses gray code logic to track reversing coordinate frames on odd numbers.*/
+function peano_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
+    var index_from_xy = 0;
+    var xy_remaining = [nucNumX, nucNumY];
+    var axis_flipped = [false, false]
+    for (var i = layout_levels.length - 1; i >= 0; i--) {
+        var level = layout_levels[i];
+        var part = i % 2;
+        var number_of_full_increments = Math.floor(xy_remaining[part] / level.thickness);
+        var partial_is_reversed = axis_flipped[part];
+
+        var relative_progress = partial_is_reversed ? level.modulo - number_of_full_increments - 1 : number_of_full_increments
+        // add total nucleotide size for every full increment of this level e.g. Tile Y height
+        index_from_xy += level.chunk_size * relative_progress;
+
+        var step_size_correction = number_of_full_increments * level.thickness;
+        //subtract the credited coordinates to shift to relative coordinates in that level
+        xy_remaining[part] -= step_size_correction;
+        //if the number of full_increments is odd, then we landed in a reversed partial segment
+        //at this same level
+        var this_level_flipped = number_of_full_increments % 2 == 1;
+        //Flip the next axis calculation using XOR to stack recursive layers of flipping
+        var next_axis = axis_flipped[(part + 1) %2];
+        axis_flipped[(part + 1) %2] = this_level_flipped? !next_axis : next_axis; // XOR
+
+        if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
+            return "";//check for invalid coordinate (margins)
+        }
+    }
+    var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy, source_index);
+    return position_info;
+}
+
 
 function tiled_layout_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
     //global variable each_layout set by index.html and python generate_html()
@@ -173,7 +209,11 @@ function showNucleotideNumber(event, viewer) {
             var relX = nucNumX - each_layout[i].origin[0]
             var relY = nucNumY - each_layout[i].origin[1]
             if (relX > -1 && relY > -1){
-                position_info = tiled_layout_mouse_position(relX, relY, each_layout[i].levels, i);
+                if(layout_algorithm == 0){
+                    position_info = tiled_layout_mouse_position(relX, relY, each_layout[i].levels, i);
+                }else{
+                    position_info = peano_mouse_position(relX, relY, each_layout[i].levels, i);
+                }
                 information_to_show = $.isNumeric(position_info.file_coordinates)
                 if(information_to_show){
                     break;
@@ -182,17 +222,23 @@ function showNucleotideNumber(event, viewer) {
         }
     }
 
-    var display = information_to_show ? position_info.index_inside_contig : "-";
+
     if(cursor_in_a_title){
-        display = position_info.contig_name;
+        document.getElementById("Nucleotide").innerHTML = position_info.contig_name;
     }else{
-        document.getElementById("Nucleotide").innerHTML = numberWithCommas(display);
+        var display_number = information_to_show ? position_info.index_inside_contig : "-";
+        document.getElementById("Nucleotide").innerHTML = numberWithCommas(display_number);
+        var display_file = information_to_show ? fasta_sources[position_info.fasta_index] : "Sequence under Cursor";
+        document.getElementById("FileUnderCursor").innerHTML = display_file;
     }
     //show sequence fragment
     if (sequence_data_viewer_initialized) {
         var lineNumber = "";
         if (information_to_show && position_info.index_inside_contig) {
             var columnWidthInNucleotides = each_layout[position_info.fasta_index].levels[0].modulo
+            if(layout_algorithm == 1){
+                columnWidthInNucleotides = 100;  // override the tiny display (probably 3)
+            }
             Nucleotide = position_info.index_inside_contig;
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
@@ -311,7 +357,7 @@ function init_sequence_view() {
         sequence: "",
         target: "SeqDisplayTarget",
         format: 'FASTA',
-        columns: {size: columnWidthInNucleotides, spacedEach: 0},
+        columns: {size: 100, spacedEach: 0},
         formatSelectorVisible: false,
         fontSize: '18px',
     });
@@ -327,7 +373,7 @@ function processInitSequenceError() {
 
 function outputTable() {
     if (each_layout.length){
-    $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th>Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
+       $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th id="FileUnderCursor">Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    '+
       '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
       '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
         '<div id="SeqDisplayTarget"></div>' +

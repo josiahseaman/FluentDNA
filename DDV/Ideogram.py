@@ -12,6 +12,7 @@ than 3:5 = 0.6) see https://arxiv.org/pdf/0806.4787.pdf
 try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
 import sys
+from itertools import chain
 
 from DNASkittleUtils.Contigs import read_contigs
 
@@ -21,40 +22,46 @@ import os
 import numpy as np
 from functools import reduce
 
+from Layouts import LayoutFrame, LayoutLevel
 
-class Ideogram(HighlightedAnnotation):
-    def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
-                 repeat_annotation=None, **kwargs):
-        kwargs.update({'use_titles': False})
-        super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation,
-                                       repeat_annotation=repeat_annotation, **kwargs)
-        x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
+
+class IdeogramCoordinateFrame(LayoutFrame):
+    def __init__(self, x_radices, y_radices, x_scale, y_scale, border_width):
+        self.point_mapping = [] # for annotation and testing purposes
+        self.origin = (border_width, border_width)
+        self.fibre_padding = 3
         self.x_radices = x_radices
         self.y_radices = y_radices
-        self.x_scale, self.y_scale = x_scale, y_scale
-        self.point_mapping = [] # for annotation and testing purposes
-        self.border_width = 12
+        self.x_scale = x_scale
+        self.y_scale = y_scale
 
-    def process_file(self, input_file_path, output_folder, output_file_name,
-                     no_webpage=False, extract_contigs=None):
-        if extract_contigs is None:
-            contigs = read_contigs(input_file_path)
-            extract_contigs = [contigs[0].name.split()[0]]
-            print("Extracting ", extract_contigs)
-        super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
-                                           no_webpage=no_webpage, extract_contigs=extract_contigs)
-    # def activate_high_contrast_colors(self):
-    #     # Original DDV Colors
-    #     self.palette['G'] = (255, 0, 0)
-    #     self.palette['A'] = (0, 255, 0)
-    #     self.palette['C'] = (250, 240, 114)
-    #     self.palette['T'] = (0, 0, 255)
-    #     self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
-    #     self.palette['C'] = hex_to_rgb('EE955D')  # rock
-    #     self.palette['T'] = hex_to_rgb('A19E3D')  # light green
-    #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
+        #levels creation
+        modulos = list(chain(*zip(x_radices, y_radices)))
+        padding = [0] * len(modulos)
+        padding[-1] = self.fibre_padding  # very last y layer has padding to match hacked_padding()
+        # This has the side effect that coordinates are wrong for the last half of the last
+        # block in each row where hacked padding comes in the middle and mouse padding is at the end
+        levels = [LayoutLevel(modulos[0], 1, padding[0]),
+                  LayoutLevel(modulos[1], modulos[0], padding[1])]
+        for i in range(2, len(modulos)):
+            levels.append(LayoutLevel(modulos[i], padding=padding[i], levels=levels))
+        self.levels = levels
 
-    def draw_nucleotides(self):
+        super(LayoutFrame, self).__init__(self.levels)  # levels is our iterable
+        #Itering levels is less helpful in Ideogram than it is in regular LayoutFrame
+
+
+    @property
+    def base_width(self):
+        """Shorthand for the column width value that is used often.  This can change
+        based on the current self.i_layout."""
+        return reduce(int.__mul__, self.x_radices)
+
+
+    def build_coordinate_mapping(self, sequence_length):
+        while self.levels[-1].chunk_size > sequence_length:
+            self.levels = self.levels[:-1]  # drop unnecessary levels used in mouse calculation
+
         ndim_x = len(self.x_radices)
         ndim_y = len(self.y_radices)
         max_dim = max(ndim_x, ndim_y)
@@ -67,31 +74,24 @@ class Ideogram(HighlightedAnnotation):
         radices[0:ndim_y, 1] = self.y_radices
 
         no_pts = np.prod(radices)
-        points_visited = set()
         radices.shape = np.prod(radices.shape)  # flatten
 
-        points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
-        points_file = None # open(points_file_name, 'w')
-        if points_file:
-            print("Saving locations in {}".format(points_file_name))
-        contig = self.contigs[0]  # TODO pluck contig by --contigs
-        seq_iter = iter(contig.seq)
-
         if self.x_scale == 1 and self.y_scale == 1:
-            self.draw_loop_optimized(curr_pos, digits, no_pts, parities, radices, seq_iter)
+            self.build_loop_optimized(curr_pos, digits, no_pts, parities, radices, sequence_length)
         else:
             prevprev_pos = np.zeros((2,), dtype=np.int) # must start at 0 because of scale multiplaction
             prev_pos = np.zeros((2,), dtype=np.int)  # must start at 0 because of scale multiplaction
             curr_pos = np.zeros((2,), dtype=np.int)
-            self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file, points_visited,
-                                     prev_pos, prevprev_pos, radices, seq_iter, self.x_scale, self.y_scale)
+            raise NotImplementedError("Scales beyond 1,1 are not currently implemented")
+            # self.draw_loop_any_scale(curr_pos, digits, no_pts, parities, points_file,
+            #                          prev_pos, prevprev_pos, radices, seq_iter, self.x_scale, self.y_scale)
 
 
-    def draw_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, seq_iter):
+    def build_loop_optimized(self, curr_pos, digits, no_pts, parities, radices, sequence_length):
         max_x = reduce(int.__mul__, self.x_radices) - 1 #+ self.origin[0]
         min_x = 0  #self.origin[0]
         odd = 0
-        for pts in range(no_pts - 1):
+        for pts in range(min(sequence_length, no_pts - 1)):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
@@ -99,26 +99,45 @@ class Ideogram(HighlightedAnnotation):
             x = int(curr_pos[1])
             y = int(curr_pos[0])
             curr_pos[place % 2] += parities[place // 2, place % 2]
-            try:
-                self.draw_pixel(next(seq_iter), x + self.levels.origin[0], y + self.levels.origin[1])
-            except StopIteration:
-                break  # reached end of sequence
-            except IndexError:
-                print("Ran out of room at (%i,%i)" % (x,y))
-                break
             self.point_mapping.append((x,y))
+
 
     def hacked_padding(self, curr_pos, min_x, max_x, odd, place):
         if place % 2 == 0:  # this is an y increments
             if place // 2 == len(self.x_radices) - 1:
                 if curr_pos[1] == max_x or curr_pos[1] == min_x:
                     if odd == 1:
-                        curr_pos[0] += 3  # y coordinates are in [0]
+                        curr_pos[0] += self.fibre_padding  # y coordinates are in [0]
                     odd = (odd + 1) % 2
         return odd
 
-    def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, points_visited, prev_pos,
-                            prevprev_pos, radices, seq_iter, x_scale, y_scale):
+
+    def position_on_screen(self, progress):
+        """WARNING: This will not work until after self.draw_loop_optimized
+         has populated self.point_mapping"""
+        x, y = self.point_mapping[progress]
+        return x + self.origin[0], y + self.origin[1]
+
+    def relative_position(self, progress):
+        return self.point_mapping[progress]
+
+
+    def handle_multi_column_annotations(self, start, stop):
+        """In 2D fractal layout, this method is much simpler since there's no columns per se.
+        It may be a good idea to identify the largest chromatin fibre and ensure that labels
+        don't straddle that boundary."""
+        pts = self.point_mapping[start:stop]  # all the coordinates annotated by this region
+        left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
+        top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
+        height = bottom - top
+        width = right - left
+        return width, height, left + self.origin[0], right + self.origin[0],\
+               top + self.origin[1], bottom + self.origin[1]
+
+
+
+    def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, prev_pos, prevprev_pos,
+                            radices, seq_iter, x_scale, y_scale):
         for pts in range(no_pts - 1):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
@@ -126,16 +145,14 @@ class Ideogram(HighlightedAnnotation):
             prevprev_pos[:] = prev_pos[:]
             prev_pos[:] = curr_pos[:]
             # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * x_scale + self.levels.origin[0])
-            y = int(prev_pos[0] * y_scale + self.levels.origin[1])
+            x = int(prev_pos[1] * x_scale + self.origin[0])
+            y = int(prev_pos[0] * y_scale + self.origin[1])
             if points_file:
                 print("{} {}".format(x, y), file=points_file)
             curr_pos[place % 2] += parities[place // 2, place % 2]
             diff = curr_pos - prev_pos
             prev_diff = prev_pos - prevprev_pos
             assert (abs(sum(diff)) == 1)
-            # assert (x, y) not in points_visited
-            # points_visited.add((x, y))
             self.point_mapping.append((x,y))
             try:
                 self.paint_turns(seq_iter, x, y, diff, prev_diff,
@@ -162,14 +179,65 @@ class Ideogram(HighlightedAnnotation):
             for scale_step in range(1, y_scale):
                 self.draw_pixel(next(seq_iter), x + x_nudge, y + scale_step * int(diff[0]))
 
+
+
+class Ideogram(HighlightedAnnotation):
+    def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
+                 repeat_annotation=None, **kwargs):
+        kwargs.update({'use_titles': False})
+        super(Ideogram, self).__init__(gff_file=ref_annotation, query=query_annotation,
+                                       repeat_annotation=repeat_annotation, **kwargs)
+        x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
+        self.border_width = 12
+        coordinates = IdeogramCoordinateFrame(x_radices, y_radices, x_scale, y_scale, self.border_width)
+        self.each_layout = [coordinates]  # overwrite anything else
+        self.i_layout = 0
+        self.layout_algorithm = "1"  # non-raster peano space filling curve
+
+
+
+
+    def process_file(self, input_file_path, output_folder, output_file_name,
+                     no_webpage=False, extract_contigs=None):
+        if extract_contigs is None:
+            contigs = read_contigs(input_file_path)
+            extract_contigs = [contigs[0].name.split()[0]]
+            print("Extracting ", extract_contigs)
+
+        super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
+                                           no_webpage=no_webpage, extract_contigs=extract_contigs)
+    # def activate_high_contrast_colors(self):
+    #     # Terrain Colors
+    #     self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
+    #     self.palette['C'] = hex_to_rgb('EE955D')  # rock
+    #     self.palette['T'] = hex_to_rgb('A19E3D')  # light green
+    #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
+
+    def draw_nucleotides(self):
+
+        # points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
+        # points_file = None # open(points_file_name, 'w')
+        # if points_file:
+        #     print("Saving locations in {}".format(points_file_name))
+        contig = self.contigs[0]  # TODO pluck contig by --contigs
+        self.levels.build_coordinate_mapping(len(contig.seq))
+        seq_iter = iter(contig.seq)
+        for pts in range(len(contig.seq)):
+            try:
+                x, y = self.levels.position_on_screen(pts)
+                self.draw_pixel(next(seq_iter), x, y)
+            except StopIteration:
+                break  # reached end of sequence
+            except IndexError:
+                print("Ran out of room at (%i,%i)" % (x,y))
+                break
+
+
     def position_on_screen(self, progress):
-        """WARNING: This will not work until after self.draw_loop_optimized
-         has populated self.point_mapping"""
-        x, y = self.point_mapping[progress]
-        return x + self.levels.origin[0], y + self.levels.origin[1]
+        return self.levels.position_on_screen(progress)
 
     def relative_position(self, progress):
-        return self.point_mapping[progress]
+        return self.levels.relative_position(progress)
 
     def draw_extras(self):
         super(Ideogram, self).draw_extras()
@@ -177,41 +245,40 @@ class Ideogram(HighlightedAnnotation):
 
     def max_dimensions(self, image_length):
         dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
-        nucleotide_width = reduce(int.__mul__, self.x_radices)
-        y_body = reduce(int.__mul__, self.y_radices[:-1])
+        nucleotide_width = reduce(int.__mul__, self.levels.x_radices)
+        y_body = reduce(int.__mul__, self.levels.y_radices[:-1])
         n_coils = np.ceil(image_length / nucleotide_width )
         y_needed = int(np.ceil(n_coils / y_body))
-        self.y_radices[-1] = y_needed
-        width = nucleotide_width * self.x_scale + self.levels.origin[0] * 2
+        self.levels.y_radices[-1] = y_needed
+        width = nucleotide_width * self.levels.x_scale + self.levels.origin[0] * 2
         padding_per_coil = 6
-        nuc_height = reduce(int.__mul__, self.y_radices) + padding_per_coil * y_needed
-        height = nuc_height * self.y_scale + self.levels.origin[1]*2 + 10
+        nuc_height = reduce(int.__mul__, self.levels.y_radices) + padding_per_coil * y_needed
+        height = nuc_height * self.levels.y_scale + self.levels.origin[1]*2 + 10
 
-        if self.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
-            self.y_radices[-1] += 1
+        if self.levels.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
+            self.levels.y_radices[-1] += 1
         return width, height
 
-
-    def handle_multi_column_annotations(self, region, left, right, top, bottom):
-        height = bottom - top
-        width = right - left
-        return width, height, left, right, top
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
         self.use_titles = True
         super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
 
+    def draw_annotation_labels(self, markup_image, annotated_regions, start_offset, label_color,
+                               universal_prefix='', use_suppression=False, force_orientation=None):
+        super(Ideogram, self).draw_annotation_labels(markup_image, annotated_regions, start_offset, label_color,
+               universal_prefix=universal_prefix, use_suppression=use_suppression,
+               force_orientation='horizontal')  # horizontal is important for upper_left
+
     def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
                    canvas, label_color, horizontal_centering=False, center_vertical=False, chop_text=True):
         """Intercept calls from parent and inject some default parameters for Ideograms."""
+        # if height < 35 and font.getsize(contig_name)[1] <= 11:
+        #     upper_left[1] += 15
+        #     upper_left[0] += 15
         self.levels.write_label(contig_name, width, height, font, title_width, upper_left,
               False, '+', canvas, label_color=label_color, horizontal_centering=True, center_vertical=True,
               chop_text=False)
-
-    def levels_json(self, ignored):
-        return '[]'  # There's no reasonable way to encode mouse position in rectangles
-    def contig_json(self):
-        return '[]'  # There's no reasonable way to encode mouse position in rectangles
 
 
 def increment(digits, radices, place):

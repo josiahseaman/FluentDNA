@@ -23,6 +23,7 @@ setup(
         'numpy>=1.13.3',
         'DNASkittleUtils>=' + utils_ver,
     ],
+    # extras_require = {'optimized_alignment': ['blist>=1.3.6']}, #for optional packages
     dependency_links=[
         'git+https://github.com/josiahseaman/DNASkittleUtils.git@%s#egg=DNASkittleUtils-%s' %
         (utils_ver, utils_ver),

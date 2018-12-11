@@ -1,12 +1,11 @@
-from itertools import chain
 import traceback
 
 import sys
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont
 
 from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
 from DDV.Span import Span
-from DDV.TileLayout import TileLayout, hex_to_rgb
+from DDV.TileLayout import TileLayout
 from DDV.DDVUtils import linspace
 from collections import namedtuple
 Point = namedtuple('Point', ['x', 'y'])
@@ -24,9 +23,7 @@ def annotation_points(entry, renderer, start_offset):
     annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
     for i in range(entry.start, entry.end):
         # important to include title and reset padding in coordinate frame
-        position = renderer.relative_position(i + start_offset)
-        annotation_points.append((position[0] + renderer.border_width,
-                                  position[1] + renderer.border_width))
+        annotation_points.append(renderer.position_on_screen(i + start_offset))
     return annotation_points
 
 
@@ -107,7 +104,8 @@ class HighlightedAnnotation(TileLayout):
         if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
             universal_prefix = find_universal_prefix(regions)
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
-            self.draw_annotation_labels(markup_image, regions, label_color, universal_prefix,
+            self.draw_annotation_labels(markup_image, regions, coordinate_frame["title_padding"],
+                                        label_color, universal_prefix,
                                         use_suppression=simple_entry)  # labels on top
         self.image.paste(markup_image, (upper_left[0] - self.border_width,
                                         upper_left[1] - self.border_width), markup_image)
@@ -191,13 +189,13 @@ class HighlightedAnnotation(TileLayout):
                 # redundancy checks for file with both mRNA and gene
                 try:
                     if no_structure:  # life is simple
-                        regions.append(AnnotatedRegion(entry, self, start_offset))
+                        regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                     else:  # find gene/mRNA/exon/CDS hierarchy
                         if entry.feature == 'gene':
-                            regions.append(AnnotatedRegion(entry, self, start_offset))
+                            regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                             genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                        if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                            regions.append(AnnotatedRegion(entry, self, start_offset))
+                        # if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                        #     regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                         if entry.feature == 'CDS' or entry.feature == 'exon':
                             # hopefully mRNA comes first in the file
                             # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
@@ -208,9 +206,10 @@ class HighlightedAnnotation(TileLayout):
         return regions
 
 
-    def draw_annotation_labels(self, markup_image, annotated_regions, label_color,
-                               universal_prefix='', use_suppression=False):
-        """:type use_suppression: bool supress lines of text that would overlap and crowd
+    def draw_annotation_labels(self, markup_image, annotated_regions, start_offset, label_color,
+                               universal_prefix='', use_suppression=False, force_orientation=None):
+        """:param start_offset: accounting for titles, contig position in the layout
+           :type use_suppression: bool supress lines of text that would overlap and crowd
            :type annotated_regions: list(AnnotatedRegion)
         """
         print("Drawing annotation labels")
@@ -227,40 +226,42 @@ class HighlightedAnnotation(TileLayout):
                 if not region.points:
                     print(extract_gene_name(region), "has empty coordinates.")
                     break
-                pts = region.points
-                left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
-                top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
+                # pts = region.points
+                # left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
+                # top, bottom = min(pts, key=lambda p: p[1])[1], max(pts, key=lambda p: p[1])[1]
 
-                width, height, left, right, top = self.handle_multi_column_annotations(region, left, right,
-                                                                                       top, bottom)
-                if width:  # Some annotations at the edge of columns aren't placable
-                    vertical_label = height > width
-                    upper_left = [left, top]
+                width, height, left, right, top, bottom = \
+                    self.levels.handle_multi_column_annotations(region.start+start_offset,
+                                                    region.end+start_offset)
+                vertical_label = height > width and (force_orientation != 'horizontal')
+                if force_orientation == 'vertical':
+                    vertical_label = True
+                upper_left = [left, top]
 
-                    # Title orientation and size
-                    if vertical_label:
-                        width, height = height, width  # swap
+                # Title orientation and size
+                if vertical_label:
+                    width, height = height, width  # swap
 
-                    font_size_by_width  = max(9, int((min(3000, width) * 0.09)))  # found eq with two reference points
-                    font_size_by_height = max(9, int((min(3000, height * 18) * 0.09)))
-                    if height <= 244: # 398580bp = 1900 width, 243 height
-                        font_size_by_height = min(font_size_by_height, int(1900 * .09))  # 171 max font size in one fiber
-                    font_size = min(font_size_by_width, font_size_by_height)
-                    if height < 11:
-                        height = 11  # don't make the area so small it clips the text
-                        upper_left[1] -= 2
-                    font = self.get_font(self.font_name, font_size)
-                    current_color = tuple(label_color) # must be tuple
-                    if font_size >= 14:
-                        alpha = 235 / 255
-                        if font_size > 30:
-                            alpha = 200 / 255
-                        current_color = (label_color[0], label_color[1], label_color[2], int(current_color[3] * alpha))
+                font_size_by_width  = max(9, int((min(3000, width) * 0.09)))  # found eq with two reference points
+                font_size_by_height = max(9, int((min(3000, height * 18) * 0.09)))
+                if height <= 244: # 398580bp = 1900 width, 243 height
+                    font_size_by_height = min(font_size_by_height, int(1900 * .09))  # 171 max font size in one fiber
+                font_size = min(font_size_by_width, font_size_by_height)
+                if height < 11:
+                    height = 11  # don't make the area so small it clips the text
+                    upper_left[1] -= 2
+                font = self.get_font(self.font_name, font_size)
+                current_color = tuple(label_color) # must be tuple
+                if font_size >= 14:
+                    alpha = 235 / 255
+                    if font_size > 30:
+                        alpha = 200 / 255
+                    current_color = (label_color[0], label_color[1], label_color[2], int(current_color[3] * alpha))
 
-                    self.draw_label(extract_gene_name(region, universal_prefix), width, height, font, 18,
-                                    upper_left, vertical_label, region.strand, markup_image,
-                                    label_color=current_color)
-            except BaseException as e:
+                self.draw_label(extract_gene_name(region, universal_prefix), width, height, font, 18,
+                                upper_left, vertical_label, region.strand, markup_image,
+                                label_color=current_color)
+            except ValueError as e:
                 print('Error while drawing label %s' % extract_gene_name(region), e)
 
     def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
@@ -270,24 +271,6 @@ class HighlightedAnnotation(TileLayout):
                                 canvas, horizontal_centering=horizontal_centering,
                                 center_vertical=center_vertical, chop_text=chop_text,
                                 label_color=label_color)
-
-    def handle_multi_column_annotations(self, region, left, right, top, bottom):
-        multi_column = abs(right - left) > self.base_width
-        if multi_column:  # pick the biggest column to contain the label, ignore others
-            median_point = len(region.points) // 2 + min(region.start, region.end)
-            s = median_point // self.base_width * self.base_width  # beginning of the line holding median
-            left = self.position_on_screen(s)[0]  # x coordinate of beginning of line
-            right = self.position_on_screen(s + self.base_width - 2)[0]  # end of one line
-            filtered = [pt for pt in region.points if right > pt[0] > left]  # off by ones here don't matter
-            if filtered:
-                top, bottom = min(filtered, key=lambda p: p[1])[1], max(filtered, key=lambda p: p[1])[1]
-                height = min(1, len(filtered) // self.base_width)
-            else:
-                return 0, 0, left, right, top
-        else:
-            height = len(region.points) // self.base_width
-        width = self.base_width
-        return width, height, left, right, top
 
 
 def getNeighbors(x, y):

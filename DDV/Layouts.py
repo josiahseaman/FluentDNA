@@ -4,7 +4,7 @@ from DDV.DDVUtils import multi_line_height
 
 
 class LayoutLevel(object):
-    def __init__(self, name, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
+    def __init__(self, modulo, chunk_size=None, padding=None, thickness=1, levels=None):
         self.modulo = modulo
         if chunk_size is not None:
             self.chunk_size = chunk_size
@@ -66,10 +66,35 @@ class LayoutFrame(list):
             xy[part] += level.thickness * coordinate_in_chunk
         return [int(xy[0]), int(xy[1])]
 
+
     def position_on_screen(self, progress):
         # column padding for various markup = self.levels[2].padding
         xy = self.relative_position(progress)
         return xy[0] + self.origin[0], xy[1] + self.origin[1]
+
+
+    def handle_multi_column_annotations(coord_frame, start, stop):
+        interval = abs(stop - start)
+        upper_left = coord_frame.position_on_screen(start + 2)
+        bottom_right = coord_frame.position_on_screen(stop - 2)
+        multi_column = abs(bottom_right[0] - upper_left[0]) > coord_frame.base_width
+        if True:  # multi_column:  # pick the biggest column to contain the label, ignore others
+            median_point = interval // 2 + min(start, stop)
+            s = median_point // coord_frame.base_width * coord_frame.base_width  # beginning of the line holding median
+            left = coord_frame.position_on_screen(s)[0]  # x coordinate of beginning of line
+            right = coord_frame.position_on_screen(s + coord_frame.base_width - 2)[0]  # end of one line
+            # top is the start or  top of the column
+            # bottom is the stop or bottom of the column
+            column_step = coord_frame.levels[2].chunk_size
+            top_of_column = median_point // column_step * column_step
+            top = max(start, top_of_column)
+            bottom = min(stop, top_of_column + column_step - 2)
+            top, bottom = coord_frame.position_on_screen(top)[1], coord_frame.position_on_screen(bottom)[1]
+            height = abs(bottom - top)
+        # else:
+        #     height = interval // coord_frame.base_width
+        width = coord_frame.base_width
+        return width, height, left, right, top, bottom
 
 
     def write_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label,
@@ -109,11 +134,11 @@ class LayoutFrame(list):
 def level_layout_factory(modulos, padding, origin):
     # noinspection PyListCreation
     levels = [
-        LayoutLevel("XInColumn", modulos[0], 1, padding[0]),  # [0]
-        LayoutLevel("LineInColumn", modulos[1], modulos[0], padding[1])  # [1]
+        LayoutLevel(modulos[0], 1, padding[0]),  # [0] XInColumn
+        LayoutLevel(modulos[1], modulos[0], padding[1])  # [1] LineInColumn
     ]
     for i in range(2, len(modulos)):
-        levels.append(LayoutLevel("ColumnInRow", modulos[i], padding=padding[i], levels=levels))  # [i]
+        levels.append(LayoutLevel(modulos[i], padding=padding[i], levels=levels))  # [i] ColumnInRow
     return LayoutFrame(tuple(origin), levels)
 
 
