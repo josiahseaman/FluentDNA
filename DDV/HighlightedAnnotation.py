@@ -2,13 +2,12 @@ import traceback
 
 import sys
 from PIL import Image, ImageFont
-from gff3_parser import parseGFF3, GFFRecord
 
-from DDV.Annotations import GFF, find_universal_prefix
+from DDV.Annotations import GFFAnnotation, find_universal_prefix, GFF3Record, parseGFF
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout
 from DDV.DDVUtils import linspace
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 
 
 Point = namedtuple('Point', ['x', 'y'])
@@ -33,20 +32,11 @@ def annotation_points(entry, renderer, start_offset):
 class HighlightedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
         super(HighlightedAnnotation, self).__init__(border_width=12, **kwargs)
-        self.annotation = self.gff3(gff_file)
-        self.query_annotation = self.gff3(query)
-        self.repeat_annotation = self.gff3(repeat_annotation)
+        self.annotation = parseGFF(gff_file)
+        self.query_annotation = parseGFF(query)
+        self.repeat_annotation = parseGFF(repeat_annotation)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
-
-    def gff3(self, gff_file):
-        if gff_file is None:
-            return None
-        parser = parseGFF3(gff_file)
-        annotations = defaultdict(lambda : [])
-        for entry in parser:
-            annotations[entry.seqid].append(entry)
-        return annotations
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -84,12 +74,12 @@ class HighlightedAnnotation(TileLayout):
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
                                        (0,0,0, 0), simple_entry=True)
-        if self.query_annotation is not None:
-            self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
-                                       (50, 50, 50, 255), shadows=True)
         if self.annotation is not None:  # drawn last so it's on top
             self.draw_annotation_layer(self.annotation, scaff_name, coordinate_frame, genic_color,
                                        (50, 50, 50, 255))
+        if self.query_annotation is not None:
+            self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
+                                       (50, 50, 50, 255), shadows=True)
 
 
     def draw_annotation_layer(self, annotations, scaff_name, coordinate_frame, color, label_color,
@@ -189,7 +179,7 @@ class HighlightedAnnotation(TileLayout):
     def find_annotated_regions(self, annotations, scaff_name, start_offset, no_structure=False):
         """:param start_offset:
            :param scaffold_name:
-           :type annotations: dict(GFF.Annotation)
+           :type annotations: dict(GFFAnnotation)
         """
         print("Collecting points in annotated regions of", scaff_name)
         regions = []
@@ -310,15 +300,15 @@ def outlines(annotation_points, radius, width, height):
     return layers
 
 
-class AnnotatedRegion(GFF.Annotation):
+class AnnotatedRegion(GFFAnnotation):
     def __init__(self, GFF_annotation, renderer, start_offset):
-        if isinstance(GFF_annotation, GFFRecord):
+        if isinstance(GFF_annotation, GFF3Record):
             g = GFF_annotation  # short name
             super(AnnotatedRegion, self).__init__(g.seqid, g.attributes['ID'], g.source, g.type,
                                                   g.start, g.end, g.score, g.strand, g.phase,
                                                   g.attributes, '')
         else:
-            assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
+            assert isinstance(GFF_annotation, GFFAnnotation), "This isn't a proper GFF object"
             g = GFF_annotation  # short name
             super(AnnotatedRegion, self).__init__(g.seqid, g.ID, g.source, g.type,
                                                   g.start, g.end, g.score, g.strand, g.phase,
@@ -339,5 +329,5 @@ class AnnotatedRegion(GFF.Annotation):
         return exon_points
 
     def add_cds_region(self, annotation_entry):
-        """ :type annotation_entry: GFF.Annotation """
+        """ :type annotation_entry: GFFAnnotation """
         self.protein_spans.append(Span(annotation_entry.start, annotation_entry.end))
