@@ -487,31 +487,18 @@ class TileLayout(object):
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
                             "date": datetime.now().strftime("%Y-%m-%d"),
-                            'legend': """    <strong>Legend:</strong>
-                                <img class='legend-icon' src='img/LEGEND-A.png'/>
-                                <img class='legend-icon' src='img/LEGEND-T.png'/>
-                                <img class='legend-icon' src='img/LEGEND-G.png'/>
-                                <img class='legend-icon' src='img/LEGEND-C.png'/>
-                                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are red/orange.
-                                    A/T rich areas are green/blue.  
-                                    Color choice is a compromise between less harsh natural colors and high contrast.</span>
-                            """}
-            if not self.low_contrast:
-                html_content['legend'] = """    <strong>Legend:</strong>
-                                <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-T-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-G-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-C-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>G/C rich regions are red/orange.
-                                A/T rich areas are green/blue.</span>
-                            """
+                            'legend': "<strong>Legend:</strong>" +\
+                                legend_line('Adenine (A)', 'A') +\
+                                legend_line('Thymine (T)', 'T') +\
+                                legend_line('Guanine (G)', 'G') +\
+                                legend_line('Cytosine (C)', 'C') +\
+                                legend_line('Unsequenced', 'N') +\
+                                """<span class='color-explanation'>G/C rich regions are red/orange.
+                                    A/T rich areas are green/blue. Color blind safe colors.</span>"""}
             if self.using_spectrum:
-                html_content['legend'] = """    <strong>Legend:</strong>
-                <span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
+                # TODO: legend_line('Unsequenced', 'N') +\
+                html_content['legend'] = "<strong>Legend:</strong>" +\
+                """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""

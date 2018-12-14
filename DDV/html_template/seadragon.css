@@ -45,6 +45,9 @@ body {
     height: 15px;
     margin: 0 5px 0 10px;
 }
+.color-explanation {
+    margin-left: 10px;
+}
 
 ul.selectChromosome {
     margin: 0;
