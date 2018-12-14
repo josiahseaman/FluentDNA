@@ -63,7 +63,7 @@ class GFF(object):
 
                         ID = counter
                         source = elements[1]
-                        feature = elements[2]
+                        type = elements[2]
                         start = int(elements[3])
                         end = int(elements[4])
 
@@ -90,9 +90,9 @@ class GFF(object):
                             attributes = {}
 
                         chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], end)
-                        if feature != 'chromosome':  # chromosomes don't have strand or frame
+                        if type != 'chromosome':  # chromosomes don't have strand or frame
                             annotation = self.Annotation(chromosome, ID,
-                                                         source, feature,
+                                                         source, type,
                                                          start, end,
                                                          score, strand,
                                                          frame, attributes, line)
@@ -103,22 +103,22 @@ class GFF(object):
         return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
 
     class Annotation(object):
-        def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attributes, line):
-            assert isinstance(chromosome, str), line
-            assert isinstance(ID, int), line
-            assert isinstance(source, str), line
-            assert isinstance(feature, str), line
-            assert isinstance(start, int), line
-            assert isinstance(end, int), line
-            assert score is None or isinstance(score, float), line
-            assert isinstance(strand, str), line
-            assert frame is None or isinstance(frame, int), line
-            assert isinstance(attributes, dict), line
+        def __init__(self, chromosome, ID, source, type, start, end, score, strand, frame, attributes, line):
+            # assert chromosome is None or isinstance(chromosome, str), line
+            # assert ID is None or isinstance(ID, int), line
+            # assert source is None or isinstance(source, str), line
+            # assert type is None or isinstance(type, str), line
+            # assert start is None or isinstance(start, int), line
+            # assert end is None or isinstance(end, int), line
+            # assert score is None or isinstance(score, float), line
+            # assert strand is None or isinstance(strand, str), line
+            # assert frame is None or isinstance(frame, int), line
+            # assert attributes is None or isinstance(attributes, dict), line
 
             self.chromosome = chromosome
             self.ID = ID
             self.source = source
-            self.feature = feature
+            self.type = type
             self.start = start
             self.end = end
             self.score = score
@@ -171,13 +171,13 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
             seq_array = editable_str(gap_char * (gff.chromosome_lengths[scaff_name] + 1))
             for entry in gff.annotations[scaff_name]:
                 assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
-                if entry.feature in features.keys():
+                if entry.type in features.keys():
                     count += 1
-                    my = features[entry.feature]
+                    my = features[entry.type]
                     for i in range(entry.start, entry.end + 1):
                         if symbol_priority[seq_array[i]] > my.priority :
                             seq_array[i] = my.symbol
-                if entry.feature == 'gene':
+                if entry.type == 'gene':
                     # TODO: output header JSON every time we find a gene
                     pass
             handle_tail(seq_array, scaffold_lengths, sc_index)
@@ -204,10 +204,10 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
         for entry in gff.annotations[chromosome]:
             assert isinstance(entry, GFF.Annotation), "This isn't a GFF annotation."
             total += 1
-            if entry.feature in features_of_interest:
+            if entry.type in features_of_interest:
                 if survivors:
                     last = survivors[-1]
-                    if last.start == entry.start and last.end == entry.end and entry.feature == last.feature:
+                    if last.start == entry.start and last.end == entry.end and entry.type == last.type:
                         continue  # skip this because it's a duplicate of what we already have
                 kept += 1
                 survivors.append(entry)

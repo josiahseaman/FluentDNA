@@ -2,12 +2,15 @@ import traceback
 
 import sys
 from PIL import Image, ImageFont
+from gff3_parser import parseGFF3, GFFRecord
 
 from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout
 from DDV.DDVUtils import linspace
-from collections import namedtuple
+from collections import namedtuple, defaultdict
+
+
 Point = namedtuple('Point', ['x', 'y'])
 
 
@@ -30,11 +33,20 @@ def annotation_points(entry, renderer, start_offset):
 class HighlightedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
         super(HighlightedAnnotation, self).__init__(border_width=12, **kwargs)
-        self.annotation = GFF(gff_file).annotations if gff_file is not None else None
-        self.query_annotation = GFF(query).annotations if query is not None else None
-        self.repeat_annotation = GFF(repeat_annotation).annotations if repeat_annotation is not None else None
+        self.annotation = self.gff3(gff_file)
+        self.query_annotation = self.gff3(query)
+        self.repeat_annotation = self.gff3(repeat_annotation)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
+
+    def gff3(self, gff_file):
+        if gff_file is None:
+            return None
+        parser = parseGFF3(gff_file)
+        annotations = defaultdict(lambda : [])
+        for entry in parser:
+            annotations[entry.seqid].append(entry)
+        return annotations
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -75,7 +87,7 @@ class HighlightedAnnotation(TileLayout):
         if self.query_annotation is not None:
             self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
                                        (50, 50, 50, 255), shadows=True)
-        if self.annotation is not None:
+        if self.annotation is not None:  # drawn last so it's on top
             self.draw_annotation_layer(self.annotation, scaff_name, coordinate_frame, genic_color,
                                        (50, 50, 50, 255))
 
@@ -102,7 +114,7 @@ class HighlightedAnnotation(TileLayout):
                                       simple_entry=simple_entry, shadows=shadows)
 
         if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
-            universal_prefix = find_universal_prefix(regions)
+            universal_prefix = '' #find_universal_prefix(regions)
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, coordinate_frame["title_padding"],
                                         label_color, universal_prefix,
@@ -191,12 +203,12 @@ class HighlightedAnnotation(TileLayout):
                     if no_structure:  # life is simple
                         regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                     else:  # find gene/mRNA/exon/CDS hierarchy
-                        if entry.feature == 'gene':
+                        if entry.type == 'gene':
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
-                            genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                        # if entry.feature == 'mRNA' and extract_gene_name(entry) not in genes_seen:
-                        #     regions.append(AnnotatedRegion(entry, self.levels, start_offset))
-                        if entry.feature == 'CDS' or entry.feature == 'exon':
+                            # genes_seen.add(extract_gene_name(entry).replace('g','t'))
+                        if entry.type == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                            regions.append(AnnotatedRegion(entry, self.levels, start_offset))
+                        if entry.type == 'CDS' or entry.type == 'exon':
                             # hopefully mRNA comes first in the file
                             # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
                             # the if was commented out because CDS [Parent] to mRNA, not gene names
@@ -300,11 +312,17 @@ def outlines(annotation_points, radius, width, height):
 
 class AnnotatedRegion(GFF.Annotation):
     def __init__(self, GFF_annotation, renderer, start_offset):
-        assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
-        g = GFF_annotation  # short name
-        super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.feature,
-                                              g.start, g.end, g.score, g.strand, g.frame,
-                                              g.attributes, g.line)
+        if isinstance(GFF_annotation, GFFRecord):
+            g = GFF_annotation  # short name
+            super(AnnotatedRegion, self).__init__(g.seqid, g.attributes['ID'], g.source, g.type,
+                                                  g.start, g.end, g.score, g.strand, g.phase,
+                                                  g.attributes, '')
+        else:
+            assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
+            g = GFF_annotation  # short name
+            super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.type,
+                                                  g.start, g.end, g.score, g.strand, g.frame,
+                                                  g.attributes, g.line)
         self.points = annotation_points(GFF_annotation, renderer, start_offset)
         self.protein_spans = []
 

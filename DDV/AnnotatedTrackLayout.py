@@ -82,7 +82,7 @@ class AnnotatedTrackLayout(ParallelLayout):
             if scaff_name not in labels.keys():
                 continue
             for entry in labels[scaff_name]:
-                if entry.feature in ['gene', 'mRNA']:
+                if entry.type in ['gene', 'mRNA']:
                     progress = (entry.start ) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
                     end = (entry.end) // genome_width *\
