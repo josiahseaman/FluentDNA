@@ -15,7 +15,8 @@ Version 1.1: Python3 ready
 from collections import namedtuple
 import gzip
 
-ulrlib_available = False
+from Annotations import GFF
+
 try:
     from urllib import parse
 except ImportError:
@@ -25,9 +26,10 @@ __author__ = "Uli Köhler"
 __license__ = "Apache License v2.0"
 __version__ = "1.1"
 
-# Initialized GeneInfo named tuple. Note: namedtuple is immutable
-gffInfoFields = ["seqid", "source", "type", "start", "end", "score", "strand", "phase", "attributes"]
-GFFRecord = namedtuple("GFFRecord", gffInfoFields)
+class GFFRecord(GFF.Annotation):
+    def __init__(self, seqid, source, type, start, end, score, strand, phase, attributes):
+        super(GFFRecord, self).__init__(seqid, None, source, type, start, end,
+                                        score, strand, phase, attributes, '')
 
 
 def parseGFFAttributes(attributeString):
@@ -54,7 +56,7 @@ def parseGFF3(filename):
             if line.startswith("#"): continue
             parts = line.strip().split("\t")
             # If this fails, the file format is not standard-compatible
-            assert len(parts) == len(gffInfoFields)
+            assert len(parts) == 9
             # Normalize data
             normalizedInfo = {
                 "seqid": None if parts[0] == "." else parse.unquote(parts[0]),

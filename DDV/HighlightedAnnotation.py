@@ -4,7 +4,7 @@ import sys
 from PIL import Image, ImageFont
 from gff3_parser import parseGFF3, GFFRecord
 
-from DDV.Annotations import GFF, extract_gene_name, find_universal_prefix
+from DDV.Annotations import GFF, find_universal_prefix
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout
 from DDV.DDVUtils import linspace
@@ -114,7 +114,7 @@ class HighlightedAnnotation(TileLayout):
                                       simple_entry=simple_entry, shadows=shadows)
 
         if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
-            universal_prefix = '' #find_universal_prefix(regions)
+            universal_prefix = find_universal_prefix(regions)
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, coordinate_frame["title_padding"],
                                         label_color, universal_prefix,
@@ -205,12 +205,12 @@ class HighlightedAnnotation(TileLayout):
                     else:  # find gene/mRNA/exon/CDS hierarchy
                         if entry.type == 'gene':
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
-                            # genes_seen.add(extract_gene_name(entry).replace('g','t'))
-                        if entry.type == 'mRNA' and extract_gene_name(entry) not in genes_seen:
+                            genes_seen.add(entry.id())
+                        if entry.type == 'mRNA' and entry.parent() not in genes_seen:
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
-                        if entry.type == 'CDS' or entry.type == 'exon':
+                        if entry.type == 'CDS':# or entry.type == 'exon':
                             # hopefully mRNA comes first in the file
-                            # if extract_gene_name(regions[-1]) == entry.attributes['Parent']:
+                            # if regions[-1].parent() in genes_seen:
                             # the if was commented out because CDS [Parent] to mRNA, not gene names
                                 regions[-1].add_cds_region(entry)
                 except (IndexError, KeyError, TypeError, ValueError) as e:
@@ -236,7 +236,7 @@ class HighlightedAnnotation(TileLayout):
                 last_unsuppressed_progress = region.start
             try:
                 if not region.points:
-                    print(extract_gene_name(region), "has empty coordinates.")
+                    print(region.name(), "has empty coordinates.")
                     break
                 # pts = region.points
                 # left, right = min(pts, key=lambda p: p[0])[0], max(pts, key=lambda p: p[0])[0]
@@ -270,11 +270,11 @@ class HighlightedAnnotation(TileLayout):
                         alpha = 200 / 255
                     current_color = (label_color[0], label_color[1], label_color[2], int(current_color[3] * alpha))
 
-                self.draw_label(extract_gene_name(region, universal_prefix), width, height, font, 18,
+                self.draw_label(region.name(universal_prefix), width, height, font, 18,
                                 upper_left, vertical_label, region.strand, markup_image,
                                 label_color=current_color)
             except ValueError as e:
-                print('Error while drawing label %s' % extract_gene_name(region), e)
+                print('Error while drawing label %s' % region.name(), e)
 
     def draw_label(self, contig_name, width, height, font, title_width, upper_left, vertical_label, strand,
                    canvas, label_color, horizontal_centering=False, center_vertical=False, chop_text=True):
@@ -320,8 +320,8 @@ class AnnotatedRegion(GFF.Annotation):
         else:
             assert isinstance(GFF_annotation, GFF.Annotation), "This isn't a proper GFF object"
             g = GFF_annotation  # short name
-            super(AnnotatedRegion, self).__init__(g.chromosome, g.ID, g.source, g.type,
-                                                  g.start, g.end, g.score, g.strand, g.frame,
+            super(AnnotatedRegion, self).__init__(g.seqid, g.ID, g.source, g.type,
+                                                  g.start, g.end, g.score, g.strand, g.phase,
                                                   g.attributes, g.line)
         self.points = annotation_points(GFF_annotation, renderer, start_offset)
         self.protein_spans = []

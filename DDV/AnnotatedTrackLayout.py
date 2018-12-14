@@ -3,9 +3,8 @@ from DNASkittleUtils.Contigs import read_contigs
 from itertools import chain
 from os.path import join, basename
 
-from DDV.Annotations import create_fasta_from_annotation, GFF, find_universal_prefix, extract_gene_name
+from DDV.Annotations import create_fasta_from_annotation, GFF, find_universal_prefix
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.HighlightedAnnotation import HighlightedAnnotation
 from DDV.DDVUtils import filter_by_contigs
 
 
@@ -87,7 +86,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                                self.annotation_width + scaffold["xy_seq_start"]
                     end = (entry.end) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
-                    name = extract_gene_name(entry, universal_prefix)
+                    name = entry.name(universal_prefix)
                     if name == '989535g01':
                         print(name, progress)
                     width, height, left, right, top, bottom = \

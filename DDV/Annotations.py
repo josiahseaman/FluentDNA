@@ -78,9 +78,9 @@ class GFF(object):
                             strand = elements[6]
 
                         if elements[7] == '.':
-                            frame = None
+                            phase = None
                         else:
-                            frame = int(elements[7])
+                            phase = int(elements[7])
 
                         if len(elements) >= 9:
                             pairs = [pair.strip() for pair in elements[8].split(';') if pair]
@@ -90,12 +90,12 @@ class GFF(object):
                             attributes = {}
 
                         chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], end)
-                        if type != 'chromosome':  # chromosomes don't have strand or frame
+                        if type != 'seqid':  # chromosomes don't have strand or phase
                             annotation = self.Annotation(chromosome, ID,
                                                          source, type,
                                                          start, end,
                                                          score, strand,
-                                                         frame, attributes, line)
+                                                         phase, attributes, line)
                             annotations[chromosome].append(annotation)
                     except IndexError as e:
                         print(e, line)
@@ -103,8 +103,8 @@ class GFF(object):
         return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
 
     class Annotation(object):
-        def __init__(self, chromosome, ID, source, type, start, end, score, strand, frame, attributes, line):
-            # assert chromosome is None or isinstance(chromosome, str), line
+        def __init__(self, seqid, ID, source, type, start, end, score, strand, phase, attributes, line):
+            # assert seqid is None or isinstance(seqid, str), line
             # assert ID is None or isinstance(ID, int), line
             # assert source is None or isinstance(source, str), line
             # assert type is None or isinstance(type, str), line
@@ -112,20 +112,47 @@ class GFF(object):
             # assert end is None or isinstance(end, int), line
             # assert score is None or isinstance(score, float), line
             # assert strand is None or isinstance(strand, str), line
-            # assert frame is None or isinstance(frame, int), line
+            # assert phase is None or isinstance(phase, int), line
             # assert attributes is None or isinstance(attributes, dict), line
 
-            self.chromosome = chromosome
-            self.ID = ID
+            self.seqid = seqid
+            self.ID = ID  # TODO: redundant semantics with .id()?
             self.source = source
             self.type = type
             self.start = start
             self.end = end
             self.score = score
             self.strand = strand
-            self.frame = frame
+            self.phase = phase
             self.attributes = attributes
             self.line = line
+
+        def parent(self):
+            try:
+                return self.attributes['Parent']
+            except BaseException:
+                return ''
+
+        def id(self):
+            try:
+                return self.attributes['ID']
+            except BaseException:
+                return ''
+
+        def name(entry, remove_prefix=''):
+            if not entry.attributes:
+                name = entry.line.split('\t')[-1]  # last part
+                if '"' in name:
+                    name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
+            elif 'Name' in entry.attributes:
+                name = entry.attributes['Name']
+            elif 'ID' in entry.attributes:  # TODO case sensitive?
+                name = entry.attributes['ID']
+            elif 'gene_name' in entry.attributes:
+                name = entry.attributes['gene_name']
+            else:
+                name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+            return name.replace(remove_prefix, '', 1)
 
 
 def handle_tail(seq_array, scaffold_lengths, sc_index):
@@ -200,8 +227,8 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
     total = 0
     kept = 0
     survivors = []
-    for chromosome in gff.annotations.keys():
-        for entry in gff.annotations[chromosome]:
+    for seqid in gff.annotations.keys():
+        for entry in gff.annotations[seqid]:
             assert isinstance(entry, GFF.Annotation), "This isn't a GFF annotation."
             total += 1
             if entry.type in features_of_interest:
@@ -228,7 +255,7 @@ def find_universal_prefix(annotation_list):
         return ''
     for entry in annotation_list:
         assert hasattr(entry, 'attributes'), "This isn't a proper GFF object %s" % type(entry)
-        names.append(extract_gene_name(entry))  # flattening the structure
+        names.append(entry.name())  # flattening the structure
     start = 0
     for column in zip(*names):
         if all([c == column[0] for c in column]):
@@ -241,21 +268,6 @@ def find_universal_prefix(annotation_list):
         prefix = prefix[:-1]  # chop off last letter
     return prefix
 
-
-def extract_gene_name(entry, remove_prefix=''):
-    if not entry.attributes:
-        name = entry.line.split('\t')[-1]  # last part
-        if '"' in name:
-            name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
-    elif 'Name' in entry.attributes:
-        name = entry.attributes['Name']
-    elif 'ID' in entry.attributes:  # TODO case sensitive?
-        name = entry.attributes['ID']
-    elif 'gene_name'in entry.attributes:
-        name = entry.attributes['gene_name']
-    else:
-        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
-    return name.replace(remove_prefix, '', 1)
 
 
 if __name__ == '__main__':
