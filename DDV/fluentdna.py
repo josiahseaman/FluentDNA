@@ -180,6 +180,7 @@ def ddv(args):
             batches = chain_parser.parse_chain(args.contigs)
             del chain_parser
             print("Done creating Gapped and Unique.")
+            args.contigs = None  # Filtering already happened before Batch
             for batch in batches:  # multiple contigs, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas),
                                                 batch.output_folder,

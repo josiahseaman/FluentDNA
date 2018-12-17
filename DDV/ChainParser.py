@@ -117,24 +117,25 @@ class ChainParser(object):
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
         ref_pointer, query_pointer = self.process_chain_body(chain, ref_pointer, query_pointer, is_master_alignment)
-        self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer, is_master_alignment)
-
-
-    def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
         if is_master_alignment:
-            if not self.query_sequence:
-                success = self.switch_sequences(chain.qName, chain.qStrand)
-                if not success:
-                    print("Fasta source for contig", chain.qName,
-                          "not found.  No matching sequence will be displayed!")
-                    #return  # skip this pair since it can't be displayed
-            if not self.trial_run and self.ref_sequence:  # include unaligned ends
-                ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
-                query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
-                self.alignment.append(AlignedSpans(ref_end, query_end,
-                                                   len(self.ref_sequence) - ref_pointer,
-                                                   0))  # len(self.query_sequence) - query_pointer))
-                #Not including the unaligned end of query chromosome because it might not be related at all
+            self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer)
+
+
+    def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer):
+        if not self.query_sequence:
+            success = self.switch_sequences(chain.qName, chain.qStrand)
+            if not success:
+                print("Fasta source for contig", chain.qName,
+                      "not found.  No matching sequence will be displayed!")
+                #return  # skip this pair since it can't be displayed
+        if not self.trial_run and self.ref_sequence:  # include unaligned ends
+            ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
+            query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
+            # I experimented with shortening example_data, but the chain file lists -strand from the end of file.
+            self.alignment.append(AlignedSpans(ref_end, query_end,
+                                               max(0 ,len(self.ref_sequence) - ref_pointer),
+                                               0))  # len(self.query_sequence) - query_pointer))
+            #Not including the unaligned end of query chromosome because it might not be related at all
 
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
