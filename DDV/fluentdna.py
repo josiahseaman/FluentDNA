@@ -182,7 +182,8 @@ def ddv(args):
             print("Done creating Gapped and Unique.")
             for batch in batches:  # multiple contigs, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas),
-                                                batch.output_folder, batch.output_folder,
+                                                batch.output_folder,
+                                                os.path.basename(batch.output_folder),
                                                 batch.fastas)
             done(args, SERVER_HOME)
     elif args.layout == "annotation_track":
@@ -263,7 +264,7 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     print("Creating Large Comparison Image from Input Fastas...")
     layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
     layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
-
+    args.output_dir = output_dir
     finish_webpage(args, layout, output_name)
 
 
@@ -543,7 +544,7 @@ def main():
     if args.quick:
         args.output_dir = os.path.dirname(
             os.path.abspath(args.fasta))  # just place the image next to the fasta
-    else:
+    elif not args.chain_file:
         args.output_dir = make_output_dir_with_suffix(base_path, '')
 
     ddv(args)

@@ -41,6 +41,8 @@ class FluentDNACase(unittest.TestCase):
         fluent('--custom_layout="([2,3,5,7,11,13,17,999], [0,0,0,0,0,0,1,6])"  --fasta="example_data/hg38_chr19_sample.fa" --outname="Test Custom Layout"')
     def test_multiple_file_retrieval(self):
         fluent('--fasta=example_data/whole_genome_alignment/chr21_hg38_gapped.fa --extrafastas example_data/whole_genome_alignment/chr21_hg38_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_gapped.fa --outname="Test Multiple File Retrieval"')
+    def test_translocation(self):
+        fluent('--fasta="example_data\hg38_chr21.fa" --chainfile="example_data\hg38ToPanTro5 - chr21 snip.chain" --extrafastas  "example_data\panTro5_chr21.fa" --contigs chr21 --outname="Test Whole Chromosome Alignment"')
 
     @unittest.skip("Skipped: server never closes")
     def test_server(self):
@@ -48,10 +50,7 @@ class FluentDNACase(unittest.TestCase):
 
     @unittest.skip("Skipped: Test is very slow")
     def test_large_chromosome(self):
-        fluent('--fasta="D:\josiah\Documents\Research\Thesis - Genome Symmetry\data\Hymenoscyphus_fraxineus_EIv2.23.fa"  --outname="Test Large Chromosome" --fasta=D:\Genomes\hg38.fa --chainfile=data/hg38ToPanTro5.over.chain --extrafastas D:\Genomes\panTro5.fa --contigs chr21 --outname="Test translocations"')
-    @unittest.skip("Skipped: Test is very slow")
-    def test_translocation(self):
-        fluent('--fasta=D:\Genomes\hg38.fa --chainfile=data/hg38ToPanTro5.over.chain --extrafastas D:\Genomes\panTro5.fa --contigs chr21 --outname="Test translocations"')
+        fluent('--fasta="D:\josiah\Documents\Research\Thesis - Genome Symmetry\data\Hymenoscyphus_fraxineus_EIv2.23.fa"  --outname="Test Large Chromosome"')
 
 
 if __name__ == '__main__':

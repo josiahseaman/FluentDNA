@@ -476,6 +476,7 @@ class TileLayout(object):
             module_path = os.path.dirname(DDV.__file__)
             html_template = os.path.join(module_path, 'html_template')
             copytree(html_template, output_folder)  # copies the whole template directory
+            print("Copying HTML to", output_folder)
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),

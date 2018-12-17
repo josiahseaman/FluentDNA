@@ -12,9 +12,9 @@ context of their respective sequences.
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from DDV.ChainParser import ChainParser, scan_past_header
+from DDV.ChainParser import ChainParser, scan_past_header, Batch
 from DNASkittleUtils.Contigs import pluck_contig
-from DNASkittleUtils.DDVUtils import Batch, first_word, ReverseComplement
+from DNASkittleUtils.DDVUtils import first_word, ReverseComplement
 
 from DDV.Annotations import create_fasta_from_annotation, GFF
 

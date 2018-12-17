@@ -16,13 +16,15 @@ except ImportError:
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
-from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
+from DNASkittleUtils.DDVUtils import first_word, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
 from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict, read_contigs_to_dict
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
+
+Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
@@ -328,7 +330,6 @@ class ChainParser(object):
 
 
     def missing_query_sequence(self, query_name):
-        print("ERROR: No fasta source for", query_name)
         self.query_sequence = BlankIterator('N')
         return False
 

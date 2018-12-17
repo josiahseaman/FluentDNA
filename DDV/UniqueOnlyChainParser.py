@@ -2,10 +2,9 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 from bisect import bisect_left
 import os
-from DNASkittleUtils.Contigs import write_complete_fasta, pluck_contig
-from DNASkittleUtils.DDVUtils import Batch
+from DNASkittleUtils.Contigs import write_complete_fasta
 from DDV import gap_char
-from DDV.ChainParser import ChainParser
+from DDV.ChainParser import ChainParser, Batch
 from DDV.Span import Span
 from DDV.ChainFiles import fetch_all_chains
 
