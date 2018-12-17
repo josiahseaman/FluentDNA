@@ -3,7 +3,7 @@ from DNASkittleUtils.Contigs import read_contigs
 from itertools import chain
 from os.path import join, basename
 
-from DDV.Annotations import create_fasta_from_annotation, GFF, find_universal_prefix
+from DDV.Annotations import create_fasta_from_annotation, find_universal_prefix, parseGFF
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.DDVUtils import filter_by_contigs
 
@@ -16,7 +16,7 @@ class AnnotatedTrackLayout(ParallelLayout):
         super(AnnotatedTrackLayout, self).__init__(n_genomes=2, column_widths=columns, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename)
+        self.annotation = parseGFF(self.gff_filename)
 
     def render_genome(self, output_folder, output_file_name, extract_contigs=None):
         self.annotation_fasta = join(output_folder, basename(self.gff_filename) +
@@ -71,8 +71,9 @@ class AnnotatedTrackLayout(ParallelLayout):
     def prepare_annotation_labels(self):
         genome_width = self.each_layout[self.genome_phase].base_width
         self.i_layout = self.annotation_phase
-        labels = self.annotation.annotations  # dict
+        labels = self.annotation  # dict
         layout = self.contig_struct()
+        genes_seen = set()
         flattened_annotation = list(chain(*[list(annotation_list) for annotation_list in labels.values()]))
         universal_prefix = find_universal_prefix(flattened_annotation)
         print("Removing Universal Prefix from annotations:", universal_prefix)
@@ -81,12 +82,14 @@ class AnnotatedTrackLayout(ParallelLayout):
             if scaff_name not in labels.keys():
                 continue
             for entry in labels[scaff_name]:
-                if entry.type in ['gene', 'mRNA']:
+                if entry.type in ['gene', 'mRNA'] and \
+                        (not entry.parent() or entry.parent() not in genes_seen): #mRNA double of a gene
+                    genes_seen.add(entry.id())
+                    name = entry.name(universal_prefix)
                     progress = (entry.start ) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
                     end = (entry.end) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
-                    name = entry.name(universal_prefix)
                     if name == '989535g01':
                         print(name, progress)
                     width, height, left, right, top, bottom = \

@@ -18,7 +18,7 @@ class GFF(object):
     def __init__(self, annotation_file):
         self.specimen, self.gff_version, \
         self.genome_version, self.date, \
-        self.file_name, self.annotations, self.chromosome_lengths \
+        self.file_name, self.annotations \
             = self._import_gff(annotation_file)
 
     def _import_gff(self, annotation_file):
@@ -30,7 +30,6 @@ class GFF(object):
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
         annotations = {}
-        chromosome_lengths = {}
 
         openFunc = gzip.open if annotation_file.endswith(".gz") else open
         with openFunc(annotation_file) as open_annotation_file:
@@ -60,7 +59,6 @@ class GFF(object):
 
                         if chromosome not in annotations:
                             annotations[chromosome] = []
-                            chromosome_lengths[chromosome] = 0
                             if len(annotations) < 10:
                                 print(chromosome, end=", ")
                             elif len(annotations) == 10:
@@ -94,8 +92,7 @@ class GFF(object):
                         else:
                             attributes = {}
 
-                        chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], end)
-                        if type != 'seqid':  # chromosomes don't have strand or phase
+                        if type != 'chromosome':  # chromosomes don't have strand or phase
                             annotation = GFFAnnotation(chromosome, ID,
                                                          source, type,
                                                          start, end,
@@ -105,7 +102,7 @@ class GFF(object):
                     except IndexError as e:
                         print(e, line)
 
-        return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
+        return specimen, gff_version, genome_version, date, file_name, annotations
 
 class GFFAnnotation(object):
     def __init__(self, seqid, ID, source, type, start, end, score, strand, phase, attributes, line):
@@ -257,6 +254,13 @@ def squish_fasta(scaffolds, annotation_width, base_width):
     return squished_versions
 
 
+def gather_chromosome_lengths(gff):
+    chromosome_lengths = {}
+    for chrom in gff:
+        chromosome_lengths[chrom] = max([max(entry.end, entry.start) for entry in gff[chrom]])
+    return chromosome_lengths
+
+
 def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
                                  annotation_width=100, base_width=100):
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
@@ -269,13 +273,14 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
                     'transcript':FeatureRep('N', 5)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
-        gff = GFF(gff)  # gff parameter was a filename
+        gff = parseGFF(gff)  # gff parameter was a filename
+    chromosome_lengths = gather_chromosome_lengths(gff)
     count = 0
     scaffolds = []
     for sc_index, scaff_name in enumerate(scaffold_names):  # Exact match required (case sensitive)
-        if scaff_name in gff.annotations.keys():
-            seq_array = editable_str(gap_char * (gff.chromosome_lengths[scaff_name] + 1))
-            for entry in gff.annotations[scaff_name]:
+        if scaff_name in gff.keys():
+            seq_array = editable_str(gap_char * (chromosome_lengths[scaff_name] + 1))
+            for entry in gff[scaff_name]:
                 assert isinstance(entry, GFFAnnotation), "This isn't a proper GFF object"
                 if entry.type in features.keys():
                     count += 1
@@ -291,7 +296,7 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
         else:
             print("No matches for '%s'" % scaff_name)
     if scaffolds:
-        print("Done", gff.file_name, "Found %i features" % count, "on %i scaffolds" % len(scaffolds))
+        print("Found %i features" % count, "on %i scaffolds" % len(scaffolds))
     else:
         print("WARNING: No matching scaffold names were found between the annotation and the request.")
     if annotation_width != base_width:

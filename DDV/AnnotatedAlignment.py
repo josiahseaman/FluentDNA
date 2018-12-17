@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Note: This module has received only limited testing with one dataset. If you
+DEPRECATION WARNING: This module has received only limited testing with one dataset. If you
 want to replicate similar results with your own data, you'll likely need to
 modify this python file.
 This module converts two annotations files into two FASTA files to be used as
