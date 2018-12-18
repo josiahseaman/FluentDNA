@@ -185,7 +185,7 @@ def ddv(args):
                 create_parallel_viz_from_fastas(args, len(batch.fastas),
                                                 batch.output_folder,
                                                 os.path.basename(batch.output_folder),
-                                                batch.fastas)
+                                                batch.fastas, border_boxes=True)
             done(args, SERVER_HOME)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
@@ -261,9 +261,10 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=False):
     print("Creating Large Comparison Image from Input Fastas...")
-    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
+    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width,
+                            border_boxes=border_boxes)
     layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
     args.output_dir = output_dir
     finish_webpage(args, layout, output_name)

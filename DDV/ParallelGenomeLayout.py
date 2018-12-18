@@ -4,15 +4,16 @@ from __future__ import print_function, division, absolute_import, \
 import traceback
 from datetime import datetime
 
-from PIL import ImageFont
+from PIL import ImageFont, Image
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, font_filename
+from DDV.TileLayout import TileLayout, font_filename, hex_to_rgb
 from DDV.Layouts import level_layout_factory
 
 
 class ParallelLayout(TileLayout):
-    def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None):
+    def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None,
+                 border_boxes=False):
         # This layout is best used on one chromosome at a time.
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
@@ -24,6 +25,7 @@ class ParallelLayout(TileLayout):
 
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
         p = 6  # padding_between_layouts
+        self.header_height = 12
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
         column_clusters_per_mega_row = 10600 // cluster_width
@@ -35,14 +37,12 @@ class ParallelLayout(TileLayout):
             standard_padding = [0, 0, standard_step_pad, p*3, p*(3**2), p*(3**3), p*(3**4)]
             # steps inside a column bundle, not exactly the same as bundles steps
             thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
-            origin = (sum(thicknesses), p)
+            origin = (sum(thicknesses) + p, p + self.header_height)
             self.each_layout.append(level_layout_factory(standard_modulos, standard_padding, origin))
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
-        self.using_background_colors = False
-        self.column_colors = "#FFFFFF #E5F3FF #EAFFE5 #FFE7E5 #F8E5FF #FFF3E5 #FFFFE5 #FFF6E5".split()
-        self.column_colors = self.column_colors[:self.n_genomes]
+        self.use_border_boxes = border_boxes
 
     def enable_fat_headers(self):
         pass  # just don't
@@ -53,8 +53,8 @@ class ParallelLayout(TileLayout):
         start_time = datetime.now()
         self.image_length = self.read_contigs_and_calc_padding(fasta_files[0], extract_contigs)
         self.prepare_image(self.image_length)
-        if self.using_background_colors:
-            self.fill_in_colored_borders()
+        if self.use_border_boxes:
+            self.draw_border_boxes()
         print("Initialized Image:", datetime.now() - start_time)
 
         try:
@@ -78,14 +78,12 @@ class ParallelLayout(TileLayout):
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
         # self.draw_the_viz_title(fasta_files)  # Needs padding in origins to work
-        # self.generate_html(output_folder, output_file_name)
+        # self.generate_html(output_folder, output_file_name) # done in fluentdna.py
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
 
     def changes_per_genome(self):
         self.i_layout = self.genome_processed
-        if self.using_background_colors:
-            self.change_background_color(self.genome_processed)
 
     def position_on_screen(self, progress):
         """ In ParallelLayout, each genome is given a constant x offset in order to interleave the results of each
@@ -94,22 +92,31 @@ class ParallelLayout(TileLayout):
         x, y = super(ParallelLayout, self).position_on_screen(progress)
         return [x, y]
 
-    def fill_in_colored_borders(self):
+    def draw_border_boxes(self):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
-        To help keep track of it correctly, ParallelGenomeLayout introduces colored borders for each of the columns.
-        Then instead of thinking 'I'm looking at the third column' you can think 'I'm looking at the pink column'."""
+        To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
+        together.  Mouse over gives further information on each file."""
         # Step through the upper left corner of each column in the file
+        #Caution: These corners are currently hard coded to the color and dimension of one image
+        corner = Image.open('html_template/img/border_box_corner.png')
+        corner_rb = corner.copy().rotate(270, expand=True)
+        corner_lb = corner.copy().rotate(180, expand=True)
+        corner_lt = corner.copy().rotate(90, expand=True)
         column_size = self.levels[2].chunk_size
-        margin = 6 // 2
-        for genome_index in range(1, self.n_genomes):  # skip the white column
-            self.genome_processed = genome_index
-            color = self.column_colors[genome_index]
-            for column_progress in range(0, self.image_length, column_size):
-                left, top = self.position_on_screen(column_progress)
-                left, top = max(0, left - margin), max(0, top - margin)
-                right, bottom = self.position_on_screen(column_progress + column_size - 1)
-                right, bottom = min(self.image.width, right + margin), min(self.image.height, bottom + margin)
-                self.draw.rectangle([left, top, right, bottom], fill=color)
+        margin = 6
+        color = hex_to_rgb('#c9c9c9')
+        for column_progress in range(0, self.image_length, column_size):
+            left, top = self.each_layout[0].position_on_screen(column_progress)
+            left, top = max(0, left - margin), max(0, top - margin - self.header_height)
+            # This only works when first and last columns have the same width
+            last_column = self.each_layout[-1]
+            right, bottom = last_column.position_on_screen(column_progress + column_size - 1)
+            right, bottom = min(self.image.width, right + margin), min(self.image.height, bottom + margin//2)
+            self.draw.rectangle([left, top, right, bottom], fill=color)
+            self.image.paste(corner, (right -6, top))
+            self.image.paste(corner_rb, (right - 7, bottom - 6))
+            self.image.paste(corner_lb, (left , bottom - 7))
+            self.image.paste(corner_lt, (left, top))
         self.genome_processed = 0
 
 
@@ -122,25 +129,12 @@ class ParallelLayout(TileLayout):
         title_spanning_width = font.getsize(span)[0]  # For centered text
         left_start = self.image.width / 2.0 - title_spanning_width / 2.0
         for genome_index in range(self.n_genomes):
-            color = self.column_colors[genome_index]
             title = titles[genome_index]
             text_size = font.getsize(title)
             right = left_start + text_size[0]
             bottom = 6 + text_size[1] * 1.1
-            if self.using_background_colors:
-                self.draw.rectangle([left_start, 6, right, bottom], fill=color)
             self.draw.text((left_start, 6, right, bottom), title, font=font, fill=(30, 30, 30, 255))
             left_start += font.getsize(title + '      ')[0]
-
-
-    def change_background_color(self, genome_processed):
-        from DDV import gap_char
-        def hex_to_rgb(h):
-            h = h.lstrip('#')
-            return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-
-        background = hex_to_rgb(self.column_colors[genome_processed])
-        self.palette[gap_char] = background
 
 
     def calc_padding(self, total_progress, next_segment_length):
