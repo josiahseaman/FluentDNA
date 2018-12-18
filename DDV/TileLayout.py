@@ -413,15 +413,15 @@ class TileLayout(object):
                          vertical_label, self.image)
 
 
-    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left,
-                    vertical_label, canvas):
+    def write_title(self, text, width, height, font_size, title_lines, title_width, upper_left,
+                    vertical_label, canvas, color=(0, 0, 0, 255)):
         upper_left = list(upper_left)  # to make it mutable
         font = self.get_font(self.font_name, font_size)
-        multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
+        multi_line_title = pretty_contig_name(text, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))#, color=(0,0,0,255))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
-                                           fill=(0, 0, 0, 255))
+                                           fill=color)
         if vertical_label:
             txt = txt.rotate(90, expand=True)
             upper_left[0] += 8  # adjusts baseline for more polish

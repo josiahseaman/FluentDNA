@@ -96,7 +96,7 @@ class ParallelLayout(TileLayout):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
         together.  Mouse over gives further information on each file."""
-        # Step through the upper left corner of each column in the file
+        from DNASkittleUtils.DDVUtils import pp
         #Caution: These corners are currently hard coded to the color and dimension of one image
         corner = Image.open('html_template/img/border_box_corner.png')
         corner_rb = corner.copy().rotate(270, expand=True)
@@ -108,7 +108,7 @@ class ParallelLayout(TileLayout):
         for column_progress in range(0, self.image_length, column_size):
             left, top = self.each_layout[0].position_on_screen(column_progress)
             left, top = max(0, left - margin), max(0, top - margin - self.header_height)
-            # This only works when first and last columns have the same width
+            # column_progress only works when first and last columns have the same width
             last_column = self.each_layout[-1]
             right, bottom = last_column.position_on_screen(column_progress + column_size - 1)
             right, bottom = min(self.image.width, right + margin), min(self.image.height, bottom + margin//2)
@@ -117,6 +117,12 @@ class ParallelLayout(TileLayout):
             self.image.paste(corner_rb, (right - 7, bottom - 6))
             self.image.paste(corner_lb, (left , bottom - 7))
             self.image.paste(corner_lt, (left, top))
+            #TODO: could be optimized by caching the text image
+            for layout in self.each_layout:
+                left, ignore = layout.position_on_screen(column_progress)
+                self.write_title(pp(column_progress), right - left, self.header_height, 11, 1, 14,
+                                 (left, top + 3),
+                                 False, self.image, color=hex_to_rgb('#606060'))
         self.genome_processed = 0
 
 

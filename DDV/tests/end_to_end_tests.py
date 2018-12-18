@@ -52,6 +52,10 @@ class FluentDNACase(unittest.TestCase):
     def test_large_chromosome(self):
         fluent('--fasta="D:\josiah\Documents\Research\Thesis - Genome Symmetry\data\Hymenoscyphus_fraxineus_EIv2.23.fa"  --outname="Test Large Chromosome"')
 
+    # @unittest.skip("Skipped: Test is very slow")
+    def test_translocation(self):
+        fluent('--fasta="D:\Genomes\hg38.fa" --chainfile=data/hg38ToPanTro5.over.chain --extrafastas "D:\Genomes\panTro5.fa" --contigs chr21 --outname="Test translocations"')
+
 
 if __name__ == '__main__':
     unittest.main()
