@@ -30,7 +30,7 @@ class ParallelLayout(TileLayout):
         p = 6  # padding_between_layouts
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = 1600 // cluster_width
+        column_clusters_per_mega_row = 10600 // cluster_width #10600
 
         for nth_genome in range(n_genomes):
             all_columns_height = base_width * 10
@@ -56,7 +56,7 @@ class ParallelLayout(TileLayout):
         self.image_length = self.read_contigs_and_calc_padding(fasta_files[0], extract_contigs)
         self.prepare_image(self.image_length)
         if self.use_border_boxes:
-            self.draw_border_boxes()
+            self.draw_border_boxes(fasta_files)
         print("Initialized Image:", datetime.now() - start_time)
 
         try:
@@ -94,7 +94,7 @@ class ParallelLayout(TileLayout):
         x, y = super(ParallelLayout, self).position_on_screen(progress)
         return [x, y]
 
-    def draw_border_boxes(self):
+    def draw_border_boxes(self, fasta_files):
         """When looking at more than one genome, it can get visually confusing as to which column you are looking at.
         To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
         together.  Mouse over gives further information on each file."""
@@ -120,9 +120,10 @@ class ParallelLayout(TileLayout):
             self.image.paste(corner_lb, (left , bottom - 7))
             self.image.paste(corner_lt, (left, top))
             #TODO: could be optimized by caching the text image
-            for layout in self.each_layout:
+            for i, layout in enumerate(self.each_layout):
                 left, ignore = layout.position_on_screen(column_progress)
-                self.write_title(pp(column_progress), right - left, self.header_height, 11, 1, 14,
+                text = pp(column_progress) #+ ' ' + just_the_name(fasta_files[i]) # cluttered
+                self.write_title(text, self.base_width, self.header_height, 11, 1, 30,
                                  (left, top + 3),
                                  False, self.image, color=hex_to_rgb('#606060'))
         self.genome_processed = 0
@@ -156,7 +157,7 @@ class ParallelLayout(TileLayout):
             title_padding = self.levels[2].chunk_size
         # Remove first title
         if total_progress == 0:
-            tail += title_padding
+            # tail += title_padding  #commenting this out could cause problems with multiple contigs
             title_padding = 0
             # i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
             # total_padding = total_progress + title_padding + reset_padding + next_segment_length
