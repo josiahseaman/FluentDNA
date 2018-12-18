@@ -17,6 +17,9 @@ class ParallelLayout(TileLayout):
         # This layout is best used on one chromosome at a time.
         super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
+        self.use_border_boxes = border_boxes
+        self.header_height = 12 if border_boxes else 0
+
         if column_widths is not None:
             assert len(column_widths) == n_genomes, \
                 "Provide the same number of display widths as data sources."
@@ -25,16 +28,16 @@ class ParallelLayout(TileLayout):
 
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
         p = 6  # padding_between_layouts
-        self.header_height = 12
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = 10600 // cluster_width
+        column_clusters_per_mega_row = 1600 // cluster_width
 
         for nth_genome in range(n_genomes):
             all_columns_height = base_width * 10
             standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
             standard_step_pad = cluster_width - standard_modulos[0] + p
-            standard_padding = [0, 0, standard_step_pad, p*3, p*(3**2), p*(3**3), p*(3**4)]
+            mega_row_padding = p * 3 + self.header_height
+            standard_padding = [0, 0, standard_step_pad, mega_row_padding, p*(3**2), p*(3**3), p*(3**4)]
             # steps inside a column bundle, not exactly the same as bundles steps
             thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
             origin = (sum(thicknesses) + p, p + self.header_height)
@@ -42,7 +45,6 @@ class ParallelLayout(TileLayout):
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
-        self.use_border_boxes = border_boxes
 
     def enable_fat_headers(self):
         pass  # just don't
