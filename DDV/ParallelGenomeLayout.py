@@ -159,6 +159,8 @@ class ParallelLayout(TileLayout):
         if total_progress == 0:
             # tail += title_padding  #commenting this out could cause problems with multiple contigs
             title_padding = 0
+            if len(self.contigs) == 1:
+                tail = 0  # no need for tail
             # i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
             # total_padding = total_progress + title_padding + reset_padding + next_segment_length
             # tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
