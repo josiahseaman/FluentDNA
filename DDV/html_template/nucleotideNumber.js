@@ -382,26 +382,13 @@ function outputTable() {
         '<div id="status_box">' +
           '<span style="font-weight: bolder;color: darkgrey;font-family: sans-serif;">Status: </span>' +
           '<div id="status"></div>' +
-      '</div>' +
-      '</div>' +
-      '<table class="output" style="border: 1px solid #000000;visibility:hidden;display:none;">' +
-        '<tr><th class="name">' +
-        '</th><th class="value">Pixels</th><th class="value">Points</th></tr>' +
-        '<tr><th>Mouse position</th><td id="mousePixels">-</td><td id="mousePoints">-</td></tr>' +
-        '<tr><th>X, Y</th><td id="nucleotideNumberX">-</td><td id="nucleotideNumberY">-</td><td></td></tr>' +
-        '<tr><th>(X, Y)</th><td id="NucleotideNumberX">-</td><td id="NucleotideNumberY">-</td></tr>' +
-        '<tr><th>Column Number</th><td id="ColumnNumber">-</td><td id="ColumnRemainder">-</td></tr>' +
-        '<tr><th>Nucleotide Number</th><td id="Nucleotide">-</td><td>-</td></tr>' +
-        '<tr><th>Nucleotides in Local Column</th>   <td id="NucleotideY">-</td><td>-</td></tr>' +
-        '<tr><th>Position in Column</th><td id="PositionInColumn">-</td><td></td></tr>' +
-        '<tr><th>Aspect Ratio</th><td id="aspectRatio">-</td><td></td></tr>' +
-        '<tr><th>Viewport dimensions</th>' +
-        '<td id="viewportSizePixels">-</td><td id="viewportSizePoints">-</td></tr>' +
-      '</table>');
+        '</div>' +
+      '</div>'
+       );
     }
-    else{//provide sequence download for minimal support
-        //$('#outputContainer').append('');//TODO: sequence download link
-    }
+    //provide sequence download for minimal support
+    $('#outputContainer').append('<p><a href="sources/">Download Source Data Files</a></p>'
+    )
 }
 
 

@@ -206,6 +206,7 @@ class Ideogram(HighlightedAnnotation):
 
         super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
                                            no_webpage=no_webpage, extract_contigs=extract_contigs)
+
     # def activate_high_contrast_colors(self):
     #     # Terrain Colors
     #     self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
@@ -214,7 +215,6 @@ class Ideogram(HighlightedAnnotation):
     #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
     def draw_nucleotides(self):
-
         # points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
         # points_file = None # open(points_file_name, 'w')
         # if points_file:

@@ -5,7 +5,7 @@ from os.path import join, basename
 
 from DDV.Annotations import create_fasta_from_annotation, find_universal_prefix, parseGFF
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.DDVUtils import filter_by_contigs
+from DDV.DDVUtils import filter_by_contigs, copy_to_sources
 
 
 class AnnotatedTrackLayout(ParallelLayout):
@@ -19,7 +19,7 @@ class AnnotatedTrackLayout(ParallelLayout):
         self.annotation = parseGFF(self.gff_filename)
 
     def render_genome(self, output_folder, output_file_name, extract_contigs=None):
-        self.annotation_fasta = join(output_folder, basename(self.gff_filename) +
+        self.annotation_fasta = join(output_folder, 'sources', basename(self.gff_filename) +
                                      ('.fa' if extract_contigs is None else '_extracted.fa'))
         self.contigs = read_contigs(self.fasta_file)
         # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
@@ -36,6 +36,8 @@ class AnnotatedTrackLayout(ParallelLayout):
                output_file_name=output_file_name,
                fasta_files=[self.annotation_fasta, self.fasta_file],
                no_webpage=False, extract_contigs=extract_contigs)
+        # save original GFF for reproducibility
+        copy_to_sources(output_folder, self.gff_filename)
 
     def changes_per_genome(self):
         super(AnnotatedTrackLayout, self).changes_per_genome()

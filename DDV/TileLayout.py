@@ -3,7 +3,6 @@ from __future__ import print_function, division, absolute_import, \
 
 import math
 import os
-import shutil
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -15,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from DDV import gap_char
 from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
-    make_output_dir_with_suffix, filter_by_contigs
+    make_output_dir_with_suffix, filter_by_contigs, copy_to_sources
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
@@ -34,7 +33,6 @@ except IOError:
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
-
 
 
 class TileLayout(object):
@@ -215,7 +213,8 @@ class TileLayout(object):
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
         self.output_fasta(output_folder, input_file_path, no_webpage,
-                                              extract_contigs, self.sort_contigs)
+                          extract_contigs, self.sort_contigs)
+        print("Output Fasta in:", datetime.now() - start_time)
 
 
     def draw_extras(self):
@@ -250,7 +249,7 @@ class TileLayout(object):
     def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
                      append_fasta_sources=True):
         bare_file = os.path.basename(fasta)
-        fasta_destination = os.path.join(output_folder, bare_file)
+        fasta_destination = os.path.join(output_folder, 'sources', bare_file)
         if not no_webpage:  # these support the webpage
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
@@ -261,16 +260,11 @@ class TileLayout(object):
             write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
         else:
             if not no_webpage:
-                try:
-                    shutil.copy(fasta, fasta_destination)
-                except (shutil.SameFileError, FileNotFoundError):
-                    pass  # not a problem
-                # Comes up in MultipleAlignmentLayout
+                copy_to_sources(output_folder, fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
         print("Sequence saved in:", fasta_destination)
         return fasta_destination
-
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image

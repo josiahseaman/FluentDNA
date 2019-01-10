@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 import os
 import re as regex
+import shutil
 import sys
 import textwrap
 from collections import defaultdict
@@ -71,17 +72,27 @@ def create_deepzoom_stack(input_image, output_dzi):
     creator.create(input_image, output_dzi)
 
 
-def make_output_dir_with_suffix(base_path, suffix):
+def make_output_dir_with_suffix(base_path, suffix=''):
     from os import errno
     output_dir = base_path + suffix
     print("Creating Chromosome Output Directory...", os.path.basename(output_dir))
     try:
-        os.makedirs(output_dir)
+        os.makedirs(os.path.join(output_dir, 'sources'))
     except OSError as e:  # exist_ok=True
         if e.errno != errno.EEXIST:
             raise
     return output_dir
 
+def copy_to_sources(output_folder, data_file):
+    if data_file is None:
+        return None
+    bare_file = os.path.basename(data_file)
+    data_destination = os.path.join(output_folder, 'sources', bare_file)
+    try:
+        shutil.copy(data_file, data_destination)
+    except (shutil.SameFileError, FileNotFoundError):
+        pass  # not a problem
+    return data_destination
 
 def base_directories(output_name):
     if getattr(sys, 'frozen', False):

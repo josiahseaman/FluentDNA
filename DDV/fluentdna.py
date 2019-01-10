@@ -46,7 +46,7 @@ import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
-    hold_console_for_windows, beep
+    hold_console_for_windows, beep, copy_to_sources
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
 from DDV.Ideogram import Ideogram
@@ -186,6 +186,7 @@ def ddv(args):
                                                 batch.output_folder,
                                                 os.path.basename(batch.output_folder),
                                                 batch.fastas, border_boxes=True)
+                copy_to_sources(batch.output_folder, args.chain_file)
             done(args, SERVER_HOME)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
@@ -288,6 +289,7 @@ def combine_files(batches, args, output_name):
     fasta_output = output_name + '.fa'
     write_contigs_to_file(fasta_output, contigs)
     create_tile_layout_viz_from_fasta(args, fasta_output, output_name)
+    copy_to_sources(args.output_dir, args.chain_file)
 
 
 def finish_webpage(args, layout, output_name):

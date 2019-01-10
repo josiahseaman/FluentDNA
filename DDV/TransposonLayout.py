@@ -23,6 +23,7 @@ from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
 from DDV import gap_char
+from DDVUtils import copy_to_sources
 
 
 class TransposonLayout(TileLayout):
@@ -62,6 +63,8 @@ class TransposonLayout(TileLayout):
             traceback.print_exc()
         self.output_image(output_folder, output_file_name)
         print("Output Image in:", datetime.now() - start_time)
+        copy_to_sources(output_folder, ref_fasta)
+        copy_to_sources(output_folder, repeat_annotation_filename)
 
 
     def max_dimensions(self, image_length):

@@ -6,11 +6,7 @@ from PIL import Image, ImageFont
 from DDV.Annotations import GFFAnnotation, find_universal_prefix, GFF3Record, parseGFF
 from DDV.Span import Span
 from DDV.TileLayout import TileLayout
-from DDV.DDVUtils import linspace
-from collections import namedtuple
-
-
-Point = namedtuple('Point', ['x', 'y'])
+from DDV.DDVUtils import linspace, copy_to_sources
 
 
 def blend_pixel(markup_canvas, pt, c, overwrite=False):
@@ -32,8 +28,11 @@ def annotation_points(entry, renderer, start_offset):
 class HighlightedAnnotation(TileLayout):
     def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
         super(HighlightedAnnotation, self).__init__(border_width=12, **kwargs)
+        self.gff_filename = gff_file
         self.annotation = parseGFF(gff_file)
+        self.query_filename = query
         self.query_annotation = parseGFF(query)
+        self.repeat_filename = repeat_annotation
         self.repeat_annotation = parseGFF(repeat_annotation)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
@@ -45,7 +44,10 @@ class HighlightedAnnotation(TileLayout):
                 assert fasta.readline().startswith('>'), "Fasta file must start with a header '>name'"
         super(HighlightedAnnotation, self).process_file(input_file_path, output_folder, output_file_name,
                                                         no_webpage, extract_contigs)
-        # nothing extra
+        # save original GFF for reproducibility
+        copy_to_sources(output_folder, self.gff_filename)
+        copy_to_sources(output_folder, self.query_filename)
+        copy_to_sources(output_folder, self.repeat_filename)
 
     def draw_extras(self):
         """Drawing Annotations labels and shadow outlines"""

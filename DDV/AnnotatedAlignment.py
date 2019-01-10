@@ -99,6 +99,7 @@ class AnnotatedAlignment(ChainParser):
 
     def load_annotation_fastas(self, ref_chr):
         # Now create two annotation fastas so that we can gap them
+        #TODO: check for         copy_to_sources(self.output_folder, )
         self.ref_sequence = create_fasta_from_annotation(self.ref_annotation_source, [ref_chr], None)[0].seq
         self.query_contigs[ref_chr] = create_fasta_from_annotation(self.query_GFF, [ref_chr], None)[0].seq
 
