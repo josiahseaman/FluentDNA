@@ -13,10 +13,12 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
+
 #############################################################################
 # IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
 #############################################################################
 # print("Setting up Python...")
+from DDVUtils import archive_execution_command
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -119,7 +121,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
-    beep()
+    # beep()
     hold_console_for_windows()
     if __name__ == "__main__":
         sys.exit(0)
@@ -296,6 +298,8 @@ def finish_webpage(args, layout, output_name):
     final_location = layout.final_output_location
     print("Done creating Large Image at ", final_location)
     if not args.no_webpage:
+        with open(os.path.join(os.path.dirname(final_location), 'command.sh'), 'w') as f:
+            f.write(archive_execution_command() + '\n')  # original command that got us here
         layout.generate_html(args.output_dir, output_name)
         del layout
         print("Creating Deep Zoom Structure from Generated Image...")
@@ -465,7 +469,6 @@ def main():
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
     args = parser.parse_args()
-
     # Respond to an updater query
     if args.update_name:
         print("DDV")

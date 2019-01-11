@@ -103,6 +103,13 @@ def base_directories(output_name):
     return SERVER_HOME, base_path
 
 
+def archive_execution_command():
+    parts = []
+    for p in sys.argv:  # reconstruct
+        eq = p.find('=') + 1
+        parts.append((p[:eq] + '"%s"' % p[eq:]) if eq else p)
+    return ' '.join(parts)
+
 
 def hold_console_for_windows():
     """
