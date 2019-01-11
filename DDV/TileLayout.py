@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from DDV import gap_char
 from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
-    make_output_dir_with_suffix, filter_by_contigs, copy_to_sources
+    make_output_directory, filter_by_contigs, copy_to_sources
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
@@ -183,7 +183,7 @@ class TileLayout(object):
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
-        make_output_dir_with_suffix(output_folder, '')
+        make_output_directory(output_folder, no_webpage)
         start_time = datetime.now()
         self.final_output_location = output_folder
         self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
@@ -210,7 +210,7 @@ class TileLayout(object):
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
 
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
         self.output_fasta(output_folder, input_file_path, no_webpage,
                           extract_contigs, self.sort_contigs)
@@ -246,25 +246,23 @@ class TileLayout(object):
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
-                     append_fasta_sources=True):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
         bare_file = os.path.basename(fasta)
-        fasta_destination = os.path.join(output_folder, 'sources', bare_file)
-        if not no_webpage:  # these support the webpage
-            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
-            self.remember_contig_spacing()
-        #also make single file
-        if extract_contigs or sort_contigs:
-            length_sum = sum([len(c.seq) for c in self.contigs])
-            fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
-            write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
-        else:
-            if not no_webpage:
-                copy_to_sources(output_folder, fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
-        print("Sequence saved in:", fasta_destination)
-        return fasta_destination
+
+        #also make single file
+        if not no_webpage:
+            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
+            self.remember_contig_spacing()
+            fasta_destination = os.path.join(output_folder, 'sources', bare_file)
+            if extract_contigs or sort_contigs:  # customized_fasta
+                length_sum = sum([len(c.seq) for c in self.contigs])
+                fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+                write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+            else:
+                copy_to_sources(output_folder, fasta)
+            print("Sequence saved in:", fasta_destination)
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
@@ -428,12 +426,14 @@ class TileLayout(object):
             font = ImageFont.truetype(font_name, font_size)
         return font
 
-    def output_image(self, output_folder, output_file_name):
+    def output_image(self, output_folder, output_file_name, no_webpage):
         try:
             del self.pixels
             del self.draw
         except BaseException:
             pass  # this is just memory optimization
+        if not no_webpage:  # sources directory only exists for non-quick
+            output_folder = os.path.join(output_folder, 'sources',)
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')

@@ -19,7 +19,7 @@ from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
 from DNASkittleUtils.DDVUtils import first_word, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict, read_contigs_to_dict, copy_to_sources
+from DDV.DDVUtils import make_output_directory, keydefaultdict, read_contigs_to_dict, copy_to_sources
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
@@ -510,7 +510,8 @@ class ChainParser(object):
             '__separate_translocations' * self.separate_translocations + \
             '__translocations' * self.show_translocations_only + \
             '__aligned_only' * self.aligned_only
-        self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
+        self.output_folder = self.output_prefix + ending
+        make_output_directory(self.output_folder)
         ref_name = first_word(os.path.basename(self.ref_source))
         q_name = first_word(os.path.basename(self.query_source))
         names = {'ref': ref_chr + '_%s.fa' % ref_name,

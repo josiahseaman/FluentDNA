@@ -72,16 +72,15 @@ def create_deepzoom_stack(input_image, output_dzi):
     creator.create(input_image, output_dzi)
 
 
-def make_output_dir_with_suffix(base_path, suffix=''):
+def make_output_directory(base_path, no_webpage=False):
     from os import errno
-    output_dir = base_path + suffix
-    print("Creating Chromosome Output Directory...", os.path.basename(output_dir))
     try:
-        os.makedirs(os.path.join(output_dir, 'sources'))
+        os.makedirs(os.path.join(base_path, '' if no_webpage else 'sources'))
+        print("Creating Chromosome Output Directory...", os.path.basename(base_path))
     except OSError as e:  # exist_ok=True
         if e.errno != errno.EEXIST:
             raise
-    return output_dir
+
 
 def copy_to_sources(output_folder, data_file):
     if data_file is None:

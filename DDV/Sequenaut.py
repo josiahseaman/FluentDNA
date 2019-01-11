@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from DDV.TileLayout import TileLayout
 from DDV.fluentdna import create_tile_layout_viz_from_fasta
-from DDV.DDVUtils import make_output_dir_with_suffix, base_directories, interpolate
+from DDV.DDVUtils import make_output_directory, base_directories, interpolate
 
 
 def hasDepth(listLike):
@@ -172,7 +172,7 @@ class Sequenaut(TileLayout):  # TODO: make an abstract class parent
 def run_sequenaut(args):
     SERVER_HOME, base_path = base_directories(args.output_name)
     # TODO: allow batch of tiling layout by chromosome
-    output_dir = make_output_dir_with_suffix(base_path, '')
+    output_dir = make_output_directory(base_path)
     renderer = Sequenaut(layout=args.layout, oligomer_size=args.oligomer_size, peak=args.peak, baseline=args.baseline, log_scale=not args.linear_scale)
     create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, renderer)
     sys.exit(0)

@@ -10,7 +10,7 @@ import math
 from DDV.TileLayout import hex_to_rgb, TileLayout
 from natsort import natsorted
 
-from DDVUtils import make_output_dir_with_suffix
+from DDVUtils import make_output_directory
 from Layouts import level_layout_factory
 
 
@@ -92,7 +92,7 @@ class MultipleAlignmentLayout(TileLayout):
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         start_time = datetime.now()
-        make_output_dir_with_suffix(output_folder)
+        make_output_directory(output_folder)
         self.preview_all_files(input_fasta_folder)
         self.calculate_mixed_layout()
         print("Tallied all contigs :", datetime.now() - start_time)
@@ -113,7 +113,7 @@ class MultipleAlignmentLayout(TileLayout):
             input_path = os.path.join(input_fasta_folder, single_MSA)
             self.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
         print("\nDrew Nucleotides:", datetime.now() - start_time)
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
 
 

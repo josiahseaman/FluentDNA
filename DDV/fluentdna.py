@@ -45,7 +45,7 @@ from DDV import VERSION
 import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
+from DDV.DDVUtils import create_deepzoom_stack, make_output_directory, base_directories, \
     hold_console_for_windows, beep, copy_to_sources
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
@@ -549,7 +549,8 @@ def main():
         args.output_dir = os.path.dirname(
             os.path.abspath(args.fasta))  # just place the image next to the fasta
     elif not args.chain_file:
-        args.output_dir = make_output_dir_with_suffix(base_path, '')
+        args.output_dir = base_path
+        make_output_directory(base_path)
 
     ddv(args)
 

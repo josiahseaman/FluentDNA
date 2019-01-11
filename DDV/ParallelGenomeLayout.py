@@ -81,7 +81,7 @@ class ParallelLayout(TileLayout):
             traceback.print_exc()
         # self.draw_the_viz_title(fasta_files)  # Needs padding in origins to work
         # self.generate_html(output_folder, output_file_name) # done in fluentdna.py
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
 
     def changes_per_genome(self):
