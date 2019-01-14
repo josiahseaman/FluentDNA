@@ -150,11 +150,11 @@ def squish_fasta(scaffolds, annotation_width, base_width):
         squished_versions.append(Contig(contig.name, ''.join(work)))
     return squished_versions
 
+FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
 
 def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
                                  annotation_width=100, base_width=100):
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
-    FeatureRep = namedtuple('FeatureRep', ['symbol', 'priority'])
     if features is None:
         features = {'CDS':FeatureRep('G', 1),  # 1 priority is the most important
                     'exon':FeatureRep('T', 2),

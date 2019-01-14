@@ -71,7 +71,7 @@ class OutlinedAnnotation(TileLayout):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        genic_color = (49,163,84, 46)  # faint highlighter for genic regions
+        genic_color = (211, 211, 211, 255)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
                                        (255, 255, 255, 0), simple_entry=True)
@@ -110,9 +110,9 @@ class OutlinedAnnotation(TileLayout):
 
     def draw_annotation_outlines(self, regions, markup_image, color, simple_entry, shadows):
         markup_canvas = markup_image.load()
-        self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
+        # self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:
-            exon_color = (227,74,51, 67)  # white highlighter.  This is less disruptive overall
+            exon_color = (96, 96, 96, 255)
             self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
         if shadows:
             try:
