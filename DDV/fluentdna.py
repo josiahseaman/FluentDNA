@@ -121,9 +121,10 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
-    beep()
-    hold_console_for_windows()
-    sys.exit(0)
+    if not args.no_beep:
+        beep()
+        hold_console_for_windows()
+        sys.exit(0)
 
 
 def ddv(args):
@@ -448,6 +449,10 @@ def main():
                              "x and y radices, and scale\n"
                              "Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'",
                         dest="radix")
+    parser.add_argument('-bb', '--no_beep',
+                        action='store_true',
+                        help="Don't make a beep sound when a job completes.",
+                        dest='no_beep')
     parser.add_argument('-n', '--update_name', dest='update_name', help='Query for the name of this program as known to the update server', action='store_true')
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
