@@ -37,8 +37,8 @@ class Ideogram(OutlinedAnnotation):
 
     def activate_high_contrast_colors(self):
         super(Ideogram, self).activate_high_contrast_colors()
-        self.palette['0'] = (230, 230, 230)
-        self.palette['1'] = (100, 100, 100)
+        self.palette['C'] = (0,0,0)
+        self.palette['T'] = (0,0,0)
     #     # Original DDV Colors
     #     self.palette['G'] = (255, 0, 0)
     #     self.palette['A'] = (0, 255, 0)
@@ -90,17 +90,18 @@ class Ideogram(OutlinedAnnotation):
             place = increment(digits, radices, 0)
             parities[0:(place // 2 + 1), place % 2] *= -1
             place += 1
-            odd = self.hacked_padding(curr_pos, min_x, max_x, odd, place)
+            # odd = self.hacked_padding(curr_pos, min_x, max_x, odd, place)
             x = int(curr_pos[1])
             y = int(curr_pos[0])
             curr_pos[place % 2] += parities[place // 2, place % 2]
             try:
-                pass
-                # self.draw_pixel(nucleotide, x + self.origin[0], y + self.origin[1])
+                if nucleotide == 'T': # nucleotide == 'C' or
+                    self.draw_pixel(nucleotide, x + self.origin[0], y + self.origin[1])
             except IndexError:
                 print("Ran out of room at (%i,%i)" % (x,y))
                 break
             self.point_mapping.append((x,y))
+
 
     def hacked_padding(self, curr_pos, min_x, max_x, odd, place):
         if place % 2 == 0:  # this is an y increments
@@ -110,6 +111,7 @@ class Ideogram(OutlinedAnnotation):
                         curr_pos[0] += 3  # y coordinates are in [0]
                     odd = (odd + 1) % 2
         return odd
+
 
     def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, points_visited, prev_pos,
                             prevprev_pos, radices, seq_iter, x_scale, y_scale):
