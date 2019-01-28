@@ -251,8 +251,8 @@ function showNucleotideNumber(event, viewer) {
                 start = Nucleotide - 1;
                 stop = Nucleotide;
             }
-            if(contigs[position_info.fasta_index].hasOwnProperty(position_info.contig_name)){
-                theSequence = contigs[position_info.fasta_index][position_info.contig_name].substring(start, stop);
+            if(contigs[position_info.fasta_index].hasOwnProperty(position_info.contig_index)){
+                theSequence = contigs[position_info.fasta_index][position_info.contig_index].substring(start, stop);
                 //theSequence = theSequence.replace(/\s+/g, '')
                 fragmentid = position_info.contig_name + ": (" +
                   numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
@@ -334,21 +334,22 @@ function getSequence(fasta_index, contig_index) {
             contentType: "text/html",
             success: function (sequence_received) {
                 file_transfer_in_progress = false;
-                read_contigs(sequence_received, fasta_index);
+                read_contigs(sequence_received, fasta_index, contig_index);
             },
             error: processInitSequenceError
         });
     }
 }
 
-function read_contigs(sequence_received, fasta_index) {
+function read_contigs(sequence_received, fasta_index, contig_index) {
     //read_contigs equiv in javascript
     theSequenceSplit = sequence_received.split(/\r?\n(?=>)/);// begin line, caret  ">");
-    for (let contig_s of theSequenceSplit) {
-        var lines = contig_s.split(/\r?\n/);
-        var title = lines[0].slice(1)
+    //for (var contig_index =0; contig_index < theSequenceSplit.length; contig_index++)
+    {//Each chunk file is only one contig, no need to loop
+        var lines = theSequenceSplit[0].split(/\r?\n/);
+        //var title = lines[0].slice(1)
         var seq = lines.slice(1).join('');
-        contigs[fasta_index][title] = seq;
+        contigs[fasta_index][contig_index] = seq;
     }
     return contigs
 }
