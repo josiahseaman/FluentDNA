@@ -226,7 +226,7 @@ function showNucleotideNumber(event, viewer) {
     if(cursor_in_a_title){
         document.getElementById("Nucleotide").innerHTML = position_info.contig_name;
     }else{
-        var display_number = information_to_show ? position_info.index_inside_contig : "-";
+        var display_number = information_to_show ? position_info.file_coordinates : "-";
         document.getElementById("Nucleotide").innerHTML = numberWithCommas(display_number);
         var display_file = information_to_show ? fasta_sources[position_info.fasta_index] : "Sequence under Cursor";
         document.getElementById("FileUnderCursor").innerHTML = display_file;

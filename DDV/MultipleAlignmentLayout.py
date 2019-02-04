@@ -136,11 +136,10 @@ class MultipleAlignmentLayout(TileLayout):
             #First contig of each MSA has a 10px tall title
             contig.title_padding = 0 if i != 0 else widest_sequence * self.title_height_px
             contig.tail_padding = 0
-            contig.nuc_title_start = seq_start
-            contig.nuc_seq_start = seq_start + title_length
+            contig.nuc_seq_start = 0
             #at the moment these values are the same but they have different meanings
             total_progress += length + contig.title_padding # pointer in image
-            seq_start += title_length + length  # pointer in text
+            seq_start += length  # pointer in text
         return total_progress
 
 

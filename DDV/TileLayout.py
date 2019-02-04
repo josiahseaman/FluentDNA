@@ -288,11 +288,10 @@ class TileLayout(object):
             contig.reset_padding = reset
             contig.title_padding = title
             contig.tail_padding = tail
-            contig.nuc_title_start = seq_start
-            contig.nuc_seq_start = seq_start + title_length
+            contig.nuc_seq_start = 0
 
             total_progress += reset + title + tail + length  # pointer in image
-            seq_start += title_length + length  # pointer in text
+            seq_start +=  length  # pointer in text
         return total_progress  # + reset + title + tail + length
 
 
@@ -548,7 +547,7 @@ class TileLayout(object):
                 {"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
                  "title_padding": contig.title_padding, "tail_padding": contig.tail_padding,
                  "xy_title_start": xy_seq_start - contig.title_padding,
-                 "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start,
+                 "nuc_seq_start": contig.nuc_seq_start,
                  "fake_start": fake_start})
             xy_seq_start += len(contig.seq) + contig.tail_padding
         return json
@@ -617,11 +616,10 @@ class TileLayout(object):
 class ContigChunk(Contig):
     def __init__(self, original, fake_start, size):
         super(ContigChunk, self).__init__(original.name, original.seq[fake_start: fake_start+size])
-        self.fake_start=fake_start
+        self.fake_start = fake_start
         at_the_end = len(self.seq) != size
         first_chunk = not fake_start
         self.title_padding = original.title_padding if first_chunk else 0
-        self.nuc_title_start = original.nuc_title_start if first_chunk else fake_start
         self.nuc_seq_start = original.nuc_seq_start + fake_start
         self.tail_padding = original.tail_padding if at_the_end else 0
         self.reset_padding = original.reset_padding if at_the_end else 0
