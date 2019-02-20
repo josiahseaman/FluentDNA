@@ -26,7 +26,7 @@ def annotation_points(entry, renderer, start_offset):
 
 
 class HighlightedAnnotation(TileLayout):
-    def __init__(self, gff_file, query=None, repeat_annotation=None, **kwargs):
+    def __init__(self, gff_file, query=None, repeat_annotation=None, use_labels=True, **kwargs):
         super(HighlightedAnnotation, self).__init__(border_width=12, **kwargs)
         self.gff_filename = gff_file
         self.annotation = parseGFF(gff_file)
@@ -36,6 +36,7 @@ class HighlightedAnnotation(TileLayout):
         self.repeat_annotation = parseGFF(repeat_annotation)
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
+        self.use_labels = use_labels
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -105,7 +106,7 @@ class HighlightedAnnotation(TileLayout):
         self.draw_annotation_outlines(regions, markup_image, color,
                                       simple_entry=simple_entry, shadows=shadows)
 
-        if self.use_titles and label_color[3]:  # if the text color is transparent, don't bother
+        if self.use_labels and label_color[3]:  # if the text color is transparent, don't bother
             universal_prefix = find_universal_prefix(regions)
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
             self.draw_annotation_labels(markup_image, regions, coordinate_frame["title_padding"],

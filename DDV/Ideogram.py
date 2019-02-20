@@ -261,7 +261,6 @@ class Ideogram(HighlightedAnnotation):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        self.use_titles = True
         super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
 
     def draw_annotation_labels(self, markup_image, annotated_regions, start_offset, label_color,

@@ -199,7 +199,7 @@ def ddv(args):
         layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
                                        use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                                        low_contrast=args.low_contrast, base_width=args.base_width,
-                                       custom_layout=args.custom_layout)
+                                       custom_layout=args.custom_layout, use_labels=args.use_labels)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)
@@ -233,7 +233,8 @@ def ddv(args):
             layout = Ideogram(radix_settings,
                               ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
                               repeat_annotation=args.repeat_annotation,
-                              low_contrast=args.low_contrast, use_titles=args.use_titles)
+                              low_contrast=args.low_contrast, use_titles=args.use_titles,
+                              use_labels=args.use_labels)
             create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
         else:
             print("Invalid radix settings.  Follow the example.")
@@ -391,8 +392,12 @@ def main():
 
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
-                        help="No gaps for a title.  Useful when combined with separate_translocations",
+                        help="No gaps for a title. ",
                         dest="no_titles")
+    parser.add_argument("-nl", "--no_labels",
+                        action='store_true',
+                        help="No annotation labels rendered",
+                        dest="no_labels")
     parser.add_argument("-nw", "--no_webpage",
                         action='store_true',
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
@@ -545,6 +550,7 @@ def main():
     if args.output_name:
         args.output_name = args.output_name.strip()
     args.use_titles = not args.no_titles
+    args.use_labels = not args.no_labels
 
     #Output directory: after args.output_name is set
     SERVER_HOME, base_path = base_directories(args.output_name)
