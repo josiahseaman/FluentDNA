@@ -19,6 +19,7 @@ import sys
 #############################################################################
 # print("Setting up Python...")
 from DDVUtils import archive_execution_command
+from IdeogramManager import IdeogramManager
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -225,20 +226,11 @@ def ddv(args):
         done(args, SERVER_HOME)
 
     elif args.layout == 'ideogram':
-        assert args.radix, "You must provide a --radix argument for Ideograms."
-        radix_settings = eval(args.radix)
-        if len(radix_settings) == 4 and \
-            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
-            type(radix_settings[2]) == type(radix_settings[3]) == type(1):
-            layout = Ideogram(radix_settings,
-                              ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
-                              repeat_annotation=args.repeat_annotation,
-                              low_contrast=args.low_contrast, use_titles=args.use_titles,
-                              use_labels=args.use_labels)
-            create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
-        else:
+        try:
+            layout = IdeogramManager(args)
+            done(args, args.output_dir)
+        except ValueError:
             print("Invalid radix settings.  Follow the example.")
-        done(args, args.output_dir)
 
 
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch

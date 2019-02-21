@@ -28,7 +28,6 @@ from Layouts import LayoutFrame, LayoutLevel
 class IdeogramCoordinateFrame(LayoutFrame):
     def __init__(self, x_radices, y_radices, x_scale, y_scale, border_width):
         self.point_mapping = [] # for annotation and testing purposes
-        self.origin = (border_width, border_width)
         self.fibre_padding = 3
         self.x_radices = x_radices
         self.y_radices = y_radices
@@ -47,7 +46,7 @@ class IdeogramCoordinateFrame(LayoutFrame):
             levels.append(LayoutLevel(modulos[i], padding=padding[i], levels=levels))
         self.levels = levels
 
-        super(LayoutFrame, self).__init__(self.levels)  # levels is our iterable
+        super(IdeogramCoordinateFrame, self).__init__((border_width, border_width), self.levels)  # levels is our iterable
         #Itering levels is less helpful in Ideogram than it is in regular LayoutFrame
 
 
@@ -193,8 +192,7 @@ class Ideogram(HighlightedAnnotation):
         self.each_layout = [coordinates]  # overwrite anything else
         self.i_layout = 0
         self.layout_algorithm = "1"  # non-raster peano space filling curve
-
-
+        self.chr_padding = 200
 
 
     def process_file(self, input_file_path, output_folder, output_file_name,
@@ -202,7 +200,7 @@ class Ideogram(HighlightedAnnotation):
         if extract_contigs is None:
             contigs = read_contigs(input_file_path)
             extract_contigs = [contigs[0].name.split()[0]]
-            print("Extracting ", extract_contigs)
+        print("Extracting ", extract_contigs)
 
         super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
                                            no_webpage=no_webpage, extract_contigs=extract_contigs)
@@ -219,18 +217,26 @@ class Ideogram(HighlightedAnnotation):
         # points_file = None # open(points_file_name, 'w')
         # if points_file:
         #     print("Saving locations in {}".format(points_file_name))
-        contig = self.contigs[0]  # TODO pluck contig by --contigs
-        self.levels.build_coordinate_mapping(len(contig.seq))
-        seq_iter = iter(contig.seq)
-        for pts in range(len(contig.seq)):
-            try:
-                x, y = self.levels.position_on_screen(pts)
-                self.draw_pixel(next(seq_iter), x, y)
-            except StopIteration:
-                break  # reached end of sequence
-            except IndexError:
-                print("Ran out of room at (%i,%i)" % (x,y))
-                break
+
+        # Calculate longest layout first, then reuse
+        longest = max(len(c.seq) for c in self.contigs)
+        self.each_layout[0].build_coordinate_mapping(longest)
+        # Layout contigs one at a time
+        for layout_index, contig in enumerate(self.contigs):
+            self.i_layout = layout_index  # for intercompatibility
+            layout = self.each_layout[self.i_layout]
+            if layout_index: # not the first
+                layout.point_mapping = self.each_layout[0].point_mapping
+            seq_iter = iter(contig.seq)
+            for pts in range(len(contig.seq)):
+                try:
+                    x, y = layout.position_on_screen(pts)
+                    self.draw_pixel(next(seq_iter), x, y)
+                except StopIteration:
+                    break  # reached end of sequence
+                except IndexError:
+                    print("Ran out of room at (%i,%i)" % (x,y))
+                    break
 
 
     def position_on_screen(self, progress):
@@ -243,14 +249,16 @@ class Ideogram(HighlightedAnnotation):
         super(Ideogram, self).draw_extras()
 
 
-    def max_dimensions(self, image_length):
-        dim = int(np.sqrt(image_length * 2))  # ideogram has low density and mostly square
+    def max_dimensions(self, longest_chr):
+        dim = int(np.sqrt(longest_chr * 2))  # ideogram has low density and mostly square
         nucleotide_width = reduce(int.__mul__, self.levels.x_radices)
         y_body = reduce(int.__mul__, self.levels.y_radices[:-1])
-        n_coils = np.ceil(image_length / nucleotide_width )
+        n_coils = np.ceil(longest_chr / nucleotide_width)
         y_needed = int(np.ceil(n_coils / y_body))
         self.levels.y_radices[-1] = y_needed
-        width = nucleotide_width * self.levels.x_scale + self.levels.origin[0] * 2
+        n_chr = len(self.each_layout)
+        inter_pad = self.chr_padding * (n_chr - 1) if n_chr > 1 else 0
+        width = n_chr * (nucleotide_width * self.levels.x_scale + self.levels.origin[0] * 2) + inter_pad
         padding_per_coil = 6
         nuc_height = reduce(int.__mul__, self.levels.y_radices) + padding_per_coil * y_needed
         height = nuc_height * self.levels.y_scale + self.levels.origin[1]*2 + 10
@@ -278,6 +286,32 @@ class Ideogram(HighlightedAnnotation):
         self.levels.write_label(contig_name, width, height, font, title_width, upper_left,
               False, '+', canvas, label_color=label_color, horizontal_centering=True, center_vertical=True,
               chop_text=False)
+
+    def calc_all_padding(self):
+        """Use the contigs read in to create CoordinateFrames, one for each chromosome."""
+        ignored = super(Ideogram, self).calc_all_padding()  # initializes reset values
+
+        from copy import copy
+        original_layout = self.each_layout[0]
+        next_origin = list(original_layout.origin)
+        for chr_count, chromosome in enumerate(self.contigs):
+            if chr_count:  # not the first
+                layout = copy(original_layout)  # make a shallow copy of layout so we can change origin
+                #increment the origin and paste the same coordinateframe as before
+                layout.origin =  tuple(next_origin)
+                self.each_layout.append(layout) # scoot next_origin by width we just used up
+            next_origin[0] += original_layout.base_width + self.chr_padding
+
+        # return only the longest chromosome so that it can be used to calculate height
+        total_progress = max([len(c.seq) for c in self.contigs]) # length used to calculate image size
+        return total_progress  #TODO: for Ideogram
+
+    def calc_padding(self, total_progress, next_segment_length):
+        """Ideogram doesn't use within contig padding"""
+        return 0,0,0
+
+
+
 
 
 def increment(digits, radices, place):

@@ -254,8 +254,8 @@ function showNucleotideNumber(event, viewer) {
             if(contigs[position_info.fasta_index].hasOwnProperty(position_info.contig_name)){
                 theSequence = contigs[position_info.fasta_index][position_info.contig_name].substring(start, stop);
                 //theSequence = theSequence.replace(/\s+/g, '')
-                fragmentid = position_info.contig_name + ": (" +
-                  numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
+                fragmentid = '<strong>' + position_info.contig_name + '</strong>'
+                  //": (" + numberWithCommas(start + 1) + " - " + numberWithCommas(stop) + ")";
                 //#62 BioJS sequence display dynamically changes to match the number of columns in the current layout
                 visible_seq_obj.setNumCols(columnWidthInNucleotides);
                 visible_seq_obj.setSequence(theSequence, fragmentid);
