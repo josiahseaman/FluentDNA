@@ -21,7 +21,7 @@ def annotation_points(entry, renderer, start_offset):
     annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
     for i in range(entry.start, entry.end):
         # important to include title and reset padding in coordinate frame
-        annotation_points.append(renderer.position_on_screen(i + start_offset))
+        annotation_points.append(renderer.relative_position(i + start_offset))
     return annotation_points
 
 
@@ -54,8 +54,8 @@ class HighlightedAnnotation(TileLayout):
         """Drawing Annotations labels and shadow outlines"""
 
         positions = self.contig_struct()
-        for sc_index, coordinate_frame in enumerate(positions):  # Exact match required (case sensitive)
-            scaff_name = coordinate_frame["name"].split()
+        for sc_index, contig_record in enumerate(positions):  # Exact match required (case sensitive)
+            scaff_name = contig_record["name"].split()
             if not scaff_name:
                 raise ValueError('Annotation cannot proceed without a contig name in the FASTA file.  \n'
                                  'Please add a line at the beginning of your fasta file with a name '
@@ -64,7 +64,7 @@ class HighlightedAnnotation(TileLayout):
             scaff_name = scaff_name[0]
             # for one chromosome
             try:
-                self.draw_extras_for_chromosome(scaff_name, coordinate_frame)
+                self.draw_extras_for_chromosome(scaff_name, contig_record)
             except BaseException as e:
                 print("Encountered error while rendering", scaff_name)
                 traceback.print_exc()
@@ -72,30 +72,30 @@ class HighlightedAnnotation(TileLayout):
                 print("Continuing to next scaffold.")
 
 
-    def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
+    def draw_extras_for_chromosome(self, scaff_name, contig_record):
         genic_color = (255, 255, 255, 40)  # faint highlighter for genic regions
         if self.repeat_annotation is not None:
-            self.draw_annotation_layer(self.repeat_annotation, scaff_name, coordinate_frame, (0, 0, 0, 55),
+            self.draw_annotation_layer(self.repeat_annotation, scaff_name, contig_record, (0, 0, 0, 55),
                                        (0,0,0, 0), simple_entry=True)
         if self.annotation is not None:  # drawn last so it's on top
-            self.draw_annotation_layer(self.annotation, scaff_name, coordinate_frame, genic_color,
+            self.draw_annotation_layer(self.annotation, scaff_name, contig_record, genic_color,
                                        (50, 50, 50, 255))
         if self.query_annotation is not None:
-            self.draw_annotation_layer(self.query_annotation, scaff_name, coordinate_frame, genic_color,
+            self.draw_annotation_layer(self.query_annotation, scaff_name, contig_record, genic_color,
                                        (50, 50, 50, 255), shadows=True)
 
 
-    def draw_annotation_layer(self, annotations, scaff_name, coordinate_frame, color, label_color,
+    def draw_annotation_layer(self, annotations, scaff_name, contig_record, color, label_color,
                               simple_entry=False, shadows=False):
         regions = self.find_annotated_regions(annotations, scaff_name,
-                                              coordinate_frame["title_padding"], no_structure=simple_entry)
+                                              contig_record["title_padding"], no_structure=simple_entry)
         if not len(regions):
             return  # no work to do for this scaffold
 
         try:
-            upper_left = self.position_on_screen(coordinate_frame["xy_title_start"])
+            upper_left = self.position_on_screen(contig_record["xy_title_start"])
         except IndexError:
-            print("Warning: Annotation layer positioning error at:", coordinate_frame["xy_title_start"],
+            print("Warning: Annotation layer positioning error at:", contig_record["xy_title_start"],
                   file=sys.stderr)
             upper_left = [self.border_width, self.border_width]
         # relative coordinates
@@ -109,11 +109,11 @@ class HighlightedAnnotation(TileLayout):
         if self.use_labels and label_color[3]:  # if the text color is transparent, don't bother
             universal_prefix = find_universal_prefix(regions)
             print("Removing Universal Prefix from annotations: '%s'" % universal_prefix)
-            self.draw_annotation_labels(markup_image, regions, coordinate_frame["title_padding"],
+            self.draw_annotation_labels(markup_image, regions, contig_record["title_padding"],
                                         label_color, universal_prefix,
                                         use_suppression=simple_entry)  # labels on top
-        self.image.paste(markup_image, (upper_left[0] - self.border_width,
-                                        upper_left[1] - self.border_width), markup_image)
+        self.image.paste(markup_image, (upper_left[0],
+                                        upper_left[1]), markup_image)
 
 
     def draw_annotation_outlines(self, regions, markup_image, color, simple_entry, shadows):

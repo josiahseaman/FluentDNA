@@ -12,17 +12,20 @@ than 3:5 = 0.6) see https://arxiv.org/pdf/0806.4787.pdf
 try e.g. python3 Ideogram.py -x 3 3 3 -y 3 3 3
 """
 import sys
+import traceback
+from datetime import datetime
 from itertools import chain
 
 from DNASkittleUtils.Contigs import read_contigs
 
-from DDV.DDVUtils import beep
+from DDV.DDVUtils import beep, make_output_directory
 from DDV.HighlightedAnnotation import HighlightedAnnotation
 import os
 import numpy as np
 from functools import reduce
 
 from Layouts import LayoutFrame, LayoutLevel
+from MultipleAlignmentLayout import fastas_in_folder
 
 
 class IdeogramCoordinateFrame(LayoutFrame):
@@ -189,6 +192,7 @@ class Ideogram(HighlightedAnnotation):
         x_radices, y_radices, x_scale, y_scale = radix_settings  # unpack
         self.border_width = 12
         coordinates = IdeogramCoordinateFrame(x_radices, y_radices, x_scale, y_scale, self.border_width)
+        self.all_contents = {}  # (filename: contigs) output_fasta() determines order of fasta_sources
         self.each_layout = [coordinates]  # overwrite anything else
         self.i_layout = 0
         self.layout_algorithm = "1"  # non-raster peano space filling curve
@@ -212,31 +216,51 @@ class Ideogram(HighlightedAnnotation):
     #     self.palette['T'] = hex_to_rgb('A19E3D')  # light green
     #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
-    def draw_nucleotides(self):
-        # points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
-        # points_file = None # open(points_file_name, 'w')
-        # if points_file:
-        #     print("Saving locations in {}".format(points_file_name))
+    def render_multiple_files(self, input_fasta_folder, output_folder, output_file_name):
+        """Alternative entry point to Ideogram.process_file().  Handles everything."""
+        start_time = datetime.now()
+        self.final_output_location = output_folder
+        make_output_directory(output_folder)
+        self.preview_all_files(input_fasta_folder)
+        self.image_length = self.calculate_mixed_layout()
+        self.prepare_image(self.image_length)
+        # print("Tallied all contigs :", datetime.now() - start_time)
+        print("Initialized Image:", datetime.now() - start_time, "\n")
 
-        # Calculate longest layout first, then reuse
-        longest = max(len(c.seq) for c in self.contigs)
-        self.each_layout[0].build_coordinate_mapping(longest)
-        # Layout contigs one at a time
-        for layout_index, contig in enumerate(self.contigs):
-            self.i_layout = layout_index  # for intercompatibility
-            layout = self.each_layout[self.i_layout]
-            if layout_index: # not the first
-                layout.point_mapping = self.each_layout[0].point_mapping
-            seq_iter = iter(contig.seq)
-            for pts in range(len(contig.seq)):
+        for file_no, fasta in enumerate(self.fasta_sources):
+            self.i_layout = file_no
+            self.contigs = self.all_contents[fasta]  #TODO
+            try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
+                self.draw_nucleotides()
+            except Exception as e:
+                print('Encountered exception while drawing nucleotides:', '\n')
+                traceback.print_exc()
+            try:
+                self.draw_extras()
+            except BaseException as e:
+                print('Encountered exception while drawing extra markup:', '\n')
+                traceback.print_exc()
+
+            input_path = os.path.join(input_fasta_folder, fasta)
+            self.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
+        print("\nDrew Nucleotides:", datetime.now() - start_time)
+        self.output_image(output_folder, output_file_name, False)
+        print("Output Image in:", datetime.now() - start_time)
+
+
+    def draw_nucleotides(self, verbose=True):
+        """Only renders one file without modifying the current state of i_layout and self.contigs."""
+        total_progess = 0
+        for contig in self.contigs:
+            for nuc_i, nucleotide in enumerate(contig.seq):
                 try:
-                    x, y = layout.position_on_screen(pts)
-                    self.draw_pixel(next(seq_iter), x, y)
-                except StopIteration:
-                    break  # reached end of sequence
+                    x, y = self.position_on_screen(total_progess + nuc_i)
+                    self.draw_pixel(nucleotide, x, y)
                 except IndexError:
-                    print("Ran out of room at (%i,%i)" % (x,y))
+                    if verbose:
+                        print("Ran out of room at (%i,%i)" % (x,y))
                     break
+            total_progess += len(contig.seq)
 
 
     def position_on_screen(self, progress):
@@ -290,28 +314,47 @@ class Ideogram(HighlightedAnnotation):
     def calc_all_padding(self):
         """Use the contigs read in to create CoordinateFrames, one for each chromosome."""
         ignored = super(Ideogram, self).calc_all_padding()  # initializes reset values
-
-        from copy import copy
-        original_layout = self.each_layout[0]
-        next_origin = list(original_layout.origin)
-        for chr_count, chromosome in enumerate(self.contigs):
-            if chr_count:  # not the first
-                layout = copy(original_layout)  # make a shallow copy of layout so we can change origin
-                #increment the origin and paste the same coordinateframe as before
-                layout.origin =  tuple(next_origin)
-                self.each_layout.append(layout) # scoot next_origin by width we just used up
-            next_origin[0] += original_layout.base_width + self.chr_padding
-
         # return only the longest chromosome so that it can be used to calculate height
-        total_progress = max([len(c.seq) for c in self.contigs]) # length used to calculate image size
-        return total_progress  #TODO: for Ideogram
+        longest_chr = max([len(c.seq) for c in self.contigs]) # length used to calculate image size
+        return longest_chr
 
     def calc_padding(self, total_progress, next_segment_length):
         """Ideogram doesn't use within contig padding"""
         return 0,0,0
 
+    def preview_all_files(self, input_fasta_folder):
+        """Populates fasta_sources and all_contents with files from a directory"""
+        for single_MSA in fastas_in_folder(input_fasta_folder):
+            self.read_contigs_and_calc_padding(single_MSA, None)
+            fasta_name = os.path.basename(single_MSA)
+            self.fasta_sources.append(fasta_name)
+            self.all_contents[fasta_name] = self.contigs  # store contigs so they can be wiped
+        print("Read all files")
 
 
+
+    def calculate_mixed_layout(self):
+        from copy import copy
+        original_layout = self.each_layout[0]
+        next_origin = list(original_layout.origin)
+        longest_chromosome = 0
+        for chr_count, chromosome in enumerate(self.fasta_sources):
+            current_length = max([len(c.seq) for c in self.all_contents[chromosome]])
+            longest_chromosome = max(longest_chromosome, current_length)
+            if chr_count:  # not the first
+                coord_frame = copy(original_layout)  # make a shallow copy of coord_frame so we can change origin
+                #increment the origin and paste the same coordinateframe as before
+                coord_frame.origin =  tuple(next_origin)
+                self.each_layout.append(coord_frame) # scoot next_origin by width we just used up
+            next_origin[0] += original_layout.base_width + self.chr_padding
+
+        print("Calculating Ideogram Point Mapping")
+        # Calculate longest coord_frame first, then reuse
+        self.each_layout[0].build_coordinate_mapping(longest_chromosome)
+        for layout in self.each_layout:
+            layout.point_mapping = self.each_layout[0].point_mapping
+        # these should be shallow
+        return longest_chromosome
 
 
 def increment(digits, radices, place):

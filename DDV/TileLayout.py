@@ -207,7 +207,7 @@ class TileLayout(object):
         try:
             self.draw_extras()
         except BaseException as e:
-            print('Encountered exception while drawing titles:', '\n')
+            print('Encountered exception while drawing extra markup:', '\n')
             traceback.print_exc()
 
         self.output_image(output_folder, output_file_name, no_webpage)

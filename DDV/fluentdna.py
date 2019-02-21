@@ -222,7 +222,7 @@ def ddv(args):
         del unique_chain_parser
         combine_files(batches, args, args.output_name)
         # for batch in batches:
-        #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
+        #     render_multiple_files(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args, SERVER_HOME)
 
     elif args.layout == 'ideogram':

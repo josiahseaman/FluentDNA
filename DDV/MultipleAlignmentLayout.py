@@ -201,7 +201,7 @@ class MultipleAlignmentLayout(TileLayout):
             self.read_contigs_and_calc_padding(single_MSA, None)
             fasta_name = os.path.basename(single_MSA)
             self.fasta_sources.append(fasta_name)
-            self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
+            self.all_contents[fasta_name] = self.contigs  # store contigs so they can be wiped
         if self.sort_contigs:  # do this before self.each_layout is created in order
             heights = [(len(self.all_contents[fasta_name]), fasta_name) for fasta_name in self.fasta_sources]
             heights.sort(key=lambda pair: -pair[0])  # largest number of sequences first
