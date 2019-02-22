@@ -122,7 +122,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
-    # beep()
+    beep()
     hold_console_for_windows()
     if __name__ == "__main__":
         sys.exit(0)

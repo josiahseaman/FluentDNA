@@ -12,7 +12,7 @@ from DDV.DDVUtils import linspace, copy_to_sources
 def blend_pixel(markup_canvas, pt, c, overwrite=False):
     if overwrite or markup_canvas[pt[0], pt[1]][3] == 0:  # nothing drawn
         markup_canvas[pt[0], pt[1]] = c
-    else:
+    else:  # TODO: make interpolation two directional
         remaining_light = 1.0 - (markup_canvas[pt[0], pt[1]][3] / 256)
         combined_alpha = 256 - int(remaining_light * (256 - c[3]) )
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
@@ -37,6 +37,8 @@ class HighlightedAnnotation(TileLayout):
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
         self.use_labels = use_labels
+        self.museum_mode = True
+        self.shade_intergenic = True
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -74,12 +76,16 @@ class HighlightedAnnotation(TileLayout):
 
     def draw_extras_for_chromosome(self, scaff_name, contig_record):
         genic_color = (255, 255, 255, 40)  # faint highlighter for genic regions
+        if self.museum_mode:
+            genic_color = (255, 255, 255, 100)  # starker contrast
+        if self.shade_intergenic:
+            genic_color = (0, 0, 0, 1) # Erasure for shading
         if self.repeat_annotation is not None:
             self.draw_annotation_layer(self.repeat_annotation, scaff_name, contig_record, (0, 0, 0, 55),
                                        (0,0,0, 0), simple_entry=True)
         if self.annotation is not None:  # drawn last so it's on top
             self.draw_annotation_layer(self.annotation, scaff_name, contig_record, genic_color,
-                                       (50, 50, 50, 255))
+                                       (50, 50, 50, 255), simple_entry=self.museum_mode)
         if self.query_annotation is not None:
             self.draw_annotation_layer(self.query_annotation, scaff_name, contig_record, genic_color,
                                        (50, 50, 50, 255), shadows=True)
@@ -101,7 +107,8 @@ class HighlightedAnnotation(TileLayout):
         # relative coordinates
         width = max(set(p[0] for region in regions for p in region.points)) + 2 * self.border_width
         height = max(set(p[1] for region in regions for p in region.points)) + 2* self.border_width
-        markup_image = Image.new('RGBA', (width + 1, height + 1), (0, 0, 0, 0))
+        background_color = (255, 255, 255, 100) if self.shade_intergenic else (0, 0, 0, 0)
+        markup_image = Image.new('RGBA', (width + 1, height + 1), background_color)
 
         self.draw_annotation_outlines(regions, markup_image, color,
                                       simple_entry=simple_entry, shadows=shadows)
@@ -149,7 +156,7 @@ class HighlightedAnnotation(TileLayout):
         for region in regions:
             if highlight_whole_entry:
                 for point in region.points:  # highlight exons
-                    blend_pixel(markup_canvas, point, color)
+                    blend_pixel(markup_canvas, point, color, self.shade_intergenic)
             else:
                 for point in region.exon_region_points():  # highlight exons
                     blend_pixel(markup_canvas, point, color)

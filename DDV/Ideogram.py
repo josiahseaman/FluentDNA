@@ -138,50 +138,6 @@ class IdeogramCoordinateFrame(LayoutFrame):
 
 
 
-    def draw_loop_any_scale(self, curr_pos, digits, no_pts, parities, points_file, prev_pos, prevprev_pos,
-                            radices, seq_iter, x_scale, y_scale):
-        for pts in range(no_pts - 1):
-            place = increment(digits, radices, 0)
-            parities[0:(place // 2 + 1), place % 2] *= -1
-            place += 1
-            prevprev_pos[:] = prev_pos[:]
-            prev_pos[:] = curr_pos[:]
-            # assume we move 3 up and 5 across
-            x = int(prev_pos[1] * x_scale + self.origin[0])
-            y = int(prev_pos[0] * y_scale + self.origin[1])
-            if points_file:
-                print("{} {}".format(x, y), file=points_file)
-            curr_pos[place % 2] += parities[place // 2, place % 2]
-            diff = curr_pos - prev_pos
-            prev_diff = prev_pos - prevprev_pos
-            assert (abs(sum(diff)) == 1)
-            self.point_mapping.append((x,y))
-            try:
-                self.paint_turns(seq_iter, x, y, diff, prev_diff,
-                                 prev_pos, prevprev_pos, x_scale, y_scale)
-            except IndexError:
-                print(x, y, "out of range")
-            except StopIteration:
-                break  # reached end of sequence
-
-
-    def paint_turns(self, seq_iter, x, y, diff, prev_diff, prev_pos, prevprev_pos, x_scale, y_scale):
-        # right-hand rotation at corner when corner==1, left-hand rotation when corner==1, or no turn (corner == 0)
-        turn = prev_diff[0] * diff[1] - prev_diff[1] * diff[0]
-        if turn == 0 or (x_scale == 1 and y_scale==1):
-            self.draw_pixel(next(seq_iter), x, y)
-        if diff[1]:
-            # x is changing
-            for scale_step in range(1, x_scale):
-                self.draw_pixel(next(seq_iter), x + scale_step * int(diff[1]), y)
-        elif diff[0]:
-            # y is changing
-            # NB: underlines will sometimes overwrite previous ones
-            x_nudge = int(prevprev_pos[1] - prev_pos[1])
-            for scale_step in range(1, y_scale):
-                self.draw_pixel(next(seq_iter), x + x_nudge, y + scale_step * int(diff[0]))
-
-
 
 class Ideogram(HighlightedAnnotation):
     def __init__(self, radix_settings, ref_annotation=None, query_annotation=None,
@@ -223,6 +179,7 @@ class Ideogram(HighlightedAnnotation):
         make_output_directory(output_folder)
         self.preview_all_files(input_fasta_folder)
         self.image_length = self.calculate_mixed_layout()
+        print("Ideogram Point Mapping Done", datetime.now() - start_time)
         self.prepare_image(self.image_length)
         # print("Tallied all contigs :", datetime.now() - start_time)
         print("Initialized Image:", datetime.now() - start_time, "\n")
@@ -289,6 +246,8 @@ class Ideogram(HighlightedAnnotation):
 
         if self.levels.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
             self.levels.y_radices[-1] += 1
+        if self.museum_mode:  # Manually set size for two or more rows of chromosomes
+            width, height = 10095, 9820 * 2 + (405*5)
         return width, height
 
 
@@ -336,17 +295,27 @@ class Ideogram(HighlightedAnnotation):
     def calculate_mixed_layout(self):
         from copy import copy
         original_layout = self.each_layout[0]
-        next_origin = list(original_layout.origin)
+        origin_series = []
+        for chr_count, chromosome in enumerate(self.fasta_sources):
+            next_origin = list(original_layout.origin)
+            next_origin[0] += (original_layout.base_width + self.chr_padding) * chr_count
+            origin_series.append(next_origin)
+        if self.museum_mode:  # manual layout by editing code
+            #chr1 is 24 coils tall
+            #last chr is 7 coils shorter than its neighbor
+            coil_height = 405
+            origin_series = [(p[0],p[1]) for p in origin_series[:3]]  # add title padding
+            origin_series += [(origin_series[0][0], origin_series[0][1]+ coil_height * 27),
+                             ((origin_series[1][0], origin_series[1][1]+ coil_height *(27 + 7)))]
         longest_chromosome = 0
         for chr_count, chromosome in enumerate(self.fasta_sources):
             current_length = max([len(c.seq) for c in self.all_contents[chromosome]])
             longest_chromosome = max(longest_chromosome, current_length)
+            coord_frame = copy(original_layout)  # make a shallow copy of coord_frame so we can change origin
+            # increment the origin and paste the same coordinateframe as before
+            coord_frame.origin = tuple(origin_series[chr_count])
             if chr_count:  # not the first
-                coord_frame = copy(original_layout)  # make a shallow copy of coord_frame so we can change origin
-                #increment the origin and paste the same coordinateframe as before
-                coord_frame.origin =  tuple(next_origin)
                 self.each_layout.append(coord_frame) # scoot next_origin by width we just used up
-            next_origin[0] += original_layout.base_width + self.chr_padding
 
         print("Calculating Ideogram Point Mapping")
         # Calculate longest coord_frame first, then reuse
@@ -383,10 +352,14 @@ if __name__ == "__main__":
     # 3*3*3*3*3 = 1,594,323 bp per fiber row
 
     radix_settings = eval(sys.argv[2])
-    assert len(radix_settings) == 4 and \
-            type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
-            type(radix_settings[2]) == type(radix_settings[3]) == type(1), \
-        "Wrong types: Example: '([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'"
+    if len(radix_settings) in (2,4):
+        assert type(radix_settings[0]) == type(radix_settings[1]) == type([]), \
+            "Wrong types: Example: '([5,5,5,5,11], [5,5,5,5,5 ,53])'"
+        if len(radix_settings) == 4:
+            assert type(radix_settings[2]) == type(radix_settings[3]) == type(1), \
+        "Wrong types: Example: '([5,5,5,5,11], [5,5,5,5,5 ,53])'"
+    else:
+        raise IndexError("Radix should be two lists: Example: '([5,5,5,5,11], [5,5,5,5,5 ,53])'")
     layout = Ideogram(radix_settings)
     input = sys.argv[1]  #r"D:\Genomes\Human\hg38_chr1.fa"  #
     layout.process_file(input,
