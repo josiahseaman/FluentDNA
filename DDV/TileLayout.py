@@ -143,6 +143,7 @@ class TileLayout(object):
         self.palette['C'] = hex_to_rgb('FF9F00')  # Yellow
         self.palette['T'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
         self.palette['A'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
+        self.palette['N'] = (122, 122, 122)  # medium grey
         # Original DDV Colors
         # self.palette['A'] = (255, 0, 0)
         # self.palette['G'] = (0, 255, 0)

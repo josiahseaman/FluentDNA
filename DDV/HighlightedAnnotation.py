@@ -37,7 +37,7 @@ class HighlightedAnnotation(TileLayout):
         self.pil_mode = 'RGBA'  # Alpha channel necessary for outline blending
         self.font_name = "ariblk.ttf"  # TODO: compatibility testing with Mac
         self.use_labels = use_labels
-        self.museum_mode = True
+        self.museum_mode = False
         self.shade_intergenic = True
 
     def process_file(self, input_file_path, output_folder, output_file_name,

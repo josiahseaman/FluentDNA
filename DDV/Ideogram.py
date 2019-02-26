@@ -26,6 +26,7 @@ from functools import reduce
 
 from Layouts import LayoutFrame, LayoutLevel
 from MultipleAlignmentLayout import fastas_in_folder
+from TileLayout import hex_to_rgb
 
 
 class IdeogramCoordinateFrame(LayoutFrame):
@@ -157,11 +158,8 @@ class Ideogram(HighlightedAnnotation):
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
-        if extract_contigs is None:
-            contigs = read_contigs(input_file_path)
-            extract_contigs = [contigs[0].name.split()[0]]
-        print("Extracting ", extract_contigs)
-
+        self.prep_fasta_source(input_file_path)
+        self.image_length = self.calculate_mixed_layout()
         super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
                                            no_webpage=no_webpage, extract_contigs=extract_contigs)
 
@@ -209,6 +207,10 @@ class Ideogram(HighlightedAnnotation):
         """Only renders one file without modifying the current state of i_layout and self.contigs."""
         total_progess = 0
         for contig in self.contigs:
+            if contig.name.lower().startswith('intergenic'):
+                self.intergenic_palette()
+            else:
+                self.activate_high_contrast_colors()
             for nuc_i, nucleotide in enumerate(contig.seq):
                 try:
                     x, y = self.position_on_screen(total_progess + nuc_i)
@@ -274,7 +276,7 @@ class Ideogram(HighlightedAnnotation):
         """Use the contigs read in to create CoordinateFrames, one for each chromosome."""
         ignored = super(Ideogram, self).calc_all_padding()  # initializes reset values
         # return only the longest chromosome so that it can be used to calculate height
-        longest_chr = max([len(c.seq) for c in self.contigs]) # length used to calculate image size
+        longest_chr = sum([len(c.seq) for c in self.contigs]) # length used to calculate image size
         return longest_chr
 
     def calc_padding(self, total_progress, next_segment_length):
@@ -283,14 +285,15 @@ class Ideogram(HighlightedAnnotation):
 
     def preview_all_files(self, input_fasta_folder):
         """Populates fasta_sources and all_contents with files from a directory"""
-        for single_MSA in fastas_in_folder(input_fasta_folder):
-            self.read_contigs_and_calc_padding(single_MSA, None)
-            fasta_name = os.path.basename(single_MSA)
-            self.fasta_sources.append(fasta_name)
-            self.all_contents[fasta_name] = self.contigs  # store contigs so they can be wiped
+        for fasta_file in fastas_in_folder(input_fasta_folder):
+            self.prep_fasta_source(fasta_file)
         print("Read all files")
 
-
+    def prep_fasta_source(self, fasta_file_path):
+        self.read_contigs_and_calc_padding(fasta_file_path, None)
+        fasta_name = os.path.basename(fasta_file_path)
+        self.fasta_sources.append(fasta_name)
+        self.all_contents[fasta_name] = self.contigs  # store contigs so they can be wiped
 
     def calculate_mixed_layout(self):
         from copy import copy
@@ -309,7 +312,7 @@ class Ideogram(HighlightedAnnotation):
                              ((origin_series[1][0], origin_series[1][1]+ coil_height *(27 + 7)))]
         longest_chromosome = 0
         for chr_count, chromosome in enumerate(self.fasta_sources):
-            current_length = max([len(c.seq) for c in self.all_contents[chromosome]])
+            current_length = sum([len(c.seq) for c in self.all_contents[chromosome]])
             longest_chromosome = max(longest_chromosome, current_length)
             coord_frame = copy(original_layout)  # make a shallow copy of coord_frame so we can change origin
             # increment the origin and paste the same coordinateframe as before
@@ -324,6 +327,13 @@ class Ideogram(HighlightedAnnotation):
             layout.point_mapping = self.each_layout[0].point_mapping
         # these should be shallow
         return longest_chromosome
+
+    def intergenic_palette(self):
+        self.palette['G'] = hex_to_rgb('FFA889')  # Red
+        self.palette['C'] = hex_to_rgb('FFD389')  # Yellow
+        self.palette['T'] = hex_to_rgb('8EB1E1')  # Blue originally '0F4FA8'
+        self.palette['A'] = hex_to_rgb('89E4B8')  # Green originally ' 00B25C'
+        self.palette['N'] = hex_to_rgb('C1C1C1')  # Grey
 
 
 def increment(digits, radices, place):

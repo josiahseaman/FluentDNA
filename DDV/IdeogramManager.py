@@ -1,5 +1,5 @@
 from glob import glob
-from os.path import join, basename
+from os.path import join, basename, isdir
 
 from Ideogram import Ideogram
 
@@ -44,7 +44,11 @@ class IdeogramManager:
                               repeat_annotation=args.repeat_annotation,
                               low_contrast=args.low_contrast, use_titles=args.use_titles,
                               use_labels=args.use_labels)
-            batch_render(args, args.fasta, args.output_name, layout)
+            if isdir(args.fasta):
+                batch_render(args, args.fasta, args.output_name, layout)
+            else:
+                from fluentdna import create_tile_layout_viz_from_fasta
+                create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
         else:
             raise ValueError("Invalid radix settings.  Follow the example.")
 
