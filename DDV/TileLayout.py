@@ -538,7 +538,7 @@ class TileLayout(object):
         json = []
         xy_seq_start = 0
         for index, contig in enumerate(self.contigs):
-            if index > 1000:
+            if index > 1000 * 100 and not (hasattr(self, 'museum_mode') and self.museum_mode):
                 break  # I don't want to use a slice operator on the for loop because that will copy it
             xy_seq_start += contig.reset_padding + contig.title_padding
             xy_seq_end = xy_seq_start + len(contig.seq)
