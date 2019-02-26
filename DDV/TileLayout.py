@@ -248,12 +248,14 @@ class TileLayout(object):
 
 
     def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
+        """This method is destructive.  It does not preserve the original self.contigs"""
         bare_file = os.path.basename(fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
 
         #also make single file
         if not no_webpage:
+            self.dice_self_contigs(1000000)
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
             fasta_destination = os.path.join(output_folder, 'sources', bare_file)
@@ -287,11 +289,10 @@ class TileLayout(object):
             contig.reset_padding = reset
             contig.title_padding = title
             contig.tail_padding = tail
-            contig.nuc_title_start = seq_start
-            contig.nuc_seq_start = seq_start + title_length
+            contig.nuc_seq_start = 0
 
             total_progress += reset + title + tail + length  # pointer in image
-            seq_start += title_length + length  # pointer in text
+            seq_start +=  length  # pointer in text
         return total_progress  # + reset + title + tail + length
 
 
@@ -542,10 +543,13 @@ class TileLayout(object):
                 break  # I don't want to use a slice operator on the for loop because that will copy it
             xy_seq_start += contig.reset_padding + contig.title_padding
             xy_seq_end = xy_seq_start + len(contig.seq)
-            json.append({"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
-                         "title_padding": contig.title_padding, "tail_padding": contig.tail_padding,
-                         "xy_title_start": xy_seq_start - contig.title_padding,
-                         "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start})
+            fake_start = 0 if not hasattr(contig, 'fake_start') else contig.fake_start
+            json.append(
+                {"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
+                 "title_padding": contig.title_padding, "tail_padding": contig.tail_padding,
+                 "xy_title_start": xy_seq_start - contig.title_padding,
+                 "nuc_seq_start": contig.nuc_seq_start,
+                 "fake_start": fake_start})
             xy_seq_start += len(contig.seq) + contig.tail_padding
         return json
 
@@ -600,6 +604,26 @@ class TileLayout(object):
 
     def remember_contig_spacing(self):
         self.contig_memory.append(self.contig_struct())
+
+    def dice_self_contigs(self, chunk_size):
+        for i in reversed(range(len(self.contigs))):
+            print(i, end='')
+            if len(self.contigs[i].seq) > chunk_size:
+                temp = self.contigs[i]
+                positions= range(0, len(temp.seq), chunk_size)
+                self.contigs[i:i+1] = [ContigChunk(temp, start, chunk_size) for start in positions]
+
+
+class ContigChunk(Contig):
+    def __init__(self, original, fake_start, size):
+        super(ContigChunk, self).__init__(original.name, original.seq[fake_start: fake_start+size])
+        self.fake_start = fake_start
+        at_the_end = len(self.seq) != size
+        first_chunk = not fake_start
+        self.title_padding = original.title_padding if first_chunk else 0
+        self.nuc_seq_start = original.nuc_seq_start + fake_start
+        self.tail_padding = original.tail_padding if at_the_end else 0
+        self.reset_padding = original.reset_padding if at_the_end else 0
 
 
 def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):

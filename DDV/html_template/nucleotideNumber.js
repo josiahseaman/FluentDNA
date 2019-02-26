@@ -226,7 +226,7 @@ function showNucleotideNumber(event, viewer) {
     if(cursor_in_a_title){
         document.getElementById("Nucleotide").innerHTML = position_info.contig_name;
     }else{
-        var display_number = information_to_show ? position_info.index_inside_contig : "-";
+        var display_number = information_to_show ? position_info.file_coordinates : "-";
         document.getElementById("Nucleotide").innerHTML = numberWithCommas(display_number);
         var display_file = information_to_show ? fasta_sources[position_info.fasta_index] : "Sequence under Cursor";
         document.getElementById("FileUnderCursor").innerHTML = display_file;
@@ -344,14 +344,12 @@ function getSequence(fasta_index, contig_index) {
 function read_contigs(sequence_received, fasta_index, contig_index) {
     //read_contigs equiv in javascript
     theSequenceSplit = sequence_received.split(/\r?\n(?=>)/);// begin line, caret  ">");
-    //for (let contig_s of theSequenceSplit) {
     //Only read and store first contig
     var contig_s = theSequenceSplit[0];
-        var lines = contig_s.split(/\r?\n/);
-        var title = lines[0].slice(1)
-        var seq = lines.slice(1).join('');
-        contigs[fasta_index][contig_index] = seq;
-    //}
+    var lines = contig_s.split(/\r?\n/);
+    var title = lines[0].slice(1)
+    var seq = lines.slice(1).join('');
+    contigs[fasta_index][contig_index] = seq;
     return contigs
 }
 function init_sequence_view() {
