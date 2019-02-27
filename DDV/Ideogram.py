@@ -207,7 +207,7 @@ class Ideogram(HighlightedAnnotation):
         """Only renders one file without modifying the current state of i_layout and self.contigs."""
         total_progess = 0
         for contig in self.contigs:
-            if contig.name.lower().startswith('intergenic'):
+            if contig.name.lower().startswith('between genes'):
                 self.intergenic_palette()
             else:
                 self.activate_high_contrast_colors()

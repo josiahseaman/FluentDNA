@@ -41,6 +41,7 @@ class TileLayout(object):
                  custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
+        self.museum_mode = True
         self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
@@ -255,7 +256,8 @@ class TileLayout(object):
 
         #also make single file
         if not no_webpage:
-            self.dice_self_contigs(1000000)
+            if not self.museum_mode:
+                self.dice_self_contigs(1000000)
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
             fasta_destination = os.path.join(output_folder, 'sources', bare_file)
@@ -273,7 +275,7 @@ class TileLayout(object):
 
         # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
         #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
-        if len(self.contigs) > 10000:
+        if len(self.contigs) > 10000 and not self.museum_mode:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
             self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
@@ -483,6 +485,7 @@ class TileLayout(object):
                             "originalImageHeight": str(self.image.height if self.image else 1),
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
+                            "museum_mode": 'true' if self.museum_mode else 'false',
                             "date": datetime.now().strftime("%Y-%m-%d"),
                             'legend': "<strong>Legend:</strong>" +\
                                 legend_line('Adenine (A)', 'A') +\
@@ -539,7 +542,7 @@ class TileLayout(object):
         json = []
         xy_seq_start = 0
         for index, contig in enumerate(self.contigs):
-            if index > 1000 * 100 and not (hasattr(self, 'museum_mode') and self.museum_mode):
+            if index > 1000 * 100 and not self.museum_mode:
                 break  # I don't want to use a slice operator on the for loop because that will copy it
             xy_seq_start += contig.reset_padding + contig.title_padding
             xy_seq_end = xy_seq_start + len(contig.seq)
@@ -607,7 +610,7 @@ class TileLayout(object):
 
     def dice_self_contigs(self, chunk_size):
         for i in reversed(range(len(self.contigs))):
-            print(i, end='')
+            # print(i, end=' ')
             if len(self.contigs[i].seq) > chunk_size:
                 temp = self.contigs[i]
                 positions= range(0, len(temp.seq), chunk_size)

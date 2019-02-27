@@ -123,6 +123,13 @@ function peano_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
     var index_from_xy = 0;
     var xy_remaining = [nucNumX, nucNumY];
     var axis_flipped = [false, false]
+    var last_vertical = layout_levels[layout_levels.length-1]
+    var last_horizont = layout_levels[layout_levels.length-2]
+    var width = last_horizont.thickness * last_horizont.modulo
+
+    if (nucNumX >= width){
+        return ""; // out of bounds: allows stacking ideogram horizontally
+    }
     for (var i = layout_levels.length - 1; i >= 0; i--) {
         var level = layout_levels[i];
         var part = i % 2;
@@ -144,7 +151,8 @@ function peano_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
         axis_flipped[(part + 1) %2] = this_level_flipped? !next_axis : next_axis; // XOR
 
         if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
-            return "";//check for invalid coordinate (margins)
+            //check for invalid coordinate (margins), hit in 3px gap between coils
+            return "";
         }
     }
     var position_info = nucleotide_coordinates_to_sequence_index(index_from_xy, source_index);
@@ -373,17 +381,20 @@ function processInitSequenceError() {
 
 function outputTable() {
     if (each_layout.length){
-       $('#outputContainer').append('<table id="output" style="border: 1px solid #000000;"><tr><th id="FileUnderCursor">Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    '+
-      '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
-      '<div id="base"></div><div id="SequenceFragmentFASTA" style="height:200px;">' +
-        '<div id="SeqDisplayTarget"></div>' +
-        '<div id="SequenceFragmentInstruction" style="display: block;margin-top: -25px;">' +
-          'Press "x" key using keyboard to copy this fragment to Result Log</div>' +
-        '<div id="status_box">' +
-          '<span style="font-weight: bolder;color: darkgrey;font-family: sans-serif;">Status: </span>' +
-          '<div id="status"></div>' +
-        '</div>' +
-      '</div>'
+       $('#outputContainer').append(
+         '<div id="SequenceFragmentFASTA" style="height:200px;"><div id="SeqDisplayTarget"></div>' +
+             '<div id="SequenceFragmentInstruction" style="display: block;margin-top: -25px;">' +
+             (museum_mode? '':'Press "x" key using keyboard to copy this fragment to Result Log</div>')+
+         '</div>'+
+
+         '<table id="output" style="border: 1px solid #000000;"><tr><th id="FileUnderCursor">Nucleotide Number</th><td id="Nucleotide">-</td></tr></table>    ' +
+            '<div id="status_box">' +
+             '<span style="font-weight: bolder;color: darkgrey;font-family: sans-serif;">Status: </span>' +
+             '<div id="status"></div>' +
+             '</div>'+
+         '<div id="getSequenceButton"><br /><a onclick="get_all_sequences()"> Fetch Sequence </a></div>' +
+         '<div id="base"></div>'
+
        );
     }
     //provide sequence download for minimal support
