@@ -3,6 +3,12 @@ body {
     margin-bottom: 200px;
 }
 
+.gene_name {
+	text-emphasis: filled black;
+	font-size: 2em;
+	font-weight: bold;
+}
+
 #refseq {
     font-size: 9pt;
     color: #606060;

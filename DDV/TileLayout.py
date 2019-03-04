@@ -256,8 +256,8 @@ class TileLayout(object):
 
         #also make single file
         if not no_webpage:
-            if not self.museum_mode:
-                self.dice_self_contigs(1000000)
+            # if not self.museum_mode:
+            self.dice_self_contigs(1000000)
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
             fasta_destination = os.path.join(output_folder, 'sources', bare_file)
@@ -291,10 +291,10 @@ class TileLayout(object):
             contig.reset_padding = reset
             contig.title_padding = title
             contig.tail_padding = tail
-            contig.nuc_seq_start = 0
+            contig.nuc_seq_start = seq_start
 
             total_progress += reset + title + tail + length  # pointer in image
-            seq_start +=  length  # pointer in text
+            seq_start += length  # pointer in text
         return total_progress  # + reset + title + tail + length
 
 
