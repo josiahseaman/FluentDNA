@@ -41,13 +41,31 @@ function init_all(){
 function init(container_id, source_folder) {
     var source = source_folder == "" ? "" : source_folder + "/"; //ensure directories end with a slash
     source += "GeneratedImages/dzc_output.xml";
-    viewer = OpenSeadragon({
-        id: container_id,
-        prefixUrl: "img/",
-        showNavigator: true,
-        tileSources: [source],
-        maxZoomPixelRatio: 20
-    });
+    if (museum_mode){
+        viewer = OpenSeadragon({
+            id: container_id,
+            prefixUrl: "img/",
+            showNavigator:  true,
+            navigatorId:   "separate_navigator",
+            tileSources: [source],
+            maxZoomPixelRatio: 20,
+            navigatorMaintainSizeRatio: true,
+            navigatorAutoResize: false,
+            // navigatorPosition: "ABSOLUTE",
+            // navigatorTop:      "40px",
+            // navigatorRight:     "-40px",
+            // navigatorHeight:   "120px",
+            // navigatorWidth:    "145px"
+        });
+    }else{
+        viewer = OpenSeadragon({
+            id: container_id,
+            prefixUrl: "img/",
+            showNavigator: true,
+            tileSources: [source],
+            maxZoomPixelRatio: 20
+        });
+    }
     viewer.scalebar({
         type: OpenSeadragon.ScalebarType.MAP,
         pixelsPerMeter: 1,
@@ -63,9 +81,12 @@ function init(container_id, source_folder) {
         barThickness: 1,
         sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.BASEPAIR_LENGTH
     });
-
-    OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer);});
-
+    if(museum_mode){// in museums, there is no "mouse" info is from touches on navigator
+            OpenSeadragon.addEvent(viewer.navigator.element, "mousemove",
+              function(event){showNucleotideNumber(event, viewer.navigator);});
+    } else {
+        OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer);});
+    }
     //copy content of pointed at sequence fragment to result log
     $("body").keyup(function (event) {
         if (theSequence) {

@@ -9,6 +9,18 @@ body {
 	font-weight: bold;
 }
 
+#separate_navigator {
+    border: none;
+    margin: 0px;
+    padding: 0px;
+    display: block !important;
+    position: absolute !important;
+    top: 0px;
+    height: 322px;
+    width: 164px;
+    right: 0px;
+}
+
 #refseq {
     font-size: 9pt;
     color: #606060;
