@@ -553,12 +553,15 @@ def main():
 
     #Output directory: after args.output_name is set
     SERVER_HOME, base_path = base_directories(args.output_name)
+    args.output_dir = base_path
+    doing_any_work = args.fasta or args.chain_file or args.ref_annotation or args.query_annotation or args.image
     if args.quick:
         args.output_dir = os.path.dirname(
             os.path.abspath(args.fasta))  # just place the image next to the fasta
-    elif not args.chain_file and not args.run_server:
-        args.output_dir = base_path
-        make_output_directory(base_path)
+    # elif not args.chain_file:
+    #     args.output_dir = base_path
+    if doing_any_work:
+        make_output_directory(args.output_dir)
 
     ddv(args)
 
