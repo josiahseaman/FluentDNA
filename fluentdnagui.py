@@ -42,7 +42,6 @@ multiprocessing.freeze_support()
 # ----------BEGIN MAIN PROGRAM----------
 from DDV import VERSION
 
-import shutil
 import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
@@ -97,14 +96,13 @@ def query_yes_no(question, default='yes'):
 
 def run_server(home_directory):
     try:
-        print("Setting up HTTP Server based from", home_directory)
         from http import server
         from socketserver import TCPServer
     except ImportError:  # Python 2 imports
-        print("Import error, trying with Python 2")
         import SimpleHTTPServer as server
         from SocketServer import TCPServer
 
+    print("Setting up HTTP Server based from", home_directory, flush=True)
     os.chdir(home_directory)
 
     ADDRESS = "127.0.0.1"
@@ -117,11 +115,11 @@ def run_server(home_directory):
     httpd.serve_forever()
 
 
-
 def done(args, output_dir):
     """Ensure that server always starts when requested.
     Otherwise system exit."""
     if args.run_server:
+        print("Run server", flush=True)
         run_server(output_dir)
     beep()
     hold_console_for_windows()
@@ -129,7 +127,7 @@ def done(args, output_dir):
 
 
 def ddv(args):
-    SERVER_HOME, base_path = base_directories(args)
+    SERVER_HOME, base_path = base_directories(args.output_name)
 
     if not args.layout and args.run_server:
         done(args, SERVER_HOME)
@@ -138,7 +136,7 @@ def ddv(args):
 
     if args.layout == "NONE":  # Complete webpage generation from existing image
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
-                            low_contrast=args.low_contrast)
+                            low_contrast=args.low_contrast, base_width=args.base_width)
         layout.generate_html(args.output_dir, args.output_name)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
@@ -201,7 +199,9 @@ def ddv(args):
         finish_webpage(args, layout, args.output_name)
         done(args, args.output_dir)
     elif args.layout == "annotated":
-        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation)
+        layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
+                                       use_titles=args.use_titles, sort_contigs=args.sort_contigs,
+                                       low_contrast=args.low_contrast, base_width=args.base_width)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)
@@ -306,6 +306,7 @@ def finish_webpage(args, layout, output_name):
     else:
         del layout
 
+
 from gooey import Gooey
 from gooey import GooeyParser
 @Gooey(tabbed_groups=True)    
@@ -355,7 +356,14 @@ def main():
     basic_options_group.add_argument("-r", "--runserver",
                         action='store_true',
                         help="Run Web Server after computing.",
-                        dest="run_server")
+                        dest="run_server")                   
+    basic_options_group.add_argument("-c", "--contigs",
+                        nargs='+',
+                        type=str,
+                        help="List contigs you'd like visualized from the file separated by spaces. "
+                             "This can be used to pluck out your contig of interest from a large file. "
+                             "REQUIRED for Chain File alignments.",
+                        dest="contigs")
     basic_options_group.add_argument('-s', '--sort_contigs',
                         action='store_true',
                         help="Sort the entries of the fasta file by length.  This option will kick in "
@@ -405,13 +413,13 @@ def main():
                                             "Options related to chain file & parallel layout visualization"
                                             )
 
-    input_files_group.add_argument("-c", "--chainfile",
+    input_files_group.add_argument("-cf", "--chainfile",
                         type=str,
                         help="Path to Chain File when doing Parallel Comparisons layout.",
                         dest="chain_file",
                         widget='FileChooser'
                         )
-    chain_files_group.add_argument("-ch", "--chromosomes",
+    chain_files_group.add_argument("-cc", "--chromosomes",
                         nargs='+',
                         type=str,
                         help="Chromosome to parse from Chain File. NOTE: Defaults to 'chr21' for testing.",
@@ -542,7 +550,7 @@ def main():
     if args.show_translocations_only and args.separate_translocations:
         parser.error("It just doesn't make sense to ask to show translocations in context while separating them.  You've got to pick one or the other.")
 
-    # Set post error checking defaults
+	# Set post error checking defaults
     if not args.contigs and args.chain_file and args.layout != 'unique':
         print("Error: you must list the name of a contig you wish to display for an alignment.\n"
               "Example: --contigs chrM chrX --chain_file=input.chain.liftover", file=sys.stderr)
