@@ -42,6 +42,8 @@ class TileLayout(object):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
         self.museum_mode = True
+        if self.museum_mode:
+            print("IMPORTANT: Running in Museum Mode with hard coded layout!")
         self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.

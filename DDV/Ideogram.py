@@ -249,7 +249,8 @@ class Ideogram(HighlightedAnnotation):
         if self.levels.y_radices[-1] % 2 == 0:  # needs to be odd, but doesn't affect the height
             self.levels.y_radices[-1] += 1
         if self.museum_mode:  # Manually set size for two or more rows of chromosomes
-            width, height = 10095, 9820 * 2 + (405*5)
+            a = 15.65  # x resolution multiplier
+            width, height = int(496*a),  int(1183*a)
         return width, height
 
 
@@ -304,12 +305,21 @@ class Ideogram(HighlightedAnnotation):
             next_origin[0] += (original_layout.base_width + self.chr_padding) * chr_count
             origin_series.append(next_origin)
         if self.museum_mode:  # manual layout by editing code
+            coil_height = 405
+            a = 15.65 # x resolution
+            o = original_layout.origin[0]
+            origin_series = [
+                (o, o),
+                (int(255 * a), o),
+                (o, int(436 * a)),
+                (o, int(817 * a)),
+                (int(255 * a), int(817 * a - 8 * coil_height)),  # coils y of previous minus coils difference
+            ]
             #chr1 is 24 coils tall
             #last chr is 7 coils shorter than its neighbor
-            coil_height = 405
-            origin_series = [(p[0],p[1]) for p in origin_series[:3]]  # add title padding
-            origin_series += [(origin_series[0][0], origin_series[0][1]+ coil_height * 27),
-                             ((origin_series[1][0], origin_series[1][1]+ coil_height *(27 + 7)))]
+            # origin_series = [(p[0],p[1]) for p in origin_series[:3]]  # add title padding
+            # origin_series += [(origin_series[0][0], origin_series[0][1]+ coil_height * 27),
+            #                  ((origin_series[1][0], origin_series[1][1]+ coil_height *(27 + 7)))]
         longest_chromosome = 0
         for chr_count, chromosome in enumerate(self.fasta_sources):
             current_length = sum([len(c.seq) for c in self.all_contents[chromosome]])
