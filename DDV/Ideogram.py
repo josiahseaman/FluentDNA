@@ -22,7 +22,7 @@ import os
 import numpy as np
 from functools import reduce
 
-from Layouts import LayoutFrame, LayoutLevel
+from DDV.Layouts import LayoutFrame, LayoutLevel
 
 
 class IdeogramCoordinateFrame(LayoutFrame):

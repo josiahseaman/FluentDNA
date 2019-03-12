@@ -23,7 +23,7 @@ from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
 from DDV import gap_char
-from DDVUtils import copy_to_sources
+from DDV.DDVUtils import copy_to_sources
 
 
 class TransposonLayout(TileLayout):

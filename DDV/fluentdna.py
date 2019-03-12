@@ -15,10 +15,9 @@ import os
 import sys
 
 #############################################################################
-# IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
+# IMPORTANT!  Make sure there are no imports here for non-builtin packages.  Those go below.
 #############################################################################
 # print("Setting up Python...")
-from DDVUtils import archive_execution_command
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -48,7 +47,7 @@ import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_directory, base_directories, \
-    hold_console_for_windows, beep, copy_to_sources
+    hold_console_for_windows, beep, copy_to_sources, archive_execution_command
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
 from DDV.Ideogram import Ideogram
@@ -121,7 +120,7 @@ def done(args, output_dir):
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
-    # beep()
+    beep()
     hold_console_for_windows()
     if __name__ == "__main__":
         sys.exit(0)

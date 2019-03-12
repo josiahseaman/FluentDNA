@@ -10,8 +10,8 @@ import math
 from DDV.TileLayout import hex_to_rgb, TileLayout
 from natsort import natsorted
 
-from DDVUtils import make_output_directory
-from Layouts import level_layout_factory
+from DDV.DDVUtils import make_output_directory
+from DDV.Layouts import level_layout_factory
 
 
 def fastas_in_folder(input_fasta_folder):
