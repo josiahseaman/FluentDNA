@@ -499,9 +499,6 @@ def main():
         args.layout = "NONE"
 
 
-    if args.image and (args.fasta or args.layout or args.extra_fastas or args.chain_file):
-        parser.error("No layout will be performed if an existing image is passed in! "
-                     "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
         parser.error('Please define a a file to process.  Ex: fluentdna.py --fasta="example_data/phiX.fa"')
     if args.image and args.no_webpage:
