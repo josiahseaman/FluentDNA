@@ -1,3 +1,7 @@
+document.oncontextmenu = function() {
+    return false;
+}
+
 var PRECISION = 10;      // number of decimal places
 var viewer = null;
 var pointerStatus = "";
@@ -51,11 +55,6 @@ function init(container_id, source_folder) {
             maxZoomPixelRatio: 20,
             navigatorMaintainSizeRatio: true,
             navigatorAutoResize: false,
-            // navigatorPosition: "ABSOLUTE",
-            // navigatorTop:      "40px",
-            // navigatorRight:     "-40px",
-            // navigatorHeight:   "120px",
-            // navigatorWidth:    "145px"
         });
     }else{
         viewer = OpenSeadragon({
@@ -82,8 +81,31 @@ function init(container_id, source_folder) {
         sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.BASEPAIR_LENGTH
     });
     if(museum_mode){// in museums, there is no "mouse" info is from touches on navigator
-            OpenSeadragon.addEvent(viewer.navigator.element, "mousemove",
-              function(event){showNucleotideNumber(event, viewer.navigator);});
+        mouse_event = {isTrusted: true, screenX: 676, screenY: 282,
+            clientX: 674,   clientY: 254,
+            altKey: false, bubbles: true,
+            button: 0, buttons: 0, cancelBubble: false, cancelable: true,
+            composed: true, ctrlKey: false,
+            currentTarget: 'div#container.chromosome-container',
+            defaultPrevented: false, detail: 0, eventPhase: 3, fromElement: null,
+            metaKey: false, isTrusted: true,
+            layerX: 663, layerY: 243,
+            movementX: 0, movementY: 0,
+            offsetX: 663, offsetY: 243,
+            pageX: 674, pageY: 254,
+            relatedTarget: null, returnValue: true,
+            screenX: 676,
+            screenY: 282,
+            shiftKey: false, sourceCapabilities: {firesTouchEvents: false},
+            type: "mousemove", which: 0,
+            x: 674,
+            y: 254,
+        }
+        setInterval(
+              function(){
+                  showNucleotideNumber(mouse_event, viewer);
+                  viewer.viewport.zoomTo(8);
+                  }, 1000);
     } else {
         OpenSeadragon.addEvent(viewer.element, "mousemove", function(event){showNucleotideNumber(event, viewer);});
     }
