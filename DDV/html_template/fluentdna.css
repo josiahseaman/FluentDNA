@@ -1,12 +1,19 @@
 body {
     margin: 0px;
     margin-bottom: 200px;
+    /*museum poster coloring*/
+    background-color: #284431;
+    color: white;
 }
 
 .gene_name {
 	text-emphasis: filled black;
 	font-size: 2em;
 	font-weight: bold;
+    background-color: black;/*museum poster coloring*/
+}
+.sequence{
+    color: #CBDB2F;/*museum poster coloring*/
 }
 #info_bottom{
     display: block;
