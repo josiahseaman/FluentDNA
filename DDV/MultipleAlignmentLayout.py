@@ -10,7 +10,8 @@ import math
 from DDV.TileLayout import hex_to_rgb, TileLayout
 from natsort import natsorted
 
-from Layouts import level_layout_factory
+from DDV.DDVUtils import make_output_directory
+from DDV.Layouts import level_layout_factory
 
 
 def fastas_in_folder(input_fasta_folder):
@@ -91,6 +92,7 @@ class MultipleAlignmentLayout(TileLayout):
 
     def process_all_alignments(self, input_fasta_folder, output_folder, output_file_name):
         start_time = datetime.now()
+        make_output_directory(output_folder)
         self.preview_all_files(input_fasta_folder)
         self.calculate_mixed_layout()
         print("Tallied all contigs :", datetime.now() - start_time)
@@ -108,9 +110,10 @@ class MultipleAlignmentLayout(TileLayout):
             except Exception as e:
                 print('Encountered exception while drawing nucleotides:', '\n')
                 traceback.print_exc()
-            self.output_fasta(output_folder, single_MSA, False, None, False, append_fasta_sources=False)
+            input_path = os.path.join(input_fasta_folder, single_MSA)
+            self.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
         print("\nDrew Nucleotides:", datetime.now() - start_time)
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
 
 

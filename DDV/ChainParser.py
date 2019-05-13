@@ -16,13 +16,15 @@ except ImportError:
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
-from DNASkittleUtils.DDVUtils import first_word, Batch, ReverseComplement, BlankIterator, editable_str
+from DNASkittleUtils.DDVUtils import first_word, ReverseComplement, BlankIterator, editable_str
 from DDV.DefaultOrderedDict import DefaultOrderedDict
 from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_dir_with_suffix, keydefaultdict, read_contigs_to_dict
+from DDV.DDVUtils import make_output_directory, keydefaultdict, read_contigs_to_dict, copy_to_sources
 from DDV.Span import AlignedSpans, Span, alignment_chopping_index
 from DDV import gap_char
 from DDV.TileLayout import hex_to_rgb
+
+Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 
 
 def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
@@ -115,24 +117,25 @@ class ChainParser(object):
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
         ref_pointer, query_pointer = self.process_chain_body(chain, ref_pointer, query_pointer, is_master_alignment)
-        self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer, is_master_alignment)
-
-
-    def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer, is_master_alignment):
         if is_master_alignment:
-            if not self.query_sequence:
-                success = self.switch_sequences(chain.qName, chain.qStrand)
-                if not success:
-                    print("Fasta source for contig", chain.qName,
-                          "not found.  No matching sequence will be displayed!")
-                    #return  # skip this pair since it can't be displayed
-            if not self.trial_run and self.ref_sequence:  # include unaligned ends
-                ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
-                query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
-                self.alignment.append(AlignedSpans(ref_end, query_end,
-                                                   len(self.ref_sequence) - ref_pointer,
-                                                   0))  # len(self.query_sequence) - query_pointer))
-                #Not including the unaligned end of query chromosome because it might not be related at all
+            self.append_unaligned_end_in_master(chain, ref_pointer, query_pointer)
+
+
+    def append_unaligned_end_in_master(self, chain, ref_pointer, query_pointer):
+        if not self.query_sequence:
+            success = self.switch_sequences(chain.qName, chain.qStrand)
+            if not success:
+                print("Fasta source for contig", chain.qName,
+                      "not found.  No matching sequence will be displayed!")
+                #return  # skip this pair since it can't be displayed
+        if not self.trial_run and self.ref_sequence:  # include unaligned ends
+            ref_end = Span(ref_pointer, ref_pointer, chain.tName, chain.tStrand)
+            query_end = Span(query_pointer, query_pointer, chain.qName, chain.qStrand)
+            # I experimented with shortening example_data, but the chain file lists -strand from the end of file.
+            self.alignment.append(AlignedSpans(ref_end, query_end,
+                                               max(0 ,len(self.ref_sequence) - ref_pointer),
+                                               0))  # len(self.query_sequence) - query_pointer))
+            #Not including the unaligned end of query chromosome because it might not be related at all
 
     def find_old_query_location(self, new_alignment, lo=0, hi=None, depth=0):
         """Binary search over the _mostly_ sorted list of query indices.
@@ -191,11 +194,10 @@ class ChainParser(object):
             if is_master_alignment and self.trial_run and len(self.alignment) > 1000:  # 9500000  is_master_alignment and
                 break
             if not is_master_alignment:  # skip the unaligned middle of translocation chains
-                if self.separate_translocations and max(gap_query, gap_ref) > 2600:
-                    first_in_chain = True
+                if max(gap_query, gap_ref) > 2600:  # placed translocations don't need huge gaps
                     gap_ref, gap_query = 0, 0  # This is caused by overzealous netting
-                elif not self.separate_translocations:
-                    gap_ref, gap_query = 0, 0  # placed translocations don't need gaps
+                    if self.separate_translocations:
+                        first_in_chain = True
 
             aligned_query = Span(query_pointer, query_pointer + size, chain.qName, chain.qStrand)
             aligned_ref = Span(ref_pointer, ref_pointer + size, chain.tName, chain.tStrand)
@@ -328,7 +330,6 @@ class ChainParser(object):
 
 
     def missing_query_sequence(self, query_name):
-        print("ERROR: No fasta source for", query_name)
         self.query_sequence = BlankIterator('N')
         return False
 
@@ -384,8 +385,8 @@ class ChainParser(object):
         query_gap_name = os.path.splitext(query)[0] + self.gapped + '.fa'
         ref_gap_name = os.path.splitext(reference)[0] + self.gapped + '.fa'
         if prepend_output_folder:
-            query_gap_name = os.path.join(self.output_folder, query_gap_name)
-            ref_gap_name = os.path.join(self.output_folder, ref_gap_name)
+            query_gap_name = os.path.join(self.output_folder, 'sources', query_gap_name)
+            ref_gap_name = os.path.join(self.output_folder, 'sources', ref_gap_name)
         write_complete_fasta(query_gap_name, self.query_seq_gapped)
         write_complete_fasta(ref_gap_name, self.ref_seq_gapped)
         print("Finished creating gapped fasta files", ref_gap_name, query_gap_name)
@@ -398,12 +399,10 @@ class ChainParser(object):
         else:
             query_uniq_array, ref_uniq_array = self.compute_unique_sequence()
 
-        query_unique_name = query_gapped_name.replace(self.gapped, '_unique')
-        if not query_unique_name.startswith(self.output_folder):  # TODO: this shouldn't happen but it does
-            query_unique_name = os.path.join(self.output_folder, query_unique_name)
-        ref_unique_name = ref_gapped_name.replace(self.gapped, '_unique')
-        if not ref_unique_name.startswith(self.output_folder):
-            ref_unique_name = os.path.join(self.output_folder, ref_unique_name)
+        query_unique_name = os.path.basename(query_gapped_name.replace(self.gapped, '_unique'))
+        query_unique_name = os.path.join(self.output_folder, 'sources', query_unique_name)
+        ref_unique_name = os.path.basename(ref_gapped_name.replace(self.gapped, '_unique'))
+        ref_unique_name = os.path.join(self.output_folder, 'sources', ref_unique_name)
         write_complete_fasta(query_unique_name, query_uniq_array)
         write_complete_fasta(ref_unique_name, ref_uniq_array)
 
@@ -511,7 +510,8 @@ class ChainParser(object):
             '__separate_translocations' * self.separate_translocations + \
             '__translocations' * self.show_translocations_only + \
             '__aligned_only' * self.aligned_only
-        self.output_folder = make_output_dir_with_suffix(self.output_prefix, ending)
+        self.output_folder = self.output_prefix + ending
+        make_output_directory(self.output_folder)
         ref_name = first_word(os.path.basename(self.ref_source))
         q_name = first_word(os.path.basename(self.query_source))
         names = {'ref': ref_chr + '_%s.fa' % ref_name,
@@ -530,7 +530,8 @@ class ChainParser(object):
         else:
             self.ref_sequence = pluck_contig(ref_chr, self.ref_source)
         # self.chain_list = chain_file_to_list(chain_name)
-
+        copy_to_sources(self.output_folder, self.ref_source)
+        copy_to_sources(self.output_folder, self.query_source)
         return names, ref_chr
 
 
@@ -544,9 +545,7 @@ class ChainParser(object):
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         names['ref_unique'], names['query_unique'] = \
             self.print_only_unique(names['query_gapped'], names['ref_gapped'], translocation_markup)
-        markup = os.path.join(self.output_folder, just_the_name(names['ref']) + '__translocation_markup.fa')
-        write_complete_fasta(markup, translocation_markup)
-        names['translocation_markup'] = markup
+        names['translocation_markup'] = self.write_markup_file(names['ref'], translocation_markup)
         # sys.exit(0)
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['ref_gapped'])
@@ -563,6 +562,11 @@ class ChainParser(object):
         # self.output_folder = None  # clear the previous value
         return batch
 
+    def write_markup_file(self, ref, translocation_markup):
+        markup = os.path.join(self.output_folder, 'sources',
+                              just_the_name(ref) + '__translocation_markup.fa')
+        write_complete_fasta(markup, translocation_markup)
+        return markup
 
     def parse_chain(self, chromosomes):# -> list:
         assert isinstance(chromosomes, list), "'Chromosomes' must be a list! A single element list is okay."

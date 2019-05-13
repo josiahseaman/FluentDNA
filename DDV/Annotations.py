@@ -3,18 +3,22 @@ from __future__ import print_function, division, absolute_import, \
 import os
 from collections import namedtuple, defaultdict
 from itertools import chain
-
+import gzip
 from DNASkittleUtils.Contigs import Contig
 
 from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
 
+try:
+    from urllib.parse import unquote
+except ImportError:
+    from urllib2.parse import unquote  # for python 2.7
 
 class GFF(object):
     def __init__(self, annotation_file):
         self.specimen, self.gff_version, \
         self.genome_version, self.date, \
-        self.file_name, self.annotations, self.chromosome_lengths \
+        self.file_name, self.annotations \
             = self._import_gff(annotation_file)
 
     def _import_gff(self, annotation_file):
@@ -26,11 +30,11 @@ class GFF(object):
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
         annotations = {}
-        chromosome_lengths = {}
 
-        with open(annotation_file, 'r') as open_annotation_file:
+        openFunc = gzip.open if annotation_file.endswith(".gz") else open
+        with openFunc(annotation_file) as open_annotation_file:
             counter = 0
-            print("Opening Annotation file...")
+            print("Opening Annotation file:", annotation_file)
             for line in open_annotation_file.readlines():
                 if line.startswith("#"):
                     if "gff-version" in line:
@@ -55,7 +59,6 @@ class GFF(object):
 
                         if chromosome not in annotations:
                             annotations[chromosome] = []
-                            chromosome_lengths[chromosome] = 0
                             if len(annotations) < 10:
                                 print(chromosome, end=", ")
                             elif len(annotations) == 10:
@@ -63,7 +66,7 @@ class GFF(object):
 
                         ID = counter
                         source = elements[1]
-                        feature = elements[2]
+                        type = elements[2]
                         start = int(elements[3])
                         end = int(elements[4])
 
@@ -78,9 +81,9 @@ class GFF(object):
                             strand = elements[6]
 
                         if elements[7] == '.':
-                            frame = None
+                            phase = None
                         else:
-                            frame = int(elements[7])
+                            phase = int(elements[7])
 
                         if len(elements) >= 9:
                             pairs = [pair.strip() for pair in elements[8].split(';') if pair]
@@ -89,43 +92,143 @@ class GFF(object):
                         else:
                             attributes = {}
 
-                        chromosome_lengths[chromosome] = max(chromosome_lengths[chromosome], end)
-                        if feature != 'chromosome':  # chromosomes don't have strand or frame
-                            annotation = self.Annotation(chromosome, ID,
-                                                         source, feature,
+                        if type != 'chromosome':  # chromosomes don't have strand or phase
+                            annotation = GFFAnnotation(chromosome, ID,
+                                                         source, type,
                                                          start, end,
                                                          score, strand,
-                                                         frame, attributes, line)
+                                                         phase, attributes, line)
                             annotations[chromosome].append(annotation)
                     except IndexError as e:
                         print(e, line)
 
-        return specimen, gff_version, genome_version, date, file_name, annotations, chromosome_lengths
+        return specimen, gff_version, genome_version, date, file_name, annotations
 
-    class Annotation(object):
-        def __init__(self, chromosome, ID, source, feature, start, end, score, strand, frame, attributes, line):
-            assert isinstance(chromosome, str), line
-            assert isinstance(ID, int), line
-            assert isinstance(source, str), line
-            assert isinstance(feature, str), line
-            assert isinstance(start, int), line
-            assert isinstance(end, int), line
-            assert score is None or isinstance(score, float), line
-            assert isinstance(strand, str), line
-            assert frame is None or isinstance(frame, int), line
-            assert isinstance(attributes, dict), line
+class GFFAnnotation(object):
+    def __init__(self, seqid, ID, source, type, start, end, score, strand, phase, attributes, line):
+        # assert seqid is None or isinstance(seqid, str), line
+        # assert ID is None or isinstance(ID, int), line
+        # assert source is None or isinstance(source, str), line
+        # assert type is None or isinstance(type, str), line
+        # assert start is None or isinstance(start, int), line
+        # assert end is None or isinstance(end, int), line
+        # assert score is None or isinstance(score, float), line
+        # assert strand is None or isinstance(strand, str), line
+        # assert phase is None or isinstance(phase, int), line
+        # assert attributes is None or isinstance(attributes, dict), line
 
-            self.chromosome = chromosome
-            self.ID = ID
-            self.source = source
-            self.feature = feature
-            self.start = start
-            self.end = end
-            self.score = score
-            self.strand = strand
-            self.frame = frame
-            self.attributes = attributes
-            self.line = line
+        self.seqid = seqid
+        self.ID = ID  # TODO: redundant semantics with .id()?
+        self.source = source
+        self.type = type
+        self.start = start
+        self.end = end
+        self.score = score
+        self.strand = strand
+        self.phase = phase
+        self.attributes = attributes
+        self.line = line
+
+    def parent(self):
+        try:
+            return self.attributes['Parent']
+        except BaseException:
+            return ''
+
+    def id(self):
+        try:
+            return self.attributes['ID']
+        except BaseException:
+            return ''
+
+    def name(entry, remove_prefix=''):
+        if not entry.attributes:
+            name = entry.line.split('\t')[-1]  # last part
+            if '"' in name:
+                name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
+        elif 'Name' in entry.attributes:
+            name = entry.attributes['Name']
+        elif 'ID' in entry.attributes:  # TODO case sensitive?
+            name = entry.attributes['ID']
+        elif 'gene_name' in entry.attributes:
+            name = entry.attributes['gene_name']
+        else:
+            name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
+        return name.replace(remove_prefix, '', 1)
+
+
+class GFF3Record(GFFAnnotation):
+    """
+    Author: Uli Köhler
+    Source: https://techoverflow.net/2013/11/30/a-simple-gff3-parser-in-python/
+    A simple parser for the GFF3 format.
+
+    Test with transcripts.gff3 from
+    http://www.broadinstitute.org/annotation/gebo/help/gff3.html.
+
+    Format specification source:
+    http://www.sequenceontology.org/gff3.shtml"""
+    def __init__(self, seqid, source, type, start, end, score, strand, phase, attributes):
+        super(GFF3Record, self).__init__(seqid, None, source, type, start, end,
+                                         score, strand, phase, attributes, '')
+
+
+def parseGFFAttributes(attributeString):
+    """Parse the GFF3 attribute column and return a dict"""  #
+    if attributeString == ".": return {}
+    ret = {}
+    for attribute in attributeString.split(";"):
+        key, value = attribute.split("=")
+        ret[unquote(key)] = unquote(value)
+    return ret
+
+
+def parseGFF3(filename):
+    """
+    A minimalistic GFF3 format parser.
+    Yields objects that contain info about a single GFF3 feature.
+
+    Supports transparent gzip decompression.
+    """
+    # Parse with transparent decompression
+    openFunc = gzip.open if filename.endswith(".gz") else open
+    with openFunc(filename) as infile:
+        for line in infile:
+            if line.startswith("#"): continue
+            parts = line.strip().split("\t")
+            # If this fails, the file format is not standard-compatible
+            assert len(parts) == 9
+            # Normalize data
+            normalizedInfo = {
+                "seqid": None if parts[0] == "." else unquote(parts[0]),
+                "source": None if parts[1] == "." else unquote(parts[1]),
+                "type": None if parts[2] == "." else unquote(parts[2]),
+                "start": None if parts[3] == "." else int(parts[3]),
+                "end": None if parts[4] == "." else int(parts[4]),
+                "score": None if parts[5] == "." else float(parts[5]),
+                "strand": None if parts[6] == "." else unquote(parts[6]),
+                "phase": None if parts[7] == "." else unquote(parts[7]),
+                "attributes": parseGFFAttributes(parts[8])
+            }
+            # Alternatively, you can emit the dictionary here, if you need mutability:
+            #    yield normalizedInfo
+            yield GFF3Record(**normalizedInfo)
+
+
+def parseGFF(gff_file):
+    if gff_file is None:
+        return None
+    annotations = defaultdict(lambda : [])
+    #Version 3
+    try:
+        parser = parseGFF3(gff_file)
+        for entry in parser:
+            annotations[entry.seqid].append(entry)
+    except (AssertionError, ValueError):
+        # Version 2
+        parsed = GFF(gff_file)
+        annotations = parsed.annotations
+    return annotations
 
 
 def handle_tail(seq_array, scaffold_lengths, sc_index):
@@ -151,6 +254,13 @@ def squish_fasta(scaffolds, annotation_width, base_width):
     return squished_versions
 
 
+def gather_chromosome_lengths(gff):
+    chromosome_lengths = {}
+    for chrom in gff:
+        chromosome_lengths[chrom] = max([max(entry.end, entry.start) for entry in gff[chrom]])
+    return chromosome_lengths
+
+
 def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, output_path=None, features=None,
                                  annotation_width=100, base_width=100):
     from DNASkittleUtils.Contigs import write_contigs_to_file, Contig
@@ -163,21 +273,22 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
                     'transcript':FeatureRep('N', 5)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
-        gff = GFF(gff)  # gff parameter was a filename
+        gff = parseGFF(gff)  # gff parameter was a filename
+    chromosome_lengths = gather_chromosome_lengths(gff)
     count = 0
     scaffolds = []
     for sc_index, scaff_name in enumerate(scaffold_names):  # Exact match required (case sensitive)
-        if scaff_name in gff.annotations.keys():
-            seq_array = editable_str(gap_char * (gff.chromosome_lengths[scaff_name] + 1))
-            for entry in gff.annotations[scaff_name]:
-                assert isinstance(entry, GFF.Annotation), "This isn't a proper GFF object"
-                if entry.feature in features.keys():
+        if scaff_name in gff.keys():
+            seq_array = editable_str(gap_char * (chromosome_lengths[scaff_name] + 1))
+            for entry in gff[scaff_name]:
+                assert isinstance(entry, GFFAnnotation), "This isn't a proper GFF object"
+                if entry.type in features.keys():
                     count += 1
-                    my = features[entry.feature]
+                    my = features[entry.type]
                     for i in range(entry.start, entry.end + 1):
                         if symbol_priority[seq_array[i]] > my.priority :
                             seq_array[i] = my.symbol
-                if entry.feature == 'gene':
+                if entry.type == 'gene':
                     # TODO: output header JSON every time we find a gene
                     pass
             handle_tail(seq_array, scaffold_lengths, sc_index)
@@ -185,7 +296,7 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
         else:
             print("No matches for '%s'" % scaff_name)
     if scaffolds:
-        print("Done", gff.file_name, "Found %i features" % count, "on %i scaffolds" % len(scaffolds))
+        print("Found %i features" % count, "on %i scaffolds" % len(scaffolds))
     else:
         print("WARNING: No matching scaffold names were found between the annotation and the request.")
     if annotation_width != base_width:
@@ -200,14 +311,14 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
     total = 0
     kept = 0
     survivors = []
-    for chromosome in gff.annotations.keys():
-        for entry in gff.annotations[chromosome]:
-            assert isinstance(entry, GFF.Annotation), "This isn't a GFF annotation."
+    for seqid in gff.annotations.keys():
+        for entry in gff.annotations[seqid]:
+            assert isinstance(entry, GFFAnnotation), "This isn't a GFF annotation."
             total += 1
-            if entry.feature in features_of_interest:
+            if entry.type in features_of_interest:
                 if survivors:
                     last = survivors[-1]
-                    if last.start == entry.start and last.end == entry.end and entry.feature == last.feature:
+                    if last.start == entry.start and last.end == entry.end and entry.type == last.type:
                         continue  # skip this because it's a duplicate of what we already have
                 kept += 1
                 survivors.append(entry)
@@ -222,13 +333,13 @@ def purge_annotation(gff_filename, features_of_interest=('exon', 'gene')):
 
 
 def find_universal_prefix(annotation_list):
-    """ :type annotation_list: list(GFF.Annotation) """
+    """ :type annotation_list: list(GFFAnnotation) """
     names = []
     if len(annotation_list) < 2:
         return ''
     for entry in annotation_list:
-        assert hasattr(entry, 'attributes'), "This isn't a proper GFF object %s" % type(entry)
-        names.append(extract_gene_name(entry))  # flattening the structure
+        assert hasattr(entry, 'name'), "This isn't a proper GFF object %s" % type(entry)
+        names.append(entry.name())  # flattening the structure
     start = 0
     for column in zip(*names):
         if all([c == column[0] for c in column]):
@@ -241,21 +352,6 @@ def find_universal_prefix(annotation_list):
         prefix = prefix[:-1]  # chop off last letter
     return prefix
 
-
-def extract_gene_name(entry, remove_prefix=''):
-    if not entry.attributes:
-        name = entry.line.split('\t')[-1]  # last part
-        if '"' in name:
-            name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
-    elif 'Name' in entry.attributes:
-        name = entry.attributes['Name']
-    elif 'ID' in entry.attributes:  # TODO case sensitive?
-        name = entry.attributes['ID']
-    elif 'gene_name'in entry.attributes:
-        name = entry.attributes['gene_name']
-    else:
-        name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
-    return name.replace(remove_prefix, '', 1)
 
 
 if __name__ == '__main__':

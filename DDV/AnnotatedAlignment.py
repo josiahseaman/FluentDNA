@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Note: This module has received only limited testing with one dataset. If you
+DEPRECATION WARNING: This module has received only limited testing with one dataset. If you
 want to replicate similar results with your own data, you'll likely need to
 modify this python file.
 This module converts two annotations files into two FASTA files to be used as
@@ -12,9 +12,9 @@ context of their respective sequences.
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from DDV.ChainParser import ChainParser, scan_past_header
+from DDV.ChainParser import ChainParser, scan_past_header, Batch
 from DNASkittleUtils.Contigs import pluck_contig
-from DNASkittleUtils.DDVUtils import Batch, first_word, ReverseComplement
+from DNASkittleUtils.DDVUtils import first_word, ReverseComplement
 
 from DDV.Annotations import create_fasta_from_annotation, GFF
 
@@ -99,6 +99,7 @@ class AnnotatedAlignment(ChainParser):
 
     def load_annotation_fastas(self, ref_chr):
         # Now create two annotation fastas so that we can gap them
+        #TODO: check for         copy_to_sources(self.output_folder, )
         self.ref_sequence = create_fasta_from_annotation(self.ref_annotation_source, [ref_chr], None)[0].seq
         self.query_contigs[ref_chr] = create_fasta_from_annotation(self.query_GFF, [ref_chr], None)[0].seq
 

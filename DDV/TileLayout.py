@@ -3,7 +3,6 @@ from __future__ import print_function, division, absolute_import, \
 
 import math
 import os
-import shutil
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -15,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from DDV import gap_char
 from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
-    make_output_dir_with_suffix, filter_by_contigs
+    make_output_directory, filter_by_contigs, copy_to_sources
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
@@ -34,7 +33,6 @@ except IOError:
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
-
 
 
 class TileLayout(object):
@@ -185,7 +183,7 @@ class TileLayout(object):
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
-        make_output_dir_with_suffix(output_folder, '')
+        make_output_directory(output_folder, no_webpage)
         start_time = datetime.now()
         self.final_output_location = output_folder
         self.image_length = self.read_contigs_and_calc_padding(input_file_path, extract_contigs)
@@ -212,10 +210,11 @@ class TileLayout(object):
             print('Encountered exception while drawing titles:', '\n')
             traceback.print_exc()
 
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
         self.output_fasta(output_folder, input_file_path, no_webpage,
-                                              extract_contigs, self.sort_contigs)
+                          extract_contigs, self.sort_contigs)
+        print("Output Fasta in:", datetime.now() - start_time)
 
 
     def draw_extras(self):
@@ -247,30 +246,23 @@ class TileLayout(object):
         print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
-                     append_fasta_sources=True):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
         bare_file = os.path.basename(fasta)
-        fasta_destination = os.path.join(output_folder, bare_file)
-        if not no_webpage:  # these support the webpage
-            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
-            self.remember_contig_spacing()
-        #also make single file
-        if extract_contigs or sort_contigs:
-            length_sum = sum([len(c.seq) for c in self.contigs])
-            fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
-            write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
-        else:
-            if not no_webpage:
-                try:
-                    shutil.copy(fasta, fasta_destination)
-                except (shutil.SameFileError, FileNotFoundError):
-                    pass  # not a problem
-                # Comes up in MultipleAlignmentLayout
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
-        print("Sequence saved in:", fasta_destination)
-        return fasta_destination
 
+        #also make single file
+        if not no_webpage:
+            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
+            self.remember_contig_spacing()
+            fasta_destination = os.path.join(output_folder, 'sources', bare_file)
+            if extract_contigs or sort_contigs:  # customized_fasta
+                length_sum = sum([len(c.seq) for c in self.contigs])
+                fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+                write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+            else:
+                copy_to_sources(output_folder, fasta)
+            print("Sequence saved in:", fasta_destination)
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
@@ -413,15 +405,15 @@ class TileLayout(object):
                          vertical_label, self.image)
 
 
-    def write_title(self, contig_name, width, height, font_size, title_lines, title_width, upper_left,
-                    vertical_label, canvas):
+    def write_title(self, text, width, height, font_size, title_lines, title_width, upper_left,
+                    vertical_label, canvas, color=(0, 0, 0, 255)):
         upper_left = list(upper_left)  # to make it mutable
         font = self.get_font(self.font_name, font_size)
-        multi_line_title = pretty_contig_name(contig_name, title_width, title_lines)
+        multi_line_title = pretty_contig_name(text, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))#, color=(0,0,0,255))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
         ImageDraw.Draw(txt).multiline_text((0, max(0, bottom_justified)), multi_line_title, font=font,
-                                           fill=(0, 0, 0, 255))
+                                           fill=color)
         if vertical_label:
             txt = txt.rotate(90, expand=True)
             upper_left[0] += 8  # adjusts baseline for more polish
@@ -434,12 +426,14 @@ class TileLayout(object):
             font = ImageFont.truetype(font_name, font_size)
         return font
 
-    def output_image(self, output_folder, output_file_name):
+    def output_image(self, output_folder, output_file_name, no_webpage):
         try:
             del self.pixels
             del self.draw
         except BaseException:
             pass  # this is just memory optimization
+        if not no_webpage:  # sources directory only exists for non-quick
+            output_folder = os.path.join(output_folder, 'sources',)
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')
@@ -476,6 +470,7 @@ class TileLayout(object):
             module_path = os.path.dirname(DDV.__file__)
             html_template = os.path.join(module_path, 'html_template')
             copytree(html_template, output_folder)  # copies the whole template directory
+            print("Copying HTML to", output_folder)
             html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
@@ -487,31 +482,18 @@ class TileLayout(object):
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
                             "date": datetime.now().strftime("%Y-%m-%d"),
-                            'legend': """    <strong>Legend:</strong>
-                                <img class='legend-icon' src='img/LEGEND-A.png'/>
-                                <img class='legend-icon' src='img/LEGEND-T.png'/>
-                                <img class='legend-icon' src='img/LEGEND-G.png'/>
-                                <img class='legend-icon' src='img/LEGEND-C.png'/>
-                                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>Color blind safe colors.  G/C rich regions are red/orange.
-                                    A/T rich areas are green/blue.  
-                                    Color choice is a compromise between less harsh natural colors and high contrast.</span>
-                            """}
-            if not self.low_contrast:
-                html_content['legend'] = """    <strong>Legend:</strong>
-                                <img class='legend-icon' src='img/LEGEND-A-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-T-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-G-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-C-contrast.png'/>
-                                <img class='legend-icon' src='img/LEGEND-N.png'/>
-                                <img class='legend-icon' src='img/LEGEND-bg.png'/>
-                                <span class='color-explanation'>G/C rich regions are red/orange.
-                                A/T rich areas are green/blue.</span>
-                            """
+                            'legend': "<strong>Legend:</strong>" +\
+                                legend_line('Adenine (A)', 'A') +\
+                                legend_line('Thymine (T)', 'T') +\
+                                legend_line('Guanine (G)', 'G') +\
+                                legend_line('Cytosine (C)', 'C') +\
+                                legend_line('Unsequenced', 'N') +\
+                                """<span class='color-explanation'>G/C rich regions are red/orange.
+                                    A/T rich areas are green/blue. Color blind safe colors.</span>"""}
             if self.using_spectrum:
-                html_content['legend'] = """    <strong>Legend:</strong>
-                <span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
+                # TODO: legend_line('Unsequenced', 'N') +\
+                html_content['legend'] = "<strong>Legend:</strong>" +\
+                """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
                 0 = dark purple. 125 = green, 255 = yellow. Developed as 
                 Matplotlib's default color palette.  It is 
                 perceptually uniform and color blind safe.</span>"""

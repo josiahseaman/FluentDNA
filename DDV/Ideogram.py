@@ -22,7 +22,7 @@ import os
 import numpy as np
 from functools import reduce
 
-from Layouts import LayoutFrame, LayoutLevel
+from DDV.Layouts import LayoutFrame, LayoutLevel
 
 
 class IdeogramCoordinateFrame(LayoutFrame):
@@ -206,6 +206,7 @@ class Ideogram(HighlightedAnnotation):
 
         super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
                                            no_webpage=no_webpage, extract_contigs=extract_contigs)
+
     # def activate_high_contrast_colors(self):
     #     # Terrain Colors
     #     self.palette['G'] = hex_to_rgb('6EBAFD')  # Sky or 6EBAFD for darker
@@ -214,7 +215,6 @@ class Ideogram(HighlightedAnnotation):
     #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
     def draw_nucleotides(self):
-
         # points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
         # points_file = None # open(points_file_name, 'w')
         # if points_file:
@@ -261,7 +261,6 @@ class Ideogram(HighlightedAnnotation):
 
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
-        self.use_titles = True
         super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
 
     def draw_annotation_labels(self, markup_image, annotated_regions, start_offset, label_color,

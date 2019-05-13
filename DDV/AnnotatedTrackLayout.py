@@ -3,10 +3,9 @@ from DNASkittleUtils.Contigs import read_contigs
 from itertools import chain
 from os.path import join, basename
 
-from DDV.Annotations import create_fasta_from_annotation, GFF, find_universal_prefix, extract_gene_name
+from DDV.Annotations import create_fasta_from_annotation, find_universal_prefix, parseGFF
 from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.HighlightedAnnotation import HighlightedAnnotation
-from DDV.DDVUtils import filter_by_contigs
+from DDV.DDVUtils import filter_by_contigs, copy_to_sources
 
 
 class AnnotatedTrackLayout(ParallelLayout):
@@ -17,10 +16,10 @@ class AnnotatedTrackLayout(ParallelLayout):
         super(AnnotatedTrackLayout, self).__init__(n_genomes=2, column_widths=columns, **kwargs)
         self.fasta_file = fasta_file
         self.gff_filename = gff_file
-        self.annotation = GFF(self.gff_filename)
+        self.annotation = parseGFF(self.gff_filename)
 
     def render_genome(self, output_folder, output_file_name, extract_contigs=None):
-        self.annotation_fasta = join(output_folder, basename(self.gff_filename) +
+        self.annotation_fasta = join(output_folder, 'sources', basename(self.gff_filename) +
                                      ('.fa' if extract_contigs is None else '_extracted.fa'))
         self.contigs = read_contigs(self.fasta_file)
         # TODO: Genome is read_contigs twice unnecessarily. This could be sped up.
@@ -37,6 +36,8 @@ class AnnotatedTrackLayout(ParallelLayout):
                output_file_name=output_file_name,
                fasta_files=[self.annotation_fasta, self.fasta_file],
                no_webpage=False, extract_contigs=extract_contigs)
+        # save original GFF for reproducibility
+        copy_to_sources(output_folder, self.gff_filename)
 
     def changes_per_genome(self):
         super(AnnotatedTrackLayout, self).changes_per_genome()
@@ -72,8 +73,9 @@ class AnnotatedTrackLayout(ParallelLayout):
     def prepare_annotation_labels(self):
         genome_width = self.each_layout[self.genome_phase].base_width
         self.i_layout = self.annotation_phase
-        labels = self.annotation.annotations  # dict
+        labels = self.annotation  # dict
         layout = self.contig_struct()
+        genes_seen = set()
         flattened_annotation = list(chain(*[list(annotation_list) for annotation_list in labels.values()]))
         universal_prefix = find_universal_prefix(flattened_annotation)
         print("Removing Universal Prefix from annotations:", universal_prefix)
@@ -82,12 +84,14 @@ class AnnotatedTrackLayout(ParallelLayout):
             if scaff_name not in labels.keys():
                 continue
             for entry in labels[scaff_name]:
-                if entry.feature in ['gene', 'mRNA']:
+                if entry.type in ['gene', 'mRNA'] and \
+                        (not entry.parent() or entry.parent() not in genes_seen): #mRNA double of a gene
+                    genes_seen.add(entry.id())
+                    name = entry.name(universal_prefix)
                     progress = (entry.start ) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
                     end = (entry.end) // genome_width *\
                                self.annotation_width + scaffold["xy_seq_start"]
-                    name = extract_gene_name(entry, universal_prefix)
                     if name == '989535g01':
                         print(name, progress)
                     width, height, left, right, top, bottom = \

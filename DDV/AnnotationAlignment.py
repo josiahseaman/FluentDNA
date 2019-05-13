@@ -18,7 +18,7 @@ from DDV.RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
     filter_repeats_by_chromosome_and_family
 from DDV.Span import alignment_chopping_index, AlignedSpans, Span
 from DDV.TransposonLayout import TransposonLayout
-from DDV.DDVUtils import make_output_dir_with_suffix
+from DDV.DDVUtils import make_output_directory
 
 
 def create_aligned_annotation_fragments(alignment, repeat_entries):
@@ -73,7 +73,8 @@ def align_annotation(annotation_filename, ref_fasta, query_fasta, chain_file):
             continue  # There's no usable entries left to use
 
         # modify chain.alignment to only contain annotated stretches
-        chain.output_folder = make_output_dir_with_suffix(chain.output_prefix, ending)  # create a folder specifically for this repeat
+        chain.output_folder = chain.output_prefix + ending
+        make_output_directory(chain.output_folder)  # create a folder specifically for this repeat
         chain.query_seq_gapped = editable_str('')  # these need to be cleared so they don't accumulate the previous family
         chain.ref_seq_gapped = editable_str('')
         trimmed_alignment = create_aligned_annotation_fragments(chain.alignment, repeat_entries)

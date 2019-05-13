@@ -13,8 +13,9 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
+
 #############################################################################
-# IMPORTANT!  Make sure there are import here for non-builtin packages.  Those go below.
+# IMPORTANT!  Make sure there are no imports here for non-builtin packages.  Those go below.
 #############################################################################
 # print("Setting up Python...")
 
@@ -45,8 +46,8 @@ from DDV import VERSION
 import argparse
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.DDVUtils import create_deepzoom_stack, make_output_dir_with_suffix, base_directories, \
-    hold_console_for_windows, beep
+from DDV.DDVUtils import create_deepzoom_stack, make_output_directory, base_directories, \
+    hold_console_for_windows, beep, copy_to_sources, archive_execution_command
 from DDV.ParallelGenomeLayout import ParallelLayout
 from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
 from DDV.Ideogram import Ideogram
@@ -180,10 +181,13 @@ def ddv(args):
             batches = chain_parser.parse_chain(args.contigs)
             del chain_parser
             print("Done creating Gapped and Unique.")
+            args.contigs = None  # Filtering already happened before Batch
             for batch in batches:  # multiple contigs, multiple views
                 create_parallel_viz_from_fastas(args, len(batch.fastas),
-                                                batch.output_folder, batch.output_folder,
-                                                batch.fastas)
+                                                batch.output_folder,
+                                                os.path.basename(batch.output_folder),
+                                                batch.fastas, border_boxes=True)
+                copy_to_sources(batch.output_folder, args.chain_file)
             done(args, SERVER_HOME)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
@@ -194,7 +198,7 @@ def ddv(args):
         layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
                                        use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                                        low_contrast=args.low_contrast, base_width=args.base_width,
-                                       custom_layout=args.custom_layout)
+                                       custom_layout=args.custom_layout, use_labels=args.use_labels)
         layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
         finish_webpage(args, layout, args.output_name)
@@ -228,7 +232,8 @@ def ddv(args):
             layout = Ideogram(radix_settings,
                               ref_annotation=args.ref_annotation, query_annotation=args.query_annotation,
                               repeat_annotation=args.repeat_annotation,
-                              low_contrast=args.low_contrast, use_titles=args.use_titles)
+                              low_contrast=args.low_contrast, use_titles=args.use_titles,
+                              use_labels=args.use_labels)
             create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
         else:
             print("Invalid radix settings.  Follow the example.")
@@ -259,11 +264,12 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=False):
     print("Creating Large Comparison Image from Input Fastas...")
-    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width)
+    layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width,
+                            border_boxes=border_boxes)
     layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
-
+    args.output_dir = output_dir
     finish_webpage(args, layout, output_name)
 
 
@@ -285,12 +291,15 @@ def combine_files(batches, args, output_name):
     fasta_output = output_name + '.fa'
     write_contigs_to_file(fasta_output, contigs)
     create_tile_layout_viz_from_fasta(args, fasta_output, output_name)
+    copy_to_sources(args.output_dir, args.chain_file)
 
 
 def finish_webpage(args, layout, output_name):
     final_location = layout.final_output_location
     print("Done creating Large Image at ", final_location)
     if not args.no_webpage:
+        with open(os.path.join(os.path.dirname(final_location), 'command.sh'), 'w') as f:
+            f.write(archive_execution_command() + '\n')  # original command that got us here
         layout.generate_html(args.output_dir, output_name)
         del layout
         print("Creating Deep Zoom Structure from Generated Image...")
@@ -382,8 +391,12 @@ def main():
 
     parser.add_argument("-nt", "--no_titles",
                         action='store_true',
-                        help="No gaps for a title.  Useful when combined with separate_translocations",
+                        help="No gaps for a title. ",
                         dest="no_titles")
+    parser.add_argument("-nl", "--no_labels",
+                        action='store_true',
+                        help="No annotation labels rendered",
+                        dest="no_labels")
     parser.add_argument("-nw", "--no_webpage",
                         action='store_true',
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
@@ -460,7 +473,6 @@ def main():
     parser.add_argument('-v', '--version', dest='version', help='Get current version of program.', action='store_true')
 
     args = parser.parse_args()
-
     # Respond to an updater query
     if args.update_name:
         print("DDV")
@@ -537,14 +549,19 @@ def main():
     if args.output_name:
         args.output_name = args.output_name.strip()
     args.use_titles = not args.no_titles
+    args.use_labels = not args.no_labels
 
     #Output directory: after args.output_name is set
     SERVER_HOME, base_path = base_directories(args.output_name)
+    args.output_dir = base_path
+    doing_any_work = args.fasta or args.chain_file or args.ref_annotation or args.query_annotation or args.image
     if args.quick:
         args.output_dir = os.path.dirname(
             os.path.abspath(args.fasta))  # just place the image next to the fasta
-    else:
-        args.output_dir = make_output_dir_with_suffix(base_path, '')
+    # elif not args.chain_file:
+    #     args.output_dir = base_path
+    if doing_any_work:
+        make_output_directory(args.output_dir)
 
     ddv(args)
 

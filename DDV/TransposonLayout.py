@@ -23,6 +23,7 @@ from DNASkittleUtils.DDVUtils import rev_comp
 from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
 from DDV.TileLayout import TileLayout
 from DDV import gap_char
+from DDV.DDVUtils import copy_to_sources
 
 
 class TransposonLayout(TileLayout):
@@ -42,7 +43,7 @@ class TransposonLayout(TileLayout):
         self.initialize_image_by_sequence_dimensions(consensus_width, num_lines)  # sets self.layout
         self.read_contigs_and_calc_padding(input_file_path)
         super(TransposonLayout, self).draw_nucleotides()  # uses self.contigs and self.layout to draw
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, False)
 
 
     def process_all_repeats(self, ref_fasta, output_folder, output_file_name, repeat_annotation_filename, chromosomes=None):
@@ -60,8 +61,10 @@ class TransposonLayout(TileLayout):
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()
-        self.output_image(output_folder, output_file_name)
+        self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
+        copy_to_sources(output_folder, ref_fasta)
+        copy_to_sources(output_folder, repeat_annotation_filename)
 
 
     def max_dimensions(self, image_length):
