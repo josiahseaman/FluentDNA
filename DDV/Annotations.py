@@ -85,12 +85,20 @@ class GFF(object):
                         else:
                             phase = int(elements[7])
 
+                        attributes = {}
                         if len(elements) >= 9:
                             pairs = [pair.strip() for pair in elements[8].split(';') if pair]
-                            attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs if
-                                          len(pair.split('=')) == 2}
-                        else:
-                            attributes = {}
+                            try:
+                                attributes = {pair.split('=')[0]: pair.split('=')[1].replace('"', '') for pair in pairs}
+                            except IndexError:  #GTF separates by spaces and uses quotes
+                                try:
+                                    for pair in pairs:
+                                        if ' ' in pair:  #only split by the first space
+                                            k, v = pair[:pair.find(' ')], pair[pair.find(' ')+1:]
+                                            attributes[k] = v.replace('"', '')
+                                except IndexError:
+                                    print('Annotation attributes were not in the expected format: use key1=value1;key2=value2;')
+
 
                         if type != 'chromosome':  # chromosomes don't have strand or phase
                             annotation = GFFAnnotation(chromosome, ID,
