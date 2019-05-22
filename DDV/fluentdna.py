@@ -138,7 +138,8 @@ def ddv(args):
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width,
                             custom_layout=args.custom_layout)
-        layout.generate_html(args.output_dir, args.output_name)
+        #Don't overwrite old webpage when regenerating zoom stack from an image
+        layout.generate_html(args.output_dir, args.output_name, overwrite_files=False)
         print("Creating Deep Zoom Structure for Existing Image...")
         create_deepzoom_stack(args.image, os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
@@ -501,7 +502,7 @@ def main():
         args.layout = "NONE"
 
 
-    if args.image and (args.fasta or args.layout or args.extra_fastas or args.chain_file):
+    if args.image and (args.fasta or args.extra_fastas or args.chain_file):
         parser.error("No layout will be performed if an existing image is passed in! "
                      "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
