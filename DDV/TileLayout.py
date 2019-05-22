@@ -462,7 +462,11 @@ class TileLayout(object):
         return int(width_height[0]), int(width_height[1])
 
 
-    def generate_html(self, output_folder, output_file_name):
+    def generate_html(self, output_folder, output_file_name, overwrite_files=True):
+        html_path = os.path.join(output_folder, 'index.html')
+        if not overwrite_files and os.path.exists(html_path):
+            print(html_path, ' already exists.  Skipping HTML.')
+            return
         def legend_line(label, palette_key):
             return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
         try:
@@ -471,7 +475,6 @@ class TileLayout(object):
             html_template = os.path.join(module_path, 'html_template')
             copytree(html_template, output_folder)  # copies the whole template directory
             print("Copying HTML to", output_folder)
-            html_path = os.path.join(output_folder, 'index.html')
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
                             "layout_algorithm": self.layout_algorithm,
