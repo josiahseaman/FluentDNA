@@ -18,10 +18,10 @@ def blend_pixel(markup_canvas, pt, c, overwrite=False):
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
 def annotation_points(entry, renderer, start_offset):
-    annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
-    for i in range(entry.start, entry.end):
-        # important to include title and reset padding in coordinate frame
-        annotation_points.append(renderer.position_on_screen(i + start_offset))
+    # important to include title and reset padding in coordinate frame
+    # TODO use unsigned shorts (max 65535) for memory
+    annotation_points = tuple(renderer.position_on_screen(i + start_offset) for i in range(entry.start, entry.end))
+
     return annotation_points
 
 
