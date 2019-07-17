@@ -20,6 +20,7 @@ body {
     padding-right: 600px; /*Only for fake screen in wakehurst */
 }
 #separate_navigator {
+    display:none;
     border: none;
     margin: 0px;
     padding: 0px;

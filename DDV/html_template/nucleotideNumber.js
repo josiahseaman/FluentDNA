@@ -55,6 +55,11 @@ function init(container_id, source_folder) {
             maxZoomPixelRatio: 20,
             navigatorMaintainSizeRatio: true,
             navigatorAutoResize: false,
+            // navigatorPosition: "ABSOLUTE",
+            // navigatorTop:      "40px",
+            // navigatorRight:     "-40px",
+            // navigatorHeight:   "120px",
+            // navigatorWidth:    "145px"
         });
     }else{
         viewer = OpenSeadragon({
@@ -81,27 +86,45 @@ function init(container_id, source_folder) {
         sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.BASEPAIR_LENGTH
     });
     if(museum_mode){// in museums, there is no "mouse" info is from touches on navigator
-        mouse_event = {isTrusted: true, screenX: 676, screenY: 282,
-            clientX: 674,   clientY: 254,
-            altKey: false, bubbles: true,
-            button: 0, buttons: 0, cancelBubble: false, cancelable: true,
-            composed: true, ctrlKey: false,
-            currentTarget: 'div#container.chromosome-container',
-            defaultPrevented: false, detail: 0, eventPhase: 3, fromElement: null,
-            metaKey: false, isTrusted: true,
-            layerX: 663, layerY: 243,
-            movementX: 0, movementY: 0,
-            offsetX: 663, offsetY: 243,
-            pageX: 674, pageY: 254,
-            relatedTarget: null, returnValue: true,
-            screenX: 676,
-            screenY: 282,
-            shiftKey: false, sourceCapabilities: {firesTouchEvents: false},
-            type: "mousemove", which: 0,
-            x: 674,
-            y: 254,
-        }
-        setInterval(
+    mouse_event = {isTrusted: true, screenX: 676, screenY: 282, clientX: 674, clientY: 254,
+        altKey: false,
+        bubbles: true,
+        button: 0,
+        buttons: 0,
+        cancelBubble: false,
+        cancelable: true,
+        clientX: 674,
+        clientY: 254,
+        composed: true,
+        ctrlKey: false,
+        currentTarget: 'div#container.chromosome-container',
+        defaultPrevented: false,
+        detail: 0,
+        eventPhase: 3,
+        fromElement: null,
+        isTrusted: true,
+        layerX: 663,
+        layerY: 243,
+        metaKey: false,
+        movementX: 0,
+        movementY: 0,
+        offsetX: 663,
+        offsetY: 243,
+        pageX: 674,
+        pageY: 254,
+        relatedTarget: null,
+        returnValue: true,
+        screenX: 676,
+        screenY: 282,
+        shiftKey: false,
+        sourceCapabilities: {firesTouchEvents: false},
+        type: "mousemove",
+        which: 0,
+        x: 674,
+        y: 254,
+    }
+
+            setInterval(
               function(){
                   showNucleotideNumber(mouse_event, viewer);
                   viewer.viewport.zoomTo(8);
@@ -225,14 +248,18 @@ function tiled_layout_mouse_position(nucNumX, nucNumY, layout_levels, source_ind
 }
 
 function showNucleotideNumber(event, viewer) {
-    /** getMousePosition() returns position relative to page,
-     * while we want the position relative to the viewer
-     * element. so subtract the difference.*/
     var pixel = OpenSeadragon.getMousePosition(event).minus(OpenSeadragon.getElementPosition(viewer.element));
     if (!viewer.isOpen()) {
         return;
     }
     var point = viewer.viewport.pointFromPixel(pixel);
+    showNucleotideNumber_xy(point, viewer);
+}
+
+function showNucleotideNumber_xy(point, viewer) {
+    /** getMousePosition() returns position relative to page,
+     * while we want the position relative to the viewer
+     * element. so subtract the difference.*/
     var position_info = {};
     var information_to_show = false;
     cursor_in_a_title = false;
