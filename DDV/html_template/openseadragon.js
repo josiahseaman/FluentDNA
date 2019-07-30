@@ -17937,6 +17937,10 @@ $.Drawer.prototype = {
                 widthExt = Math.round(widthDiff / 2);
                 heightExt = Math.round(heightDiff / 2);
             }
+            this.context.imageSmoothingEnabled = false;
+            this.context.webkitImageSmoothingEnabled = false;
+            this.context.mozImageSmoothingEnabled = false;
+            this.context.msImageSmoothingEnabled = false;
             this.context.drawImage(
                 this.sketchCanvas,
                 position.x - widthExt * scale,
