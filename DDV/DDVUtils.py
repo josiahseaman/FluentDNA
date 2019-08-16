@@ -161,6 +161,11 @@ def beep(duration=600):
         winsound.Beep(freq, duration)
     except ImportError:
         pass  # not a windows machine
+    try:
+        from AppKit import NSBeep
+        NSBeep()
+    except BaseException:
+        pass  # not a Mac machine
 
 
 def interpolate(A, B, start, end, position):

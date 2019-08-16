@@ -45,7 +45,7 @@ https://github.com/josiahseaman/DDV/tree/python-master
 # Compile Instructions for Developers:
 PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
 ```
-pip install pyinstaller
+pip install pyinstaller==3.3.1
 PyInstaller fluentdna.spec
 ```
 to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
@@ -57,7 +57,7 @@ to generate a binary.  In practice, this will require some experimentation with 
 * blist wouldn't compile because of a C++ dependency
 * Download blist "wheel" from https://www.lfd.uci.edu/~gohlke/pythonlibs/#blist
 * D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
-* `pip install PyInstaller`
+* `pip install pyinstaller==3.3.1`
 * `PyInstaller fluentdna.spec`
 Troubleshooting: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.
 `D:\python365\Scripts\pip.exe list`

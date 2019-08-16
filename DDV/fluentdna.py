@@ -94,7 +94,7 @@ def query_yes_no(question, default='yes'):
             sys.stdout.write("Please respond with 'yes' or 'no'.\n")
 
 
-def run_server(home_directory):
+def run_server(output_dir=None):
     try:
         from http import server
         from socketserver import TCPServer
@@ -102,26 +102,44 @@ def run_server(home_directory):
         import SimpleHTTPServer as server
         from SocketServer import TCPServer
 
-    print("Setting up HTTP Server based from", home_directory)
-    os.chdir(home_directory)
+    SERVER_HOME, base = base_directories('')
+    print("Setting up HTTP Server based from", SERVER_HOME)
+    os.chdir(SERVER_HOME)
 
-    ADDRESS = "127.0.0.1"
+    ADDRESS = "localhost"
     PORT = 8000
 
-    handler = server.SimpleHTTPRequestHandler
-    httpd = TCPServer((ADDRESS, PORT), handler)
+    url = "http://%s:%s" % (ADDRESS, str(PORT))
 
-    print("Open a browser at http://%s:%s" %(ADDRESS, str(PORT)))
-    httpd.serve_forever()
+    launch_browser(url, output_dir)
+    try:
+        handler = server.SimpleHTTPRequestHandler
+        httpd = TCPServer((ADDRESS, PORT), handler)
+        print("Open a browser at " + url)
+        httpd.serve_forever()
+    except OSError:
+        print("A server is already running on this port.")
+        print("You can access your results through the browser at %s:%s" % (ADDRESS, str(PORT)))
 
 
-def done(args, output_dir):
+def launch_browser(url, output_dir):
+    """Launch webpage using output_dir"""
+    try:
+        import webbrowser
+        full_url = url if not output_dir else url + '/' + os.path.basename(output_dir)
+        webbrowser.open_new_tab(full_url)  # prefers chrome but will use system browser
+    except BaseException:
+        pass  # fail silently
+
+
+def done(args, output_dir=None):
     """Ensure that server always starts when requested.
     Otherwise system exit."""
     if args.run_server:
         run_server(output_dir)
-    beep()
-    hold_console_for_windows()
+    else:
+        beep()
+        hold_console_for_windows()
     if __name__ == "__main__":
         sys.exit(0)
 
@@ -130,7 +148,7 @@ def ddv(args):
     SERVER_HOME, base_path = base_directories(args.output_name)
 
     if not args.layout and args.run_server:
-        done(args, SERVER_HOME)
+        done(args)
 
 
 
@@ -189,7 +207,7 @@ def ddv(args):
                                                 os.path.basename(batch.output_folder),
                                                 batch.fastas, border_boxes=True)
                 copy_to_sources(batch.output_folder, args.chain_file)
-            done(args, SERVER_HOME)
+            done(args)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
         layout.render_genome(args.output_dir, args.output_name, args.contigs)
@@ -222,12 +240,12 @@ def ddv(args):
         combine_files(batches, args, args.output_name)
         # for batch in batches:
         #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
-        done(args, SERVER_HOME)
+        done(args)
 
     elif args.layout == 'ideogram':
         assert args.radix, "You must provide a --radix argument for Ideograms."
         radix_settings = eval(args.radix)
-        if len(radix_settings) == 4 and \
+        if hasattr(radix_settings, '__len__') and len(radix_settings) == 4 and \
             type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
             type(radix_settings[2]) == type(radix_settings[3]) == type(1):
             layout = Ideogram(radix_settings,
@@ -237,7 +255,9 @@ def ddv(args):
                               use_labels=args.use_labels)
             create_tile_layout_viz_from_fasta(args, args.fasta, args.output_name, layout)
         else:
-            print("Invalid radix settings.  Follow the example.")
+            print("ERROR: Invalid radix settings.  Follow the example.")
+            print("--radix='([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'")
+            sys.exit(1)
         done(args, args.output_dir)
 
 
@@ -260,7 +280,7 @@ def ddv(args):
         for batch in batches:  # multiple contigs, multiple views
             create_parallel_viz_from_fastas(args, len(batch.fastas), args.output_dir, args.output_name,
                                             batch.fastas)
-        done(args, SERVER_HOME)
+        done(args)
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
@@ -330,13 +350,10 @@ def main():
                                      add_help=True)
 
     parser = argparse.ArgumentParser(prog='fluentdna')
-    parser.add_argument('--quick',
+    parser.add_argument("-r", "--runserver",
                         action='store_true',
-                        help="Shortcut for dropping the file on fluentdna.exe.  Only an image will be generated "
-                             "in the same directory as the FASTA.  This is the default behavior if you drop "
-                             "a file onto the program or a filepath is the only argument.",
-                        dest="quick")
-
+                        help="Browse your previous results.",
+                        dest="run_server")
     parser.add_argument("-f", "--fasta",
                         type=str,
                         help="Path to main FASTA file to process into new visualization.",
@@ -345,10 +362,21 @@ def main():
                         type=str,
                         help="What to name the output folder (not a path). Defaults to name of the fasta file.",
                         dest="output_name")
-    parser.add_argument("-r", "--runserver",
+    parser.add_argument("-l", "--layout",
+                        type=str,
+                        help="The type of layout to perform. Will autodetect between Tiled and "
+                            "Parallel. Only needed if you want non-default option like 'alignment', "
+                             "'unique' or 'annotation_track'.",
+                        choices=["tiled", "annotated", "ideogram", "alignment", "annotation_track",
+                                 "parallel", "unique", ],  # "transposon"
+                        dest="layout")  # Don't set a default so we can do error checking on it later
+    parser.add_argument('--quick',
                         action='store_true',
-                        help="Run Web Server after computing.",
-                        dest="run_server")
+                        help="Shortcut for dropping the file on fluentdna.exe.  Only an image will be generated "
+                             "in the same directory as the FASTA.  This is the default behavior if you drop "
+                             "a file onto the program or a filepath is the only argument.",
+                        dest="quick")
+
     parser.add_argument("-c", "--contigs",
                         nargs='+',
                         type=str,
@@ -368,14 +396,6 @@ def main():
                         action='store_true',
                         help="Use low contrast, natural colors that are easier on the eyes",
                         dest="low_contrast")
-    parser.add_argument("-l", "--layout",
-                        type=str,
-                        help="The type of layout to perform. Will autodetect between Tiled and "
-                            "Parallel. Only needed if you want non-default option like 'alignment', "
-                             "'unique' or 'annotation_track'.",
-                        choices=["tiled", "annotated", "ideogram", "alignment", "annotation_track",
-                                 "parallel", "unique", ], # "transposon"
-                        dest="layout")  # Don't set a default so we can do error checking on it later
     parser.add_argument("-x", "--extrafastas",
                         nargs='+',
                         type=str,
@@ -506,9 +526,10 @@ def main():
         parser.error("No layout will be performed if an existing image is passed in! "
                      "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
-        parser.error('Please define a a file to process.  Ex: fluentdna.py --fasta="example_data/phiX.fa"')
+        parser.error('Please define a file to process.  Ex: ' + os.path.basename(sys.argv[0]) +
+                     ' --fasta="example_data/phiX.fa"')
     if args.image and args.no_webpage:
-        parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image"
+        parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
 
     if args.extra_fastas and not args.layout:
@@ -531,9 +552,9 @@ def main():
         parser.error("It just doesn't make sense to ask to show translocations in context while separating them.  You've got to pick one or the other.")
 
     # Set post error checking defaults
-    if not args.contigs and args.chain_file and args.layout != 'unique':
-        print("Error: you must list the name of a contig you wish to display for an alignment.\n"
-              "Example: --contigs chrM chrX --chain_file=input.chain.liftover", file=sys.stderr)
+    if args.chain_file and not args.contigs and args.layout != 'unique':
+        parser.error("Error: you must list the name of a contig you wish to display for an alignment.\n"
+              "Example: --contigs chrM chrX --chain_file=input.chain.liftover")
 
     if args.output_name and args.chain_file and args.output_name[-1] != '_':
         args.output_name += '_'  # prefix should always end with an underscore
@@ -563,6 +584,7 @@ def main():
     #     args.output_dir = base_path
     if doing_any_work:
         make_output_directory(args.output_dir)
+        args.run_server = True
 
     ddv(args)
 
