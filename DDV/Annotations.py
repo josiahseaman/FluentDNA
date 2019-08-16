@@ -24,8 +24,8 @@ class GFF(object):
     def _import_gff(self, annotation_file):
         assert os.path.isfile(annotation_file), "File does not exist:" + annotation_file
 
+        gff_version = '3'
         specimen = None
-        gff_version = '2'
         genome_version = None
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
@@ -39,8 +39,6 @@ class GFF(object):
                 if line.startswith("#"):
                     if "gff-version" in line:
                         gff_version = line.split()[1]
-                        if int(gff_version) != '2':
-                            print("WARNING: GFF3 entries for gene and mRNA with different names may cause overlapping labels!")
                     elif "genome-build" in line:
                         specimen = line.split()[1]
                     elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
@@ -49,7 +47,7 @@ class GFF(object):
                         date = line.split()[1]
                 elif line.strip():
                     if counter == 0:
-                        print("Version 2 GFF file:", annotation_file)
+                        print("Version "+gff_version+" GFF file:", annotation_file)
 
                     counter += 1
                     try:
@@ -156,10 +154,10 @@ class GFFAnnotation(object):
                 name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
         elif 'Name' in entry.attributes:
             name = entry.attributes['Name']
-        elif 'ID' in entry.attributes:  # TODO case sensitive?
-            name = entry.attributes['ID']
         elif 'gene_name' in entry.attributes:
             name = entry.attributes['gene_name']
+        elif 'ID' in entry.attributes:  # TODO case sensitive?
+            name = entry.attributes['ID']
         else:
             name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
         return name.replace(remove_prefix, '', 1)
