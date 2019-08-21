@@ -44,7 +44,7 @@ multiprocessing.freeze_support()
 from DDV import VERSION
 
 import argparse
-
+import gc
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DDV.DDVUtils import create_deepzoom_stack, make_output_directory, base_directories, \
     hold_console_for_windows, beep, copy_to_sources, archive_execution_command
@@ -201,12 +201,13 @@ def ddv(args):
             del chain_parser
             print("Done creating Gapped and Unique.")
             args.contigs = None  # Filtering already happened before Batch
-            for batch in batches:  # multiple contigs, multiple views
-                create_parallel_viz_from_fastas(args, len(batch.fastas),
-                                                batch.output_folder,
-                                                os.path.basename(batch.output_folder),
-                                                batch.fastas, border_boxes=True)
-                copy_to_sources(batch.output_folder, args.chain_file)
+            if not args.stats_only:
+                for batch in batches:  # multiple contigs, multiple views
+                    create_parallel_viz_from_fastas(args, len(batch.fastas),
+                                                    batch.output_folder,
+                                                    os.path.basename(batch.output_folder),
+                                                    batch.fastas, border_boxes=True)
+                    copy_to_sources(batch.output_folder, args.chain_file)
             done(args)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
@@ -228,18 +229,17 @@ def ddv(args):
                                first_source='data\\hg38.fa',
                                second_source='',
                                output_folder_prefix='Hg38_unique_vs_panTro4_')"""
-        unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file,
-                                                    first_source=args.fasta,
-                                                    second_source=args.fasta,
-                                                    output_prefix=base_path,
+        unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file, first_source=args.fasta,
+                                                    second_source=args.fasta, output_prefix=base_path,
                                                     trial_run=args.trial_run,
                                                     separate_translocations=args.separate_translocations)
         batches = unique_chain_parser.parse_chain(args.contigs)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
-        combine_files(batches, args, args.output_name)
-        # for batch in batches:
-        #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
+        if not args.stats_only:
+            combine_files(batches, args, args.output_name)
+            # for batch in batches:
+            #     create_tile_layout_viz_from_fasta(args, batch.fastas[0], batch.output_folder, args.output_name)
         done(args)
 
     elif args.layout == 'ideogram':
@@ -264,9 +264,7 @@ def ddv(args):
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
                                         first_source=args.fasta,
-                                        first_annotation=args.ref_annotation,
                                         second_source=args.extra_fastas[0],
-                                        second_annotation=args.query_annotation,
                                         output_prefix=base_path,
                                         trial_run=args.trial_run,
                                         separate_translocations=args.separate_translocations,
@@ -277,9 +275,10 @@ def ddv(args):
         batches = anno_align.parse_chain(args.contigs)
         del anno_align
         print("Done creating Gapped Annotations.")
-        for batch in batches:  # multiple contigs, multiple views
-            create_parallel_viz_from_fastas(args, len(batch.fastas), args.output_dir, args.output_name,
-                                            batch.fastas)
+        if not args.stats_only:
+            for batch in batches:  # multiple contigs, multiple views
+                create_parallel_viz_from_fastas(args, len(batch.fastas), args.output_dir, args.output_name,
+                                                batch.fastas)
         done(args)
     else:
         raise NotImplementedError("What you are trying to do is not currently implemented!")
@@ -292,7 +291,6 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
     layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
     args.output_dir = output_dir
     finish_webpage(args, layout, output_name)
-
 
 
 def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
@@ -323,12 +321,14 @@ def finish_webpage(args, layout, output_name):
             f.write(archive_execution_command() + '\n')  # original command that got us here
         layout.generate_html(args.output_dir, output_name)
         del layout
+        gc.collect()  # it's important to free the large amount of RAM this uses
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(args.output_dir, final_location),
                               os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
         print("Done creating Deep Zoom Structure.")
     else:
         del layout
+        gc.collect()  # it's important to free the large amount of RAM this uses
 
 
 def main():
@@ -345,11 +345,10 @@ def main():
 
         # sys.argv.append("--sort_contigs")
 
-    parser = argparse.ArgumentParser(usage="%(prog)s [options]",
+    parser = argparse.ArgumentParser(prog='fluentdna',
+                                     usage="%(prog)s [options]",
                                      description="Creates visualizations of FASTA formatted DNA nucleotide data.",
                                      add_help=True)
-
-    parser = argparse.ArgumentParser(prog='fluentdna')
     parser.add_argument("-r", "--runserver",
                         action='store_true',
                         help="Browse your previous results.",
@@ -448,6 +447,11 @@ def main():
                         action='store_true',
                         help="Don't show the unaligned pieces of ref or query sequences.",
                         dest='aligned_only')
+    parser.add_argument("-so", "--stats_only",
+                        action='store_true',
+                        help="Faster: Don't render images or webpage for alignments.",
+                        dest='stats_only')
+
 
     ### Annotations
     parser.add_argument("-ra", "--ref_annotation",

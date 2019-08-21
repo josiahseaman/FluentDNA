@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
+import os
 import traceback
 from datetime import datetime
 
@@ -49,7 +50,7 @@ class ParallelLayout(TileLayout):
     def enable_fat_headers(self):
         pass  # just don't
 
-    def process_file(self, output_folder, output_file_name, fasta_files=list(),
+    def process_file(self, output_folder, output_file_name, fasta_files,
                      no_webpage=False, extract_contigs=None):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
@@ -99,8 +100,10 @@ class ParallelLayout(TileLayout):
         To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
         together.  Mouse over gives further information on each file."""
         from DNASkittleUtils.DDVUtils import pp
-        #Caution: These corners are currently hard coded to the color and dimension of one image
-        corner = Image.open('html_template/img/border_box_corner.png')
+        from DDV.DDVUtils import execution_dir
+        base_dir = execution_dir()
+        # Caution: These corners are currently hard coded to the color and dimension of one image
+        corner = Image.open(os.path.join(base_dir,'DDV','html_template','img','border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
