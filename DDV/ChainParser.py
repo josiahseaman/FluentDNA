@@ -120,7 +120,7 @@ class ChainParser(object):
         s["Alignment Coverage of Ref Chr"] = s["Total alignment Length"] / s["Ref Chr Total Size (No N's)"]
         s["Alignment Coverage of Query Main Chr"] = s['Total alignment Length'] / (
                     s['Total alignment Length'] + s["Query unique bp"])
-        stats_path = os.path.join(self.output_folder, 'stats.txt')
+        stats_path = os.path.join(self.output_folder, 'sources', 'stats.txt')
         with open(stats_path, 'w+') as stats:
             stats.write('\n===== Alignment Stats ======\n')
             for key, val in s.items():

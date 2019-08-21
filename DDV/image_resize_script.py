@@ -4,10 +4,11 @@ at 300dpi, you'll want 7,000+ pixel width.  That's not possible through
 screenshots and the 1GB image is usually too large to open.
 
 You'll need to manually edit this script with you own paths and parameters."""
-
+import sys
+from os.path import dirname, join, splitext
 
 from PIL import Image as PILImage
-
+PILImage.MAX_IMAGE_PIXELS = 10 * 1024 * 1024 * 1024  # 10GB
 
 def simple_resize(source, reduction_factor):
     image = PILImage.open(source)
@@ -27,6 +28,17 @@ def save_resized(in_path, out_path, reduction_factor):
     image.save(out_path, "png")
 
 if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Example usage:  python DDV\image_resize_script.py /genomes/bigImage.png 1/6")
+        sys.exit(1)
+    # reduction_factor = 1/2
+    path = sys.argv[1]
+    reduction_factor = eval(sys.argv[2])
+    out_path = splitext(path)[0] + ' - resized.png'
+    save_resized(path, out_path, reduction_factor)
+
+
+    """
     path = r"D:\josiah\Projects\DDV old\www-data\dnadata\Fraxinus pennsylvanica June 2017 sorted\Fraxinus pennsylvanica June 2017 sorted.png"
     path = r"D:\josiah\Projects\DDV\DDV\www-data\dnadata\Test Simple\Test Simple.png"
     path = r"D:\Genomes\Ash BATG-0.5-CLCbioSSPACE\Ash Tree BATG-0.5.png"
@@ -48,3 +60,4 @@ if __name__ == "__main__":
     save_resized(base + '10' + fb + '10.png', "Chr10 - resized.png", reduction_factor)
     save_resized(base + '11' + fb + '11.png', "Chr11 - resized.png", reduction_factor)
     save_resized(base + '12' + fb + '12.png', "Chr12 - resized.png", reduction_factor)
+    """
