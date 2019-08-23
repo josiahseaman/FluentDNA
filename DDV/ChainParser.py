@@ -165,26 +165,28 @@ class ChainParser(object):
         if hi is None:
             self.stats['translocation_searched'] += 1
         hi = hi or len(self.alignment)
-        while lo < hi:
-            mid = (lo + hi) // 2
-            # Special handling for accidentally landing on a translocation (not sorted)
-            if not self.alignment[mid].is_master_chain:  # recursively splits the binary search
-                mid_left, mid_right = mid, mid
-                # slide left
-                while not self.alignment[mid_left].is_master_chain:
-                    mid_left -= 1
-                if not self.find_old_query_location(new_alignment, lo=lo, hi=mid_left, depth=depth + 1):
-                    # slide right
-                    while not self.alignment[mid_right].is_master_chain:
-                        mid_right += 1
-                    return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
-                return True
-            # Actual Binary search is here:
-            if new_alignment.query_less_than(self.alignment[mid]):
-                hi = mid
-            else:
-                lo = mid + 1
-
+        try:
+            while lo < hi:
+                mid = (lo + hi) // 2
+                # Special handling for accidentally landing on a translocation (not sorted)
+                if not self.alignment[mid].is_master_chain:  # recursively splits the binary search
+                    mid_left, mid_right = mid, mid
+                    # slide left
+                    while not self.alignment[mid_left].is_master_chain:
+                        mid_left -= 1
+                    if not self.find_old_query_location(new_alignment, lo=lo, hi=mid_left, depth=depth + 1):
+                        # slide right
+                        while not self.alignment[mid_right].is_master_chain:
+                            mid_right += 1
+                        return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
+                    return True
+                # Actual Binary search is here:
+                if new_alignment.query_less_than(self.alignment[mid]):
+                    hi = mid
+                else:
+                    lo = mid + 1
+        except IndexError:
+            return False
         # Binary search brings us to the right most position
         lo = max(lo - 1, 0)
         final_possible = self.alignment[lo].query_unique_span()

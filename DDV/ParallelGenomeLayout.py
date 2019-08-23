@@ -103,7 +103,10 @@ class ParallelLayout(TileLayout):
         from DDV.DDVUtils import execution_dir
         base_dir = execution_dir()
         # Caution: These corners are currently hard coded to the color and dimension of one image
-        corner = Image.open(os.path.join(base_dir,'html_template','img','border_box_corner.png'))
+        try:
+            corner = Image.open(os.path.join(base_dir,'DDV','html_template','img','border_box_corner.png'))
+        except FileNotFoundError:
+            corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
