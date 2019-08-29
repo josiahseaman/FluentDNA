@@ -263,6 +263,7 @@ def ddv(args):
 
     elif args.ref_annotation and args.layout != 'transposon':  # parse chain files, possibly in batch
         anno_align = AnnotatedAlignment(chain_name=args.chain_file,
+                                        first_source=args.fasta,
                                         first_annotation=args.ref_annotation,
                                         second_source=args.extra_fastas[0],
                                         second_annotation=args.query_annotation,
