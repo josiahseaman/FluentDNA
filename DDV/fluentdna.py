@@ -119,7 +119,7 @@ def run_server(output_dir=None):
         httpd.serve_forever()
     except OSError:
         print("A server is already running on this port.")
-        print("You can access your results through the browser at %s:%s" % (ADDRESS, str(PORT)))
+        print("You can access your results through the browser at %s" % url)
 
 
 def launch_browser(url, output_dir):

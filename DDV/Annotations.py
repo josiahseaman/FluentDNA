@@ -276,7 +276,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
                     'exon':FeatureRep('T', 2),
                     'gene':FeatureRep('C', 3),
                     'mRNA':FeatureRep('A', 4),
-                    'transcript':FeatureRep('N', 5)}
+                    'transcript':FeatureRep('N', 5),
+                    'repeat': FeatureRep('R', 6)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = parseGFF(gff)  # gff parameter was a filename
