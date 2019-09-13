@@ -255,7 +255,7 @@ class HighlightedAnnotation(TileLayout):
                 if height < 11:
                     height = 11  # don't make the area so small it clips the text
                     upper_left[1] -= 2
-                font = self.get_font(self.font_name, font_size)
+                font = self.get_font(font_size)
                 current_color = tuple(label_color) # must be tuple
                 if font_size >= 14:
                     alpha = 235 / 255

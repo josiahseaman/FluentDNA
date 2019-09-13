@@ -110,7 +110,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                     width = max(title_width * 6, width)  # Don't truncate the width such that no meaningful text shows up
                     if vertical and entry.strand == '-':  # Anchored on uppef_left, affected by rotation
                         top -= max(0, abs(width - old_with))
-                    font = self.get_font(self.font_name, font_size)
+                    font = self.get_font(font_size)
                     self.levels.write_label(name, width, height, font, title_width,
                                             [left, top], vertical, entry.strand, self.image)
         print("Done Drawing annotation labels")

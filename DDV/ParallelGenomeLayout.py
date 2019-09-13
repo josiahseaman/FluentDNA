@@ -8,7 +8,7 @@ from datetime import datetime
 from PIL import ImageFont, Image
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, font_filename, hex_to_rgb
+from DDV.TileLayout import TileLayout, hex_to_rgb
 from DDV.Layouts import level_layout_factory
 
 
@@ -103,7 +103,7 @@ class ParallelLayout(TileLayout):
         from DDV.DDVUtils import execution_dir
         base_dir = execution_dir()
         # Caution: These corners are currently hard coded to the color and dimension of one image
-        corner = Image.open(os.path.join(base_dir,'DDV','html_template','img','border_box_corner.png'))
+        corner = Image.open(os.path.join(base_dir,'html_template','img','border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
@@ -135,7 +135,7 @@ class ParallelLayout(TileLayout):
     def draw_the_viz_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
-        font = ImageFont.truetype(font_filename, 380)
+        font = self.get_font(380)
         titles = [just_the_name(x) for x in filenames]  # remove extension and path
         span = '      '.join(titles)
         title_spanning_width = font.getsize(span)[0]  # For centered text
