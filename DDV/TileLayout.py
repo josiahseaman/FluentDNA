@@ -459,14 +459,34 @@ class TileLayout(object):
         width_height[1] += self.levels.origin[1]
         return int(width_height[0]), int(width_height[1])
 
+    def legend(self):
+        """Refactored legend() to be overridden in subclasses"""
+        if self.using_spectrum:
+            # TODO: legend_line('Unsequenced', 'N') +\
+            line = "<strong>Legend:</strong>" + \
+                     """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
+                     0 = dark purple. 125 = green, 255 = yellow. Developed as 
+                     Matplotlib's default color palette.  It is 
+                     perceptually uniform and color blind safe.</span>"""
+        else:
+            line = "<strong>Legend:</strong>" + \
+                self.legend_line('Adenine (A)', 'A') +\
+                self.legend_line('Thymine (T)', 'T') +\
+                self.legend_line('Guanine (G)', 'G') +\
+                self.legend_line('Cytosine (C)', 'C') +\
+                self.legend_line('Unsequenced', 'N') +\
+                """<span class='color-explanation'>G/C rich regions are red/orange. 
+                A/T rich areas are green/blue. Color blind safe colors.</span>"""
+        return line
+
+    def legend_line(self, label, palette_key):
+        return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
 
     def generate_html(self, output_folder, output_file_name, overwrite_files=True):
         html_path = os.path.join(output_folder, 'index.html')
         if not overwrite_files and os.path.exists(html_path):
             print(html_path, ' already exists.  Skipping HTML.')
             return
-        def legend_line(label, palette_key):
-            return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
         try:
             import DDV
             module_path = os.path.dirname(DDV.__file__)
@@ -483,44 +503,7 @@ class TileLayout(object):
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
                             "date": datetime.now().strftime("%Y-%m-%d"),
-                            'legend': "<strong>Legend:</strong>" +\
-                                legend_line('Adenine (A)', 'A') +\
-                                legend_line('Thymine (T)', 'T') +\
-                                legend_line('Guanine (G)', 'G') +\
-                                legend_line('Cytosine (C)', 'C') +\
-                                legend_line('Unsequenced', 'N') +\
-                                """<span class='color-explanation'>G/C rich regions are red/orange.
-                                    A/T rich areas are green/blue. Color blind safe colors.</span>"""}
-            if self.using_spectrum:
-                # TODO: legend_line('Unsequenced', 'N') +\
-                html_content['legend'] = "<strong>Legend:</strong>" +\
-                """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
-                0 = dark purple. 125 = green, 255 = yellow. Developed as 
-                Matplotlib's default color palette.  It is 
-                perceptually uniform and color blind safe.</span>"""
-            if self.protein_palette:
-                html_content['legend'] = "<strong>Legend:</strong>"+\
-                    legend_line('Alanine (A)', 'A') +\
-                    legend_line('Cysteine (C)', 'C') +\
-                    legend_line('Aspartic acid (D)', 'D') +\
-                    legend_line('Glutamic acid (E)', 'E') +\
-                    legend_line('Phenylalanine (F)', 'F') +\
-                    legend_line('Glycine (G)', 'G') +\
-                    legend_line('Histidine (H)', 'H') +\
-                    legend_line('Isoleucine (I)', 'I') +\
-                    legend_line('Lysine (K)', 'K') +\
-                    legend_line('Leucine (L)', 'L') +\
-                    legend_line('Methionine (M)', 'M') +\
-                    legend_line('Asparagine (N)', 'N') +\
-                    legend_line('Proline (P)', 'P') +\
-                    legend_line('Glutamine (Q)', 'Q') +\
-                    legend_line('Arginine (R)', 'R') +\
-                    legend_line('Serine (S)', 'S') +\
-                    legend_line('Threonine (T)', 'T') +\
-                    legend_line('Valine (V)', 'V') +\
-                    legend_line('Tryptophan (W)', 'W') +\
-                    legend_line('Tyrosine (Y)', 'Y')+ \
-                    legend_line('Any (X)', 'X')
+                            'legend': self.legend()}
             html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()
