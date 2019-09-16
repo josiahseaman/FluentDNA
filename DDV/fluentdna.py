@@ -232,7 +232,8 @@ def ddv(args):
         unique_chain_parser = UniqueOnlyChainParser(chain_name=args.chain_file, first_source=args.fasta,
                                                     second_source=args.fasta, output_prefix=base_path,
                                                     trial_run=args.trial_run,
-                                                    separate_translocations=args.separate_translocations)
+                                                    separate_translocations=args.separate_translocations,
+                                                    preserve_Ns=args.preserve_Ns)
         batches = unique_chain_parser.parse_chain(args.contigs)
         print("Done creating Gapped and Unique Fastas.")
         del unique_chain_parser
@@ -309,7 +310,7 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
 def combine_files(batches, args, output_name):
     from itertools import chain
     contigs = list(chain(*[read_contigs(batch.fastas[0]) for batch in batches]))
-    fasta_output = output_name + '.fa'
+    fasta_output = os.path.join(args.output_dir, 'sources', output_name + '.fa')
     write_contigs_to_file(fasta_output, contigs)
     create_tile_layout_viz_from_fasta(args, fasta_output, output_name)
     copy_to_sources(args.output_dir, args.chain_file)
@@ -445,6 +446,10 @@ def main():
                         action='store_true',
                         help="Used to highlight the locations of translocations (temporary)",
                         dest='show_translocations_only')
+    parser.add_argument("-N", '--preserve_Ns',
+                        action='store_true',
+                        help="For layout=unique, keep Ns in the output sequence",
+                        dest='preserve_Ns')
     parser.add_argument("-a", "--aligned_only",
                         action='store_true',
                         help="Don't show the unaligned pieces of ref or query sequences.",

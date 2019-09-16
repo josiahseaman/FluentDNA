@@ -10,9 +10,10 @@ from DDV.ChainFiles import fetch_all_chains
 
 
 class UniqueOnlyChainParser(ChainParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, preserve_Ns=False, **kwargs):
         kwargs['second_source'] = ''  # the query sequence is not actually used anywhere
         super(UniqueOnlyChainParser, self).__init__(*args, **kwargs)
+        self.preserve_Ns = preserve_Ns
         self.uncovered_areas = []  # Absolute coordinates.  highly mutable: better as a blist
 
 
@@ -21,7 +22,8 @@ class UniqueOnlyChainParser(ChainParser):
         if not combining_genomes:
             self.uncovered_areas = [Span(0, len(self.ref_sequence))]  # TODO: zero indexed?
         all_chains = fetch_all_chains(ref_chr, None, None, self.chain_list)
-        for chain in all_chains:  # no special treatment needed for reverse complements since we're only on reference genome
+        # no special treatment needed for reverse complements since we're only on reference genome
+        for chain in all_chains:
             ref_pointer = chain.tStart  # where we are in the reference
             first, second = None, None
             for entry in chain.entries:
@@ -68,16 +70,17 @@ class UniqueOnlyChainParser(ChainParser):
 
 
 
-    def write_zero_coverage_areas(self, ref_name, ref_chr):
+    def write_zero_coverage_areas(self, unique_seq_file):
         uniq_collection = []  # of strings
-        ref_unique_name = os.path.join(self.output_folder, os.path.splitext(ref_name)[0] + '_unique.fa')
         for region in self.uncovered_areas:
-            unique_region = self.ref_sequence[region.begin: region.end].replace('N', '')
+            unique_region = self.ref_sequence[region.begin: region.end]
+            if not self.preserve_Ns:
+                unique_region = unique_region.replace('N', '')
             if len(unique_region):
                 uniq_collection.append(unique_region + gap_char)
-        write_complete_fasta(ref_unique_name, uniq_collection)
-        print("Wrote", ref_unique_name)
-        return ref_unique_name
+        write_complete_fasta(unique_seq_file, uniq_collection)
+        print("Wrote", unique_seq_file)
+        return unique_seq_file
 
 
     def main(self, chromosome_name):# -> Batch:
@@ -92,13 +95,13 @@ class UniqueOnlyChainParser(ChainParser):
             # self.find_zero_coverage_areas(ref_chr,
             #                          combining_genomes=True)  # self.uncovered_areas is preserved from previous
 
-            fasta_names['ref_unique'] = self.write_zero_coverage_areas(fasta_names['ref'], ref_chr)
+            fasta_names['ref_unique'] = self.write_zero_coverage_areas(output_file)
 
         if True:  #self.trial_run:  # these files are never used in the viz
             del fasta_names['ref']
             del fasta_names['query']
         # self.move_fasta_source_to_destination(fasta_names, folder_name, source_path)
-        return Batch(chromosome_name, [fasta_names['ref_unique']], self.output_folder)  # the name of the one file to be processed by Viz
+        return Batch(chromosome_name, [output_file], self.output_folder)  # the name of the one file to be processed by Viz
 
 
     def parse_chain(self, chromosomes=None):
