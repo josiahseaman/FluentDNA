@@ -289,8 +289,15 @@ def ddv(args):
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=False):
     print("Creating Large Comparison Image from Input Fastas...")
+    column_widths = None
+    if args.column_widths:
+        try:
+            column_widths = eval(args.column_widths)
+            print("Using column widths", column_widths)
+        except BaseException:
+            print("Column widths should be a python expression of a list of integers ex: [30,80]", file=sys.stderr)
     layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width,
-                            border_boxes=border_boxes)
+                            column_widths=column_widths, border_boxes=border_boxes)
     layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
     args.output_dir = output_dir
     finish_webpage(args, layout, output_name)
@@ -482,6 +489,13 @@ def main():
                         "skipping intermediate intervals.  If annotated features are less than"
                         "base_width / annotation_width bp in length it's possible they won't be visible.",
                         dest="annotation_width")
+    parser.add_argument("-cw", "--column_widths",
+                        default=None,
+                        type=str,
+                        help="Width of each column for Parallel Layout. ex: [20,50]"
+                             " Length of the list must be the number of files provided.",
+                        dest="column_widths")
+
 
     ### Other
     parser.add_argument("-i", "--image",
