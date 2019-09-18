@@ -28,16 +28,18 @@ class ParallelLayout(TileLayout):
             column_widths = [self.base_width] * n_genomes
 
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
-        p = 6  # padding_between_layouts
+        # I found that less padding is better for keeping visual patterns coherent over clusters
+        # of columns.  The white space has a disproportionate effect if you space it out too much.
+        p = 1  # padding_between_layouts
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = 10600 // cluster_width #10600
+        column_clusters_per_mega_row = 10600 // cluster_width  # 10600
 
         for nth_genome in range(n_genomes):
             all_columns_height = base_width * 10
-            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 12, 3, 4, 999]
             standard_step_pad = cluster_width - standard_modulos[0] + p
-            mega_row_padding = p * 3 + self.header_height
+            mega_row_padding = p * 3 + self.header_height + 10
             standard_padding = [0, 0, standard_step_pad, mega_row_padding, p*(3**2), p*(3**3), p*(3**4)]
             # steps inside a column bundle, not exactly the same as bundles steps
             thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
@@ -162,14 +164,14 @@ class ParallelLayout(TileLayout):
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size
         # Remove first title
-        if total_progress == 0:
-            # tail += title_padding  #commenting this out could cause problems with multiple contigs
-            title_padding = 0
-            if len(self.contigs) == 1:
-                tail = 0  # no need for tail
-            # i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
-            # total_padding = total_progress + title_padding + reset_padding + next_segment_length
-            # tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
+        # if total_progress == 0:
+        #     # tail += title_padding  #commenting this out could cause problems with multiple contigs
+        #     title_padding = 0
+        #     if len(self.contigs) == 1:
+        #         tail = 0  # no need for tail
+        #     i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
+        #     total_padding = total_progress + title_padding + reset_padding + next_segment_length
+        #     tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
 
         return reset_padding, title_padding, tail
 
