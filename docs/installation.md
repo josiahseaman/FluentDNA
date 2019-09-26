@@ -10,7 +10,10 @@ You will need:
 
 **Installation**
 From a command line in your python virtual environment:  
-`pip install --upgrade --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
+```
+pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
+pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
+```
 
 **Running**
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH, it's a good idea to add this to PATH.
