@@ -121,12 +121,10 @@ class AnnotatedTrackLayout(ParallelLayout):
             'gene':FeatureRep('C', 3),
             'mRNA':FeatureRep('A', 4),
             'transcript':FeatureRep('N', 5)}"""
+        explanation = """Genes are represented in yellow, mRNA/transcripts in green, exons in blue, and CDS are represented in red. Gene components are stacked in a hierarchy: CDS in exons, exons in genes. Only the most exclusive category at each point is visible.  CDS (red) are only the parts of a sequence that code for amino acids.  Visible blue are exons that are not CDS in the upstream and downstream untranslated region (UTR).  """
         return {'legend': html_content['legend'] +
-                """<p><span><strong>Annotation Colors:</strong>
-                <p>Gene = Yellow, mRNA = Green, Exon = Blue, CDS = Red. Gene components are stacked in a hierarchy: 
-                 CDS in exons, exons in genes. Only the most exclusive category (CDS) is visible. 
-                 Visible yellow regions are introns.  Visible blue (exon, but not CDS) are 3' and 5' UTR.</p></span></p>
-                """}  # override in children
+                "<p><span><strong>Annotation Colors:</strong> <p>"+
+                          explanation + "</p></span></p>"}  # override in children
     @property
     def annotation_width(self):
         return self.each_layout[self.annotation_phase].levels[0].modulo

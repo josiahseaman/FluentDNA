@@ -10,7 +10,7 @@ try:
 except ImportError:
     print("Note: blist is not installed.  \n",
           "If you are visualizing whole genome alignments, you can get better performance by:\n"
-          " pip install blist and Visual C++ lib 14", file=sys.stderr)
+          " pip install blist and/or Visual C++ lib 14", file=sys.stderr)
     blist = list  # issue warning if used
 
 
