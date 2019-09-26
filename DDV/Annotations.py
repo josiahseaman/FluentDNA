@@ -1,13 +1,14 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
+
 import os
 from collections import namedtuple, defaultdict
 from itertools import chain
 import gzip
 from DNASkittleUtils.Contigs import Contig, read_contigs, write_contigs_to_file
 
-from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
+from DDV import gap_char
 
 try:
     from urllib.parse import unquote

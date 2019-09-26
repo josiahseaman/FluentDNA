@@ -130,27 +130,18 @@ class AnnotatedTrackLayout(ParallelLayout):
         return self.each_layout[self.annotation_phase].levels[0].modulo
 
     def legend(self):
-        return "<strong>Legend:</strong>" + \
+        explanation = "<strong>Legend:</strong>" + \
                 self.legend_line('Adenine (A)', 'A') +\
                 self.legend_line('Thymine (T)', 'T') +\
                 self.legend_line('Guanine (G)', 'G') +\
                 self.legend_line('Cytosine (C)', 'C') +\
-                self.legend_line('Unsequenced', 'N') +\
-                "<strong>Annotation Legend:</strong>"+\
-                self.legend_line('Aspartic acid (D)', 'D') +\
-                self.legend_line('Glutamic acid (E)', 'E') +\
-                self.legend_line('Phenylalanine (F)', 'F') +\
-                self.legend_line('Histidine (H)', 'H') +\
-                self.legend_line('Isoleucine (I)', 'I') +\
-                self.legend_line('Lysine (K)', 'K') +\
-                self.legend_line('Leucine (L)', 'L') +\
-                self.legend_line('Methionine (M)', 'M') +\
-                self.legend_line('Asparagine (N)', 'N') +\
-                self.legend_line('Proline (P)', 'P') +\
-                self.legend_line('Glutamine (Q)', 'Q') +\
-                self.legend_line('Arginine (R)', 'R') +\
-                self.legend_line('Serine (S)', 'S') +\
-                self.legend_line('Valine (V)', 'V') +\
-                self.legend_line('Tryptophan (W)', 'W') +\
-                self.legend_line('Tyrosine (Y)', 'Y')+ \
-                self.legend_line('Any (X)', 'X')
+                self.legend_line('Unsequenced', 'N')
+        self.activate_natural_colors()
+        explanation += "<strong>&nbspAnnotation Legend:</strong>"+\
+                self.legend_line('CDS', 'G') +\
+                self.legend_line('Exon', 'T') +\
+                self.legend_line('Gene', 'C') +\
+                self.legend_line('mRNA', 'A') +\
+                self.legend_line('Transcript', 'N') + \
+                self.legend_line('Repeat', 'R')
+        return  explanation

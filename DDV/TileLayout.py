@@ -416,11 +416,14 @@ class TileLayout(object):
             base_dir = execution_dir()
             try:
                 with open(os.path.join(base_dir, 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
-                    # with open(os.path.join(base_dir, 'html_template', 'img', "arial.ttf"), 'rb') as font_file:
                     font = ImageFont.truetype(font_file, font_size)
             except IOError:
-                print("Unable to load Arial.ttf size:%i" % font_size)
-                font = ImageFont.load_default()
+                try:
+                    with open(os.path.join(base_dir, 'DDV', 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
+                        font = ImageFont.truetype(font_file, font_size)
+                except IOError:
+                    print("Unable to load ariblk.ttf size:%i" % font_size)
+                    font = ImageFont.load_default()
             self.fonts[font_size] = font  # store for later
         return font
 

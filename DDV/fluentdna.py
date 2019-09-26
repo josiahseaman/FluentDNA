@@ -607,7 +607,7 @@ def main():
             os.path.abspath(args.fasta))  # just place the image next to the fasta
     # elif not args.chain_file:
     #     args.output_dir = base_path
-    if doing_any_work:
+    if doing_any_work and not args.quick:
         make_output_directory(args.output_dir)
         args.run_server = True
 
