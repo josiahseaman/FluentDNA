@@ -160,7 +160,7 @@ class AnnotatedAlignment(ChainParser):
 
 if __name__ == '__main__':
     output_name = 'hg38_panTro4_annotated_'
-    base_path = os.path.join('.', 'www-data', 'dnadata', output_name)
+    base_path = os.path.join('.', 'results', output_name)
     chimp_annotation = r'data\PanTro_refseq2.1.4_genes.gtf'
     human_anno = r'data\Hg38_genes.gtf'
     aligner = AnnotatedAlignment('hg38ToPanTro4.over.chain', 'hg38.fa', human_anno, 'panTro4.fa', chimp_annotation, base_path)

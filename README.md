@@ -1,23 +1,26 @@
-﻿# FluentDNA Data Visualization tool (DDV) 
+﻿# FluentDNA Data Visualization Tool 
 
 This application creates visualizations of FASTA formatted DNA nucleotide data.
 FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
-From 2Mbp of Genomic Sequence, FluentDNA generates this image.  Changes in nucleotide usage make
+From 2Mbp of Genomic Sequence, FluentDNA generates this image.  Changes in nucleotide bias make
 individual genome elements visible even without an annotation.  Add your annotation files to see how
 they align with the sequence features.
-![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/Test%20Simple.png)
+![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/sources/Test%20Simple.png)
 
 ***
 ## FluentDNA Quick Start
 
 You can start using FluentDNA:
- 1. Downloading and unzipping the [Latest Release](https://github.com/josiahseaman/FluentDNA/releases).
+ 1. Downloading and unzipping the [Latest Release](https://github.com/josiahseaman/FluentDNA/releases) (Mac and Windows only).
  2. Open a terminal (command line) in the same folder you unzipped FluentDNA.
  3. Run the command `./fluentdna --fasta="DDV/example_data/Human selenoproteins.fa" --runserver`
- 4. Once your private server has started, all your results available at [http://127.0.0.1:8000](http://127.0.0.1:8000).  Note that this server is not actually using the internet at all, it's just using your browser as a file viewer.
-
-To use FluentDNA as a python module, follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
+ 4. Your result files will be placed in the FluentDNA directory `DDV/results/`.  Once your private server has started, 
+ all your results are viewable at [http://localhost:8000](http://127.0.0.1:8000).  
+ 
+To use FluentDNA as a python module (required for Linux), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).  
+**Locating Results:** You will need to be using the same computer the server is running on.  The server will not be visible 
+over network or internet unless your administrator opens the port.  
 
 ***
 
@@ -45,7 +48,7 @@ This generates an image pyramid with the standard legend (insert image of legend
 * FA File: [DDV/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/hg38_chr19_sample.fa)
 
 **Result:** [Hg38 chr19 sample](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/)
-![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/Test%20Simple.png)
+![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/sources/Test%20Simple.png)
 
 It is also possible to generate an image file only that can be accessed with an image viewer using `--no_webpage`.
 
@@ -169,4 +172,4 @@ https://github.com/photomedia/DDV/blob/master/DDV-license.txt
 
 
 ## Support Contact
-If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
+If you run into any problems or would like to use FluentDNA in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.

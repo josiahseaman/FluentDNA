@@ -110,7 +110,7 @@ class AnnotatedTrackLayout(ParallelLayout):
                     width = max(title_width * 6, width)  # Don't truncate the width such that no meaningful text shows up
                     if vertical and entry.strand == '-':  # Anchored on uppef_left, affected by rotation
                         top -= max(0, abs(width - old_with))
-                    font = self.get_font(self.font_name, font_size)
+                    font = self.get_font(font_size)
                     self.levels.write_label(name, width, height, font, title_width,
                                             [left, top], vertical, entry.strand, self.image)
         print("Done Drawing annotation labels")
@@ -129,3 +129,19 @@ class AnnotatedTrackLayout(ParallelLayout):
     def annotation_width(self):
         return self.each_layout[self.annotation_phase].levels[0].modulo
 
+    def legend(self):
+        explanation = "<strong>Legend:</strong>" + \
+                self.legend_line('Adenine (A)', 'A') +\
+                self.legend_line('Thymine (T)', 'T') +\
+                self.legend_line('Guanine (G)', 'G') +\
+                self.legend_line('Cytosine (C)', 'C') +\
+                self.legend_line('Unsequenced', 'N')
+        self.activate_natural_colors()
+        explanation += "<strong>&nbspAnnotation Legend:</strong>"+\
+                self.legend_line('CDS', 'G') +\
+                self.legend_line('Exon', 'T') +\
+                self.legend_line('Gene', 'C') +\
+                self.legend_line('mRNA', 'A') +\
+                self.legend_line('Transcript', 'N') + \
+                self.legend_line('Repeat', 'R')
+        return  explanation

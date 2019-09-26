@@ -5,25 +5,29 @@ a release from the [Releases Page](https://github.com/josiahseaman/FluentDNA/rel
 ## Quick Start
 You will need:
 1. Familiarity with the command line: [Windows Tutorial](https://github.com/pettarin/python-on-windows) [Mac Tutorial](http://docs.python-guide.org/en/latest/starting/install3/osx/#install3-osx)
-1. Python (Windows must by Python 3.4 or older): [Download Link](https://www.python.org/downloads/release/python-343/)
+1. Python (Windows must by Python 3.6 or newer): [Download Link](https://www.python.org/downloads/release/python-365/)
 2. Git: [Download Link](https://git-scm.com/downloads)
 
 **Installation**
 From a command line in your python virtual environment:  
-`pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip`
+```
+pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
+pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
+```
 
 **Running**
-fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH.
+fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH, it's a good idea to add this to PATH.
 The `example_data` directory will end up in your site packages, so you'll need to reference the full path.
 
 `python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/site-packages/DDV/example_data/hg38_chr19_sample.fa"`
-**Note:** Since Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:
+**Note:** Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:
 `python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`
 
 To use the interactive browser, especially for large files, start a server.
 
 `python /path/to/site-packages/DDV/fluentdna.py --runserver`
-Then open your browser and enter the URL: `http://localhost:8000/`
+If running on your local machine, this will open your browser at URL: `http://localhost:8000/`
+If you are running FluentDNA through ssh to another computer you will need to talk to your administrator about opening a HTTP port.  The PORT is defined at the top of fluentdna.py under run_server().
 
 To run FluentDNA from your own python script I recommend looking at fluentdna.py for examples such as `create_tile_layout_viz_from_fasta()`
 
@@ -31,22 +35,22 @@ To run FluentDNA from your own python script I recommend looking at fluentdna.py
 Check out the file https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/example_DDV_commands.txt for more examples.
 
 ## Support Contact
-If you run into any problems or would like to use DDV in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
+If you run into any problems or would like to use FluentDNA in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
 
-## DDV 2.0 Features
+## FluentDNA 2.0 Features
 
-DDV 2.0 is a complete rewrite in Python of DDV.  DDV 2.0 has a much expanded feature set for handling
+FluentDNA 2.0 is a complete rewrite in Python of DDV.  FluentDNA 2.0 has a much expanded feature set for handling
 large, multipart files.  It can put an entire genome on a single image, marked with contig names.
-DDV 2.0 has features in development for exploring genome alignments, annotations, and transposon alignments.
+FluentDNA 2.0 has features for exploring genome alignments, annotations, and transposon alignments.
 It was developed by Newline Technical Innovations and can be found at:
-https://github.com/josiahseaman/DDV/tree/python-master
+https://github.com/josiahseaman/FluentDNA/tree/python-master
 
 
 # Compile Instructions for Developers:
 PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
 ```
-pip install pyinstaller
-PyInstaller fluentdna.spec
+pip install pyinstaller==3.3.1
+PyInstaller fluentdna.spec --clean --noconfirm
 ```
 to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
 
@@ -57,7 +61,7 @@ to generate a binary.  In practice, this will require some experimentation with 
 * blist wouldn't compile because of a C++ dependency
 * Download blist "wheel" from https://www.lfd.uci.edu/~gohlke/pythonlibs/#blist
 * D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
-* `pip install PyInstaller`
+* `pip install pyinstaller==3.3.1`
 * `PyInstaller fluentdna.spec`
 Troubleshooting: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.
 `D:\python365\Scripts\pip.exe list`

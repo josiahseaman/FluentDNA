@@ -1,13 +1,14 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
+
 import os
 from collections import namedtuple, defaultdict
 from itertools import chain
 import gzip
-from DNASkittleUtils.Contigs import Contig
+from DNASkittleUtils.Contigs import Contig, read_contigs, write_contigs_to_file
 
-from DDV import gap_char
 from DNASkittleUtils.DDVUtils import editable_str
+from DDV import gap_char
 
 try:
     from urllib.parse import unquote
@@ -24,8 +25,8 @@ class GFF(object):
     def _import_gff(self, annotation_file):
         assert os.path.isfile(annotation_file), "File does not exist:" + annotation_file
 
+        gff_version = '3'
         specimen = None
-        gff_version = '2'
         genome_version = None
         date = None
         file_name = os.path.splitext(os.path.basename(annotation_file))[0]
@@ -39,8 +40,6 @@ class GFF(object):
                 if line.startswith("#"):
                     if "gff-version" in line:
                         gff_version = line.split()[1]
-                        if int(gff_version) != '2':
-                            print("WARNING: GFF3 entries for gene and mRNA with different names may cause overlapping labels!")
                     elif "genome-build" in line:
                         specimen = line.split()[1]
                     elif "genome-version " in line:  # NOTE: Keep the space after genome-version!!!
@@ -49,7 +48,7 @@ class GFF(object):
                         date = line.split()[1]
                 elif line.strip():
                     if counter == 0:
-                        print("Version 2 GFF file:", annotation_file)
+                        print("Version "+gff_version+" GFF file:", annotation_file)
 
                     counter += 1
                     try:
@@ -156,10 +155,10 @@ class GFFAnnotation(object):
                 name = name.split('"')[1].replace('Motif:', '')  # repeatmasker format: name inside quotes
         elif 'Name' in entry.attributes:
             name = entry.attributes['Name']
-        elif 'ID' in entry.attributes:  # TODO case sensitive?
-            name = entry.attributes['ID']
         elif 'gene_name' in entry.attributes:
             name = entry.attributes['gene_name']
+        elif 'ID' in entry.attributes:  # TODO case sensitive?
+            name = entry.attributes['ID']
         else:
             name = ';'.join(['%s=%s' % (key, val) for key, val in entry.attributes.items()])
         return name.replace(remove_prefix, '', 1)
@@ -278,7 +277,8 @@ def create_fasta_from_annotation(gff, scaffold_names, scaffold_lengths=None, out
                     'exon':FeatureRep('T', 2),
                     'gene':FeatureRep('C', 3),
                     'mRNA':FeatureRep('A', 4),
-                    'transcript':FeatureRep('N', 5)}
+                    'transcript':FeatureRep('N', 5),
+                    'repeat': FeatureRep('R', 6)}
     symbol_priority = defaultdict(lambda: 20, {f.symbol: f.priority for f in features.values()})
     if isinstance(gff, str):
         gff = parseGFF(gff)  # gff parameter was a filename
@@ -368,5 +368,8 @@ if __name__ == '__main__':
     # create_fasta_from_annotation(annotation, target_chromosome, 'Chimp_test_' + target_chromosome + '.fa')
 
     # annotation = r'DDV\data\Pan_Troglodytes_refseq2.1.4.gtf'
-    annotation = r'DDV\data\Homo_Sapiens_GRCH38_trimmed.gtf'
-    purge_annotation(annotation)
+    # annotation = r'DDV\data\Homo_Sapiens_GRCH38_trimmed.gtf'
+    # purge_annotation(annotation)
+    path = r"E:\Genomes\Human\Human Unique Annotation merged.fa"
+    squished = squish_fasta(read_contigs(path), 20, 100)
+    write_contigs_to_file(path + "_squished.fa", squished)

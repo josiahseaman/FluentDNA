@@ -18,15 +18,7 @@ from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette,
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
-font_filename = "Arial.ttf"
-try:
-    ImageFont.truetype(font_filename, 10)
-except IOError:
-    try:
-        font_filename = font_filename.lower()  # windows and mac are both case sensitive in opposite directions
-        ImageFont.truetype(font_filename, 10)
-    except IOError:
-        font_filename = None
+
 
 
 
@@ -37,7 +29,7 @@ def hex_to_rgb(h):
 
 class TileLayout(object):
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
-                 low_contrast=False, base_width=100, font_name=font_filename, border_width=3,
+                 low_contrast=False, base_width=100, border_width=3,
                  custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
@@ -52,13 +44,10 @@ class TileLayout(object):
         self.title_skip_padding = base_width  # skip one line. USER: Change this
 
         # precomputing fonts turns out to be a big performance gain
-        self.font_name = font_name
         sizes = [9, 38, 380, 380 * 2]
-        if self.font_name is not None:
-            self.fonts = {size: ImageFont.truetype(self.font_name, size) for size in sizes}
-            self.fonts[sizes[0]] = ImageFont.load_default()
-        else:
-            self.fonts = {size: ImageFont.load_default() for size in sizes}
+        self.fonts = {}
+        self.fonts = {size: self.get_font(size) for size in sizes}
+        self.fonts[sizes[0]] = ImageFont.load_default()  # looks better at low res
         self.final_output_location = None
         self.image = None
         self.draw = None
@@ -408,7 +397,7 @@ class TileLayout(object):
     def write_title(self, text, width, height, font_size, title_lines, title_width, upper_left,
                     vertical_label, canvas, color=(0, 0, 0, 255)):
         upper_left = list(upper_left)  # to make it mutable
-        font = self.get_font(self.font_name, font_size)
+        font = self.get_font(font_size)
         multi_line_title = pretty_contig_name(text, title_width, title_lines)
         txt = Image.new('RGBA', (width, height))#, color=(0,0,0,255))
         bottom_justified = height - multi_line_height(font, multi_line_title, txt)
@@ -419,11 +408,23 @@ class TileLayout(object):
             upper_left[0] += 8  # adjusts baseline for more polish
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
-    def get_font(self, font_name, font_size):
+    def get_font(self, font_size):
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            font = ImageFont.truetype(font_name, font_size)
+            from DDV.DDVUtils import execution_dir
+            base_dir = execution_dir()
+            try:
+                with open(os.path.join(base_dir, 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
+                    font = ImageFont.truetype(font_file, font_size)
+            except IOError:
+                try:
+                    with open(os.path.join(base_dir, 'DDV', 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
+                        font = ImageFont.truetype(font_file, font_size)
+                except IOError:
+                    print("Unable to load ariblk.ttf size:%i" % font_size)
+                    font = ImageFont.load_default()
+            self.fonts[font_size] = font  # store for later
         return font
 
     def output_image(self, output_folder, output_file_name, no_webpage):
@@ -461,14 +462,34 @@ class TileLayout(object):
         width_height[1] += self.levels.origin[1]
         return int(width_height[0]), int(width_height[1])
 
+    def legend(self):
+        """Refactored legend() to be overridden in subclasses"""
+        if self.using_spectrum:
+            # TODO: legend_line('Unsequenced', 'N') +\
+            line = "<strong>Legend:</strong>" + \
+                     """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
+                     0 = dark purple. 125 = green, 255 = yellow. Developed as 
+                     Matplotlib's default color palette.  It is 
+                     perceptually uniform and color blind safe.</span>"""
+        else:
+            line = "<strong>Legend:</strong>" + \
+                self.legend_line('Adenine (A)', 'A') +\
+                self.legend_line('Thymine (T)', 'T') +\
+                self.legend_line('Guanine (G)', 'G') +\
+                self.legend_line('Cytosine (C)', 'C') +\
+                self.legend_line('Unsequenced', 'N') +\
+                """<span class='color-explanation'>G/C rich regions are red/orange. 
+                A/T rich areas are green/blue. Color blind safe colors.</span>"""
+        return line
+
+    def legend_line(self, label, palette_key):
+        return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
 
     def generate_html(self, output_folder, output_file_name, overwrite_files=True):
         html_path = os.path.join(output_folder, 'index.html')
         if not overwrite_files and os.path.exists(html_path):
             print(html_path, ' already exists.  Skipping HTML.')
             return
-        def legend_line(label, palette_key):
-            return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
         try:
             import DDV
             module_path = os.path.dirname(DDV.__file__)
@@ -485,44 +506,7 @@ class TileLayout(object):
                             "image_origin": '[0,0]',
                             "includeDensity": 'false',
                             "date": datetime.now().strftime("%Y-%m-%d"),
-                            'legend': "<strong>Legend:</strong>" +\
-                                legend_line('Adenine (A)', 'A') +\
-                                legend_line('Thymine (T)', 'T') +\
-                                legend_line('Guanine (G)', 'G') +\
-                                legend_line('Cytosine (C)', 'C') +\
-                                legend_line('Unsequenced', 'N') +\
-                                """<span class='color-explanation'>G/C rich regions are red/orange.
-                                    A/T rich areas are green/blue. Color blind safe colors.</span>"""}
-            if self.using_spectrum:
-                # TODO: legend_line('Unsequenced', 'N') +\
-                html_content['legend'] = "<strong>Legend:</strong>" +\
-                """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
-                0 = dark purple. 125 = green, 255 = yellow. Developed as 
-                Matplotlib's default color palette.  It is 
-                perceptually uniform and color blind safe.</span>"""
-            if self.protein_palette:
-                html_content['legend'] = "<strong>Legend:</strong>"+\
-                    legend_line('Alanine (A)', 'A') +\
-                    legend_line('Cysteine (C)', 'C') +\
-                    legend_line('Aspartic acid (D)', 'D') +\
-                    legend_line('Glutamic acid (E)', 'E') +\
-                    legend_line('Phenylalanine (F)', 'F') +\
-                    legend_line('Glycine (G)', 'G') +\
-                    legend_line('Histidine (H)', 'H') +\
-                    legend_line('Isoleucine (I)', 'I') +\
-                    legend_line('Lysine (K)', 'K') +\
-                    legend_line('Leucine (L)', 'L') +\
-                    legend_line('Methionine (M)', 'M') +\
-                    legend_line('Asparagine (N)', 'N') +\
-                    legend_line('Proline (P)', 'P') +\
-                    legend_line('Glutamine (Q)', 'Q') +\
-                    legend_line('Arginine (R)', 'R') +\
-                    legend_line('Serine (S)', 'S') +\
-                    legend_line('Threonine (T)', 'T') +\
-                    legend_line('Valine (V)', 'V') +\
-                    legend_line('Tryptophan (W)', 'W') +\
-                    legend_line('Tyrosine (Y)', 'Y')+ \
-                    legend_line('Any (X)', 'X')
+                            'legend': self.legend()}
             html_content.update(self.additional_html_content(html_content))
             with open(os.path.join(html_template, 'index.html'), 'r') as template:
                 template_content = template.read()

@@ -214,7 +214,7 @@ class Ideogram(HighlightedAnnotation):
     #     self.palette['T'] = hex_to_rgb('A19E3D')  # light green
     #     self.palette['A'] = hex_to_rgb('6D772F')  # Dark Green
 
-    def draw_nucleotides(self):
+    def draw_nucleotides(self, verbose=True):
         # points_file_name = os.path.join(self.final_output_location, "test_ideogram_points.txt")
         # points_file = None # open(points_file_name, 'w')
         # if points_file:
@@ -293,18 +293,6 @@ def increment(digits, radices, place):
 
 
 if __name__ == "__main__":
-    # layout = Ideogram([3,3,3,63], [5,5,3,3,21])
-    # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-padding2')
-
-    # layout = Ideogram([3,3,3,63], [5,5,3,3,21], 2, 2)
-    # layout.process_file("example_data/hg38_chr19_sample.fa", 'www-data/dnadata/test ideogram', 'ideogram-sparse')
-    # layout = Ideogram(([5,5,5,5,11],  # thick, local
-    #                    [5,5,5,5,5 ,53], 1, 1))
-    ## thin layout layout = Ideogram([3,3,3,3,3,27], [3,3,3,3,3,3 ,53], 1, 1)
-    #                               ([5,5,5,5,5,27], [3,3,3,3,3,3 ,53], 1, 1)
-    # 3*3*3*3*3*27*
-    # 3*3*3*3*3 = 1,594,323 bp per fiber row
-
     radix_settings = eval(sys.argv[2])
     assert len(radix_settings) == 4 and \
             type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
