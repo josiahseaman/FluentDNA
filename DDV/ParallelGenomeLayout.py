@@ -1,13 +1,14 @@
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
+import os
 import traceback
 from datetime import datetime
 
 from PIL import ImageFont, Image
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, font_filename, hex_to_rgb
+from DDV.TileLayout import TileLayout, hex_to_rgb
 from DDV.Layouts import level_layout_factory
 
 
@@ -27,16 +28,18 @@ class ParallelLayout(TileLayout):
             column_widths = [self.base_width] * n_genomes
 
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
-        p = 6  # padding_between_layouts
+        # I found that less padding is better for keeping visual patterns coherent over clusters
+        # of columns.  The white space has a disproportionate effect if you space it out too much.
+        p = 1  # padding_between_layouts
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
-        column_clusters_per_mega_row = 10600 // cluster_width #10600
+        column_clusters_per_mega_row = 10600 // cluster_width  # 10600
 
         for nth_genome in range(n_genomes):
             all_columns_height = base_width * 10
-            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 10, 3, 4, 999]
+            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 12, 3, 4, 999]
             standard_step_pad = cluster_width - standard_modulos[0] + p
-            mega_row_padding = p * 3 + self.header_height
+            mega_row_padding = p * 3 + self.header_height + 10
             standard_padding = [0, 0, standard_step_pad, mega_row_padding, p*(3**2), p*(3**3), p*(3**4)]
             # steps inside a column bundle, not exactly the same as bundles steps
             thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
@@ -49,7 +52,7 @@ class ParallelLayout(TileLayout):
     def enable_fat_headers(self):
         pass  # just don't
 
-    def process_file(self, output_folder, output_file_name, fasta_files=list(),
+    def process_file(self, output_folder, output_file_name, fasta_files,
                      no_webpage=False, extract_contigs=None):
         assert len(fasta_files) == self.n_genomes, "List of Genome files must be same length as n_genomes"
         start_time = datetime.now()
@@ -99,8 +102,13 @@ class ParallelLayout(TileLayout):
         To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
         together.  Mouse over gives further information on each file."""
         from DNASkittleUtils.DDVUtils import pp
-        #Caution: These corners are currently hard coded to the color and dimension of one image
-        corner = Image.open('html_template/img/border_box_corner.png')
+        from DDV.DDVUtils import execution_dir
+        base_dir = execution_dir()
+        # Caution: These corners are currently hard coded to the color and dimension of one image
+        try:
+            corner = Image.open(os.path.join(base_dir,'DDV','html_template','img','border_box_corner.png'))
+        except FileNotFoundError:
+            corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
@@ -132,7 +140,7 @@ class ParallelLayout(TileLayout):
     def draw_the_viz_title(self, filenames):
         """Write the names of each of the source files in order so their columns can be identified with their
         column colors"""
-        font = ImageFont.truetype(font_filename, 380)
+        font = self.get_font(380)
         titles = [just_the_name(x) for x in filenames]  # remove extension and path
         span = '      '.join(titles)
         title_spanning_width = font.getsize(span)[0]  # For centered text
@@ -156,14 +164,14 @@ class ParallelLayout(TileLayout):
         if title_padding >= self.tile_label_size:
             title_padding = self.levels[2].chunk_size
         # Remove first title
-        if total_progress == 0:
-            # tail += title_padding  #commenting this out could cause problems with multiple contigs
-            title_padding = 0
-            if len(self.contigs) == 1:
-                tail = 0  # no need for tail
-            # i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
-            # total_padding = total_progress + title_padding + reset_padding + next_segment_length
-            # tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
+        # if total_progress == 0:
+        #     # tail += title_padding  #commenting this out could cause problems with multiple contigs
+        #     title_padding = 0
+        #     if len(self.contigs) == 1:
+        #         tail = 0  # no need for tail
+        #     i = min([i for i in range(len(self.levels)) if next_segment_length + 2600 < self.levels[i].chunk_size])
+        #     total_padding = total_progress + title_padding + reset_padding + next_segment_length
+        #     tail = self.levels[i - 1].chunk_size - total_padding % self.levels[i - 1].chunk_size - 1
 
         return reset_padding, title_padding, tail
 

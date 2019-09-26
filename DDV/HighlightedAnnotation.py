@@ -18,10 +18,10 @@ def blend_pixel(markup_canvas, pt, c, overwrite=False):
         markup_canvas[pt[0], pt[1]] = (c[0], c[1], c[2], combined_alpha)
 
 def annotation_points(entry, renderer, start_offset):
-    annotation_points = []  # TODO use unsigned shorts (max 65535) for memory
-    for i in range(entry.start, entry.end):
-        # important to include title and reset padding in coordinate frame
-        annotation_points.append(renderer.position_on_screen(i + start_offset))
+    # important to include title and reset padding in coordinate frame
+    # TODO use unsigned shorts (max 65535) for memory
+    annotation_points = tuple(renderer.position_on_screen(i + start_offset) for i in range(entry.start, entry.end))
+
     return annotation_points
 
 
@@ -118,10 +118,10 @@ class HighlightedAnnotation(TileLayout):
 
     def draw_annotation_outlines(self, regions, markup_image, color, simple_entry, shadows):
         markup_canvas = markup_image.load()
-        self.draw_exons(markup_canvas, regions, color, highlight_whole_entry=True)
+        self.draw_annotation_features(markup_canvas, regions, color, highlight_whole_entry=True)
         if not simple_entry:
             exon_color = (255, 255, 255, 50)  # white highlighter.  This is less disruptive overall
-            self.draw_exons(markup_canvas, regions, exon_color)  # double down on alpha
+            self.draw_annotation_features(markup_canvas, regions, exon_color)  # double down on alpha
         if shadows:
             try:
                 annotation_point_union = self.draw_big_shadow_outline(markup_image, regions, (65, 42, 80))
@@ -143,7 +143,7 @@ class HighlightedAnnotation(TileLayout):
         self.draw_shadow(big_shadow, markup_image.load(), outline_colors)
         return annotation_point_union
 
-    def draw_exons(self, markup_canvas, regions, color, highlight_whole_entry=False):
+    def draw_annotation_features(self, markup_canvas, regions, color, highlight_whole_entry=False):
         print("Drawing exons" if not highlight_whole_entry else "Drawing genic regions")
 
         for region in regions:
@@ -151,7 +151,7 @@ class HighlightedAnnotation(TileLayout):
                 for point in region.points:  # highlight exons
                     blend_pixel(markup_canvas, point, color)
             else:
-                for point in region.exon_region_points():  # highlight exons
+                for point in region.cds_region_points():  # highlight exons
                     blend_pixel(markup_canvas, point, color)
 
     def draw_overlap_shadows(self, annotation_point_union, markup_image, regions, shadow):
@@ -199,7 +199,7 @@ class HighlightedAnnotation(TileLayout):
                         if entry.type == 'gene':
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                             genes_seen.add(entry.id())
-                        if entry.type == 'mRNA' and entry.parent() not in genes_seen:
+                        if entry.type in ['mRNA', 'transcript'] and entry.parent() not in genes_seen:
                             regions.append(AnnotatedRegion(entry, self.levels, start_offset))
                         if entry.type == 'CDS':# or entry.type == 'exon':
                             # hopefully mRNA comes first in the file
@@ -255,7 +255,7 @@ class HighlightedAnnotation(TileLayout):
                 if height < 11:
                     height = 11  # don't make the area so small it clips the text
                     upper_left[1] -= 2
-                font = self.get_font(self.font_name, font_size)
+                font = self.get_font(font_size)
                 current_color = tuple(label_color) # must be tuple
                 if font_size >= 14:
                     alpha = 235 / 255
@@ -319,7 +319,7 @@ class AnnotatedRegion(GFFAnnotation):
         self.points = annotation_points(GFF_annotation, renderer, start_offset)
         self.protein_spans = []
 
-    def exon_region_points(self):
+    def cds_region_points(self):
         exon_indices = set()
         for exon in self.protein_spans:
             exon_indices.update(exon.set_of_points())

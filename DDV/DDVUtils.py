@@ -93,12 +93,18 @@ def copy_to_sources(output_folder, data_file):
         pass  # not a problem
     return data_destination
 
-def base_directories(output_name):
+
+def execution_dir():
     if getattr(sys, 'frozen', False):
         BASE_DIR = os.path.dirname(sys.executable)
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
+    return BASE_DIR
+
+
+def base_directories(output_name):
+    BASE_DIR = execution_dir()
+    SERVER_HOME = os.path.join(BASE_DIR, 'results')
     base_path = os.path.join(SERVER_HOME, output_name) if output_name else SERVER_HOME
     return SERVER_HOME, base_path
 
@@ -161,6 +167,11 @@ def beep(duration=600):
         winsound.Beep(freq, duration)
     except ImportError:
         pass  # not a windows machine
+    try:
+        from AppKit import NSBeep
+        NSBeep()
+    except BaseException:
+        pass  # not a Mac machine
 
 
 def interpolate(A, B, start, end, position):

@@ -15,6 +15,7 @@ from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import rev_comp
 
 from DDV.Span import Span
+from DDV import gap_char
 
 
 def int_log(num):
@@ -125,12 +126,12 @@ def write_aligned_repeat_consensus(display_lines, out_filename, seq):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         for text_line in display_lines:
-            line = blank_line_array(consensus_width, 'A')
+            line = blank_line_array(consensus_width, gap_char)
             for fragment in text_line:
                 nucleotides = fragment.genome_span().sample(seq)
                 if fragment.strand == '-':
                     nucleotides = rev_comp(nucleotides)
-                nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
+                #nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
                 if fragment.rep_end < len(nucleotides):  # sequence I have sampled starts before the beginning of the frame
                     nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
                 line = line[:fragment.rep_end - len(nucleotides)] + editable_str(nucleotides) + line[fragment.rep_end:]
@@ -147,12 +148,12 @@ def write_consensus_sandpile(anno_entries, out_filename, seq):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         depth_graph = [0] * consensus_width
-        image = [blank_line_array(consensus_width, 'A') for _ in range(len(anno_entries))]
+        image = [blank_line_array(consensus_width, gap_char) for _ in range(len(anno_entries))]
         for fragment in anno_entries:
             nucleotides = fragment.genome_span().sample(seq)
             if fragment.strand == '-':
                 nucleotides = rev_comp(nucleotides)
-            nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
+            #nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
             if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
                 nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
             for x_start, c in enumerate(nucleotides):
@@ -175,7 +176,7 @@ def unnormalized_histogram_of_breakpoints(anno_entries, out_filename):
     with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
         out.write('>' + just_the_name(out_filename) + '\n')
         depth_graph = [0 for _ in range(consensus_width)]
-        image = [editable_str(('A' * consensus_width) + '\n') for _ in range(len(anno_entries))]
+        image = [editable_str((gap_char * consensus_width) + '\n') for _ in range(len(anno_entries))]
         for fragment in anno_entries:
             x = fragment.rep_start
             image[depth_graph[x]][x] = 'G'

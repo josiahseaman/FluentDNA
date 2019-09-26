@@ -7,9 +7,7 @@ env/
 env365/
 install_test/
 release/
-www-data/to_process
-www-data/dnadata
-build.bat
+DDV/results/
 release.bat
 scraps/
 env_fresh/

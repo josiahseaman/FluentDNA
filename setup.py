@@ -5,11 +5,11 @@ utils_ver = '1.0.11'
 setup(
     name='DDV',
     version=VERSION,
-    description='Visualization tool for fasta files.  Supports whole genome alignment and multiple sequence alignment.',
+    description='Visualization tool for bare fasta files.  Supports whole genome alignment and multiple sequence alignment.',
     author='Josiah Seaman, Bryan Hurst',
     author_email='josiah.seaman@gmail.com',
     license='BSD',
-    packages=find_packages(exclude=('build', 'obj', 'www-data')),
+    packages=find_packages(exclude=('build', 'obj', 'results')),
     include_package_data=True,
     package_data={'DDV': ['html_template/*', 'example_data/*',
                           'html_template/img/*', 'example_data/alignments/*',]},
@@ -31,7 +31,7 @@ setup(
     zip_safe=False,
     url='https://github.com/josiahseaman/FluentDNA',
     download_url='https://github.com/josiahseaman/FluentDNA',  # TODO: post a tarball
-    keywords=['bioinformatics', 'dna', 'fasta', 'chain', 'alignment'],
+    keywords=['bioinformatics', 'dna', 'fasta', 'chain', 'alignment', 'species diversity'],
     classifiers=[
         'Development Status :: 4 - Beta',  # 5 - Production/Stable
         'Intended Audience :: Developers',

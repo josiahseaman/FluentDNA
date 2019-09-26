@@ -8,8 +8,9 @@ from collections import namedtuple
 try:
     from blist import blist
 except ImportError:
-    print("WARNING: blist is not installed.  \n",
-          "To get better performance, pip install blist and/or Visual C++ lib 14", file=sys.stderr)
+    print("Note: blist is not installed.  \n",
+          "If you are visualizing whole genome alignments, you can get better performance by:\n"
+          " pip install blist and/or Visual C++ lib 14", file=sys.stderr)
     blist = list  # issue warning if used
 
 
@@ -45,6 +46,28 @@ def scan_past_header(seq, index, take_shortcuts=False, skip_newline=True):
     return index
 
 
+def initial_stats():
+    """Stats should not use a defaultdict as this is in the inner loop."""
+    return {
+            'Shared seq bp': 0,
+            'Query N to ref in bp': 0,
+            'Ref N to query bp': 0,
+            'Ref unique bp': 0,
+            'Query unique bp': 0,
+            'Aligned Variance in bp': 0,
+            'translocation_searched': 0,
+            'translocation_deleted': 0,
+            'Query Number of Gaps (all)': 0,
+            'Query Gaps larger than 10bp': 0,
+            'Query Gaps larger than 100bp': 0,
+            'Query Gaps larger than 1000bp': 0,
+            'Ref Number of Gaps (all)': 0,
+            'Ref Gaps larger than 10bp': 0,
+            'Ref Gaps larger than 100bp': 0,
+            'Ref Gaps larger than 1000bp': 0,
+        }
+
+
 class ChainParser(object):
     def __init__(self, chain_name, first_source, second_source, output_prefix,
                  trial_run=False, separate_translocations=False, squish_gaps=False,
@@ -72,24 +95,7 @@ class ChainParser(object):
             print("WARNING: blist library not installed: Genome alignment will be very slow.")
         self.stored_rev_comps = {}
         self.gapped = '_gapped'
-        self.stats = {  # don't use a defaultdict as this is in the inner loop
-            'Shared seq bp': 0,
-            'Query N to ref in bp': 0,
-            'Ref N to query bp': 0,
-            'Ref unique bp': 0,
-            'Query unique bp': 0,
-            'Aligned Variance in bp': 0,
-            'translocation_searched': 0,
-            'translocation_deleted': 0,
-            'Query Number of Gaps (all)': 0,
-            'Query Gaps larger than 10bp': 0,
-            'Query Gaps larger than 100bp': 0,
-            'Query Gaps larger than 1000bp': 0,
-            'Ref Number of Gaps (all)': 0,
-            'Ref Gaps larger than 10bp': 0,
-            'Ref Gaps larger than 100bp': 0,
-            'Ref Gaps larger than 1000bp': 0,
-        }
+        self.stats = initial_stats()
 
         if self.query_source:
             self.query_contigs = read_contigs_to_dict(self.query_source)
@@ -107,12 +113,26 @@ class ChainParser(object):
 
 
     def write_stats_file(self):
-        with open(os.path.join(self.output_folder, 'stats.txt'), 'w+') as stats:
+        s = self.stats  # alias
+        s["Total alignment Length"] = s['Aligned Variance in bp'] + s['Shared seq bp']
+        s["Ref Chr Total Size (No N's)"] = s['Ref unique bp'] + s["Total alignment Length"]
+        s["Ref Identity within Alignment"] = 1 - (s['Aligned Variance in bp'] / s['Total alignment Length'])
+        s["Alignment Coverage of Ref Chr"] = s["Total alignment Length"] / s["Ref Chr Total Size (No N's)"]
+        s["Alignment Coverage of Query Main Chr"] = s['Total alignment Length'] / (
+                    s['Total alignment Length'] + s["Query unique bp"])
+        stats_path = os.path.join(self.output_folder, 'sources', 'stats.txt')
+        with open(stats_path, 'w+') as stats:
             stats.write('\n===== Alignment Stats ======\n')
-            for key in self.stats:
-                stats.write('%s\t%i\n' % (key, self.stats[key]))
+            for key, val in s.items():
+                if isinstance(val, float):  # don't round percents to zero
+                    stats.write('%s\t%f\n' % (key, val))
+                else:
+                    stats.write('%s\t%i\n' % (key, val))
             stats.write('\n====================================\n')
 
+        [print(k, v) for k, v in self.stats.items()]
+        print('Done writing stats file:%s.\n\n\n\n\n' % stats_path, flush=True)
+        return stats_path
 
     def mash_fasta_and_chain_together(self, chain, is_master_alignment=False):
         ref_pointer, query_pointer = self.setup_chain_start(chain, is_master_alignment)
@@ -145,26 +165,28 @@ class ChainParser(object):
         if hi is None:
             self.stats['translocation_searched'] += 1
         hi = hi or len(self.alignment)
-        while lo < hi:
-            mid = (lo + hi) // 2
-            # Special handling for accidentally landing on a translocation (not sorted)
-            if not self.alignment[mid].is_master_chain:  # recursively splits the binary search
-                mid_left, mid_right = mid, mid
-                # slide left
-                while not self.alignment[mid_left].is_master_chain:
-                    mid_left -= 1
-                if not self.find_old_query_location(new_alignment, lo=lo, hi=mid_left, depth=depth + 1):
-                    # slide right
-                    while not self.alignment[mid_right].is_master_chain:
-                        mid_right += 1
-                    return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
-                return True
-            # Actual Binary search is here:
-            if new_alignment.query_less_than(self.alignment[mid]):
-                hi = mid
-            else:
-                lo = mid + 1
-
+        try:
+            while lo < hi:
+                mid = (lo + hi) // 2
+                # Special handling for accidentally landing on a translocation (not sorted)
+                if not self.alignment[mid].is_master_chain:  # recursively splits the binary search
+                    mid_left, mid_right = mid, mid
+                    # slide left
+                    while not self.alignment[mid_left].is_master_chain:
+                        mid_left -= 1
+                    if not self.find_old_query_location(new_alignment, lo=lo, hi=mid_left, depth=depth + 1):
+                        # slide right
+                        while not self.alignment[mid_right].is_master_chain:
+                            mid_right += 1
+                        return self.find_old_query_location(new_alignment, lo=mid_right, hi=hi, depth=depth + 1)
+                    return True
+                # Actual Binary search is here:
+                if new_alignment.query_less_than(self.alignment[mid]):
+                    hi = mid
+                else:
+                    lo = mid + 1
+        except IndexError:
+            return False
         # Binary search brings us to the right most position
         lo = max(lo - 1, 0)
         final_possible = self.alignment[lo].query_unique_span()
@@ -524,7 +546,7 @@ class ChainParser(object):
         self.ref_seq_gapped = editable_str('')
         self.output_fastas = []
         self.alignment = blist()  # Alignment is specific to the chromosome
-        self.stats = DefaultOrderedDict(lambda: 0)
+        self.stats = initial_stats()
         if ref_chr in self.ref_contigs:
             self.ref_sequence = self.ref_contigs[ref_chr]  # only need the reference chromosome read, skip the others
         else:
@@ -540,13 +562,13 @@ class ChainParser(object):
         names, ref_chr = self.setup_for_reference_chromosome(chromosome_name)
         self.create_alignment_from_relevant_chains(ref_chr)
         self.create_fasta_from_composite_alignment()
-        translocation_markup =self.create_fasta_from_composite_alignment(translocation_markup=True)
+        translocation_markup = self.create_fasta_from_composite_alignment(translocation_markup=True)
 
         names['ref_gapped'], names['query_gapped'] = self.write_gapped_fasta(names['ref'], names['query'])
         names['ref_unique'], names['query_unique'] = \
             self.print_only_unique(names['query_gapped'], names['ref_gapped'], translocation_markup)
         names['translocation_markup'] = self.write_markup_file(names['ref'], translocation_markup)
-        # sys.exit(0)
+        stats_path = self.write_stats_file()
         # NOTE: Order of these appends DOES matter!
         self.output_fastas.append(names['ref_gapped'])
         self.output_fastas.append(names['ref_unique'])
@@ -558,7 +580,6 @@ class ChainParser(object):
             del names['ref']
             del names['query']
         batch = Batch(chromosome_name, self.output_fastas, self.output_folder)
-        self.write_stats_file()
         # self.output_folder = None  # clear the previous value
         return batch
 
