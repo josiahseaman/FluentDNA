@@ -104,7 +104,7 @@ def execution_dir():
 
 def base_directories(output_name):
     BASE_DIR = execution_dir()
-    SERVER_HOME = os.path.join(BASE_DIR, 'www-data', 'dnadata')
+    SERVER_HOME = os.path.join(BASE_DIR, 'results')
     base_path = os.path.join(SERVER_HOME, output_name) if output_name else SERVER_HOME
     return SERVER_HOME, base_path
 
