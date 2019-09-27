@@ -17,7 +17,7 @@ setup(
     install_requires=[
         'Pillow>=3.2.0',
         'six>=1.10.0',
-        'psutil>=4.3.1',
+        'psutil>=5.4.5',
         'blist>=1.3.6',
         'natsort>=5.1.1',
         'numpy>=1.13.3',
