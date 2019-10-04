@@ -143,7 +143,7 @@ function peano_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
         var next_axis = axis_flipped[(part + 1) %2];
         axis_flipped[(part + 1) %2] = this_level_flipped? !next_axis : next_axis; // XOR
 
-        if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
+        if (i != 1 && xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
             return "";//check for invalid coordinate (margins)
         }
     }

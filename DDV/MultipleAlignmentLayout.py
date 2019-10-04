@@ -4,10 +4,12 @@ from __future__ import print_function, division, absolute_import, \
 import os
 import traceback
 from datetime import datetime
+
+from DNASkittleUtils.Contigs import read_contigs
 from PIL import Image, ImageDraw
 
 import math
-from DDV.TileLayout import hex_to_rgb, TileLayout
+from DDV.TileLayout import hex_to_rgb, TileLayout, is_protein_sequence
 from natsort import natsorted
 
 from DDV.DDVUtils import make_output_directory
@@ -121,14 +123,7 @@ class MultipleAlignmentLayout(TileLayout):
         """Layout a whole set of different repeat types with different widths.  Column height is fixed,
         but column width varies constantly.  Wrapping to the next row is determined by hitting the
         edge of the allocated image."""
-        if not self.single_file:
-            super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
-        else:
-            all_contigs = self.contigs
-            for i, contig in enumerate(all_contigs):
-                self.i_layout = i
-                self.contigs = [contig]
-                super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
+        super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
 
 
     def calc_all_padding(self):
@@ -169,7 +164,7 @@ class MultipleAlignmentLayout(TileLayout):
         areas = []
         for source in self.all_contents.values():
             areas.append((source[-1].consensus_width + self.x_pad) * (len(source) + self.y_pad))
-        area = sum(areas)
+        area = sum(areas) if not self.single_file else len(self.contigs[0].seq) * len(self.all_contents) *1.2
         self.image_length = int(area * 1.2)
         square_dim = int(math.sqrt(self.image_length))
         desired_width = 5 * square_dim // 3
@@ -191,7 +186,7 @@ class MultipleAlignmentLayout(TileLayout):
         image_wh = self.guess_image_dimensions()
 
         #unsorted, largest height per row, tends to be less dense
-        self.each_layout = []  # delete old defaul layout
+        self.each_layout = []  # delete old default layout
         for filename in self.fasta_sources:
             source = self.all_contents[filename]
             height = len(source) + self.title_height_px
@@ -201,7 +196,6 @@ class MultipleAlignmentLayout(TileLayout):
 
         adjusted_height = self.next_origin[1] + self.current_column_height + self.y_pad  #could extend image
         if self.single_file:
-            self.spread_large_MSA_source()
             adjusted_height = image_wh[1]
         self.prepare_image(0, image_wh[0], adjusted_height)
 
@@ -211,34 +205,25 @@ class MultipleAlignmentLayout(TileLayout):
         """Populates fasta_sources with files from a directory"""
         files = fastas_in_folder(input_fasta_folder)
         self.single_file = len(files) == 1
-        for single_MSA in files:
-            self.read_contigs_and_calc_padding(single_MSA, None)
-            fasta_name = os.path.basename(single_MSA)
-            self.fasta_sources.append(fasta_name)
-            self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
-        if self.sort_contigs:  # do this before self.each_layout is created in order
-            heights = [(len(self.all_contents[fasta_name]), fasta_name) for fasta_name in self.fasta_sources]
-            heights.sort(key=lambda pair: -pair[0])  # largest number of sequences first
-            self.fasta_sources = [pair[1] for pair in heights]  # override old ordering
+        if self.single_file:
+            self.spread_large_MSA_source(files[0])
+        else:
+            for single_MSA in files:
+                self.read_contigs_and_calc_padding(single_MSA, None)
+                fasta_name = os.path.basename(single_MSA)
+                self.fasta_sources.append(fasta_name)
+                self.all_contents[fasta_name] = self.contigs  # store contigs so the can be wiped
+            if self.sort_contigs:  # do this before self.each_layout is created in order
+                heights = [(len(self.all_contents[fasta_name]), fasta_name) for fasta_name in self.fasta_sources]
+                heights.sort(key=lambda pair: -pair[0])  # largest number of sequences first
+                self.fasta_sources = [pair[1] for pair in heights]  # override old ordering
 
 
     def layout_based_on_repeat_size(self, width, height, max_width, contigs):
         """change layout to match dimensions of the repeat
         """
-        usable_width = max_width - (self.border_width * 2)
-        if width > usable_width:  # Case with one massively wide MSA
-            # TODO more than one large MSA
-            height = len(contigs)  # number of individuals
-            padding_between_mega_rows = 1
-            n_rows = math.ceil(len(contigs[0].seq) / usable_width)
-            modulos = [usable_width, 1, 1, n_rows]
-            padding = [0, height + padding_between_mega_rows, 0, height + padding_between_mega_rows]
-            for row in contigs:  # one layout for mouse over of each individual
-                self.next_origin[0] = self.border_width
-                self.next_origin[1] += 1
-                self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
-            self.next_origin[1] += n_rows * \
-                                   (height + padding_between_mega_rows)
+        if self.single_file:
+            self.layout_phased_file(width, height, max_width)
         else:  # Typical case with many small MSA
             # skip to next mega row
             if self.next_origin[0] + width + 1 >= max_width:
@@ -251,6 +236,25 @@ class MultipleAlignmentLayout(TileLayout):
             padding = [0, 0, 20, 20 * 3]
             self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
             self.next_origin[0] += width + self.x_pad  # scoot next_origin by width we just used up
+        self.i_layout = len(self.each_layout) - 1  # select current layout
+
+
+    def layout_phased_file(self, width, height, max_width):
+        self.each_layout = []
+        usable_width = min(width, max_width - (self.border_width * 2))
+        # TODO more than one large MSA
+        height = len(self.fasta_sources)  # number of individuals
+        padding_between_mega_rows = 1
+        n_rows = math.ceil(len(self.contigs[0].seq) / usable_width)
+        modulos = [usable_width, 1, 1, n_rows]
+        padding = [0, height + padding_between_mega_rows, 0, height + padding_between_mega_rows]
+        for y, row in enumerate(self.fasta_sources):  # one layout for mouse over of each individual
+            self.next_origin[0] = self.border_width
+            self.next_origin[1] = 30 + y
+            self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
+        # move origin to bottom of image
+        self.next_origin[1] += n_rows * \
+                               (height + padding_between_mega_rows)
         self.i_layout = len(self.each_layout) - 1  # select current layout
 
 
@@ -268,10 +272,19 @@ class MultipleAlignmentLayout(TileLayout):
         self.write_title(contig_name, self.levels.base_width, self.title_height_px, font_size,
                          title_lines, title_width, upper_left, False, self.image)
 
-    def spread_large_MSA_source(self):
-        filename = self.fasta_sources[0]
-        actual_contigs = self.all_contents[filename]
-        n_individuals = len(actual_contigs)
-        self.fasta_sources = [filename] * n_individuals
-        for filename in self.fasta_sources:
-            source = self.all_contents[filename]
+    def spread_large_MSA_source(self, fasta_path):
+        individuals = read_contigs(fasta_path)
+        self.contigs = individuals
+        self.fasta_sources = [os.path.basename(fasta_path) + str(i) for i in range(len(individuals))]
+        self.all_contents = {source: [individuals[i]] for i, source in enumerate(self.fasta_sources)}
+        self.protein_palette = is_protein_sequence(self.contigs[0])
+
+        # Zero padding
+        for name, container in self.all_contents.items():
+            contig = container[0]
+            contig.reset_padding = 0
+            contig.title_padding = 0
+            contig.tail_padding = 0
+            contig.nuc_title_start = 0
+            contig.nuc_seq_start = 0
+            contig.consensus_width = len(contig.seq)
