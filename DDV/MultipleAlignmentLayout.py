@@ -32,7 +32,7 @@ class MultipleAlignmentLayout(TileLayout):
         self.all_contents = {}  # (filename: contigs) output_fasta() determines order of fasta_sources
         self.current_column_height = 20
         self.next_origin = [self.border_width, 30] # margin for titles, incremented each MSA
-        self.protein_palette = True
+        self.single_file = False  # flag to detect a single, long MSA
         self.sort_contigs = sort_contigs
         self.title_height_px = 10
         self.x_pad = 20  # whitespace between MSA blocks
@@ -105,7 +105,7 @@ class MultipleAlignmentLayout(TileLayout):
             # self.read_contigs_and_calc_padding(single_MSA, None)
             try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
                 self.draw_nucleotides()
-                if self.use_titles:
+                if self.use_titles and not self.single_file:
                     self.draw_titles()
             except Exception as e:
                 print('Encountered exception while drawing nucleotides:', '\n')
@@ -121,7 +121,14 @@ class MultipleAlignmentLayout(TileLayout):
         """Layout a whole set of different repeat types with different widths.  Column height is fixed,
         but column width varies constantly.  Wrapping to the next row is determined by hitting the
         edge of the allocated image."""
-        super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
+        if not self.single_file:
+            super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
+        else:
+            all_contigs = self.contigs
+            for i, contig in enumerate(all_contigs):
+                self.i_layout = i
+                self.contigs = [contig]
+                super(MultipleAlignmentLayout, self).draw_nucleotides(verbose)
 
 
     def calc_all_padding(self):
@@ -129,18 +136,19 @@ class MultipleAlignmentLayout(TileLayout):
         seq_start, title_length = 0, 0
         widest_sequence = 0
         for i, contig in enumerate(self.contigs):  # Type: class DNASkittleUtils.Contigs.Contig
-            length = len(contig.seq)
-            widest_sequence = max(widest_sequence, length)
-            contig.consensus_width = widest_sequence
             contig.reset_padding = 0
-            #First contig of each MSA has a 10px tall title
-            contig.title_padding = 0 if i != 0 else widest_sequence * self.title_height_px
             contig.tail_padding = 0
+            widest_sequence = max(widest_sequence, len(contig.seq))
+            contig.consensus_width = widest_sequence
+            #First contig of each MSA has a 10px tall title
+            contig.title_padding = 0
+            if i == 0 and not self.single_file:
+                contig.title_padding = widest_sequence * self.title_height_px
             contig.nuc_title_start = seq_start
             contig.nuc_seq_start = seq_start + title_length
             #at the moment these values are the same but they have different meanings
-            total_progress += length + contig.title_padding # pointer in image
-            seq_start += title_length + length  # pointer in text
+            total_progress += len(contig.seq) + contig.title_padding  # pointer in image
+            seq_start += title_length + len(contig.seq)  # pointer in text
         return total_progress
 
 
@@ -164,7 +172,9 @@ class MultipleAlignmentLayout(TileLayout):
         area = sum(areas)
         self.image_length = int(area * 1.2)
         square_dim = int(math.sqrt(self.image_length))
-        image_wh = [max(max_w, 4 * square_dim //3), max(max_h, 2 * square_dim // 3)]
+        desired_width = 5 * square_dim // 3
+        # TODO still not a great algorithm
+        image_wh = [desired_width, max(max_h, self.image_length // desired_width)]
         return image_wh
 
     def calculate_mixed_layout(self):
@@ -186,18 +196,22 @@ class MultipleAlignmentLayout(TileLayout):
             source = self.all_contents[filename]
             height = len(source) + self.title_height_px
             width = source[0].consensus_width
-            source[0].title_padding = self.title_height_px * width  # add
-            self.layout_based_on_repeat_size(width, height, image_wh[0])
+            self.layout_based_on_repeat_size(width, height, image_wh[0], source)
         self.i_layout = 0 # drawing starts at the beginning
 
         adjusted_height = self.next_origin[1] + self.current_column_height + self.y_pad  #could extend image
+        if self.single_file:
+            self.spread_large_MSA_source()
+            adjusted_height = image_wh[1]
         self.prepare_image(0, image_wh[0], adjusted_height)
 
 
 
     def preview_all_files(self, input_fasta_folder):
         """Populates fasta_sources with files from a directory"""
-        for single_MSA in fastas_in_folder(input_fasta_folder):
+        files = fastas_in_folder(input_fasta_folder)
+        self.single_file = len(files) == 1
+        for single_MSA in files:
             self.read_contigs_and_calc_padding(single_MSA, None)
             fasta_name = os.path.basename(single_MSA)
             self.fasta_sources.append(fasta_name)
@@ -208,21 +222,35 @@ class MultipleAlignmentLayout(TileLayout):
             self.fasta_sources = [pair[1] for pair in heights]  # override old ordering
 
 
-    def layout_based_on_repeat_size(self, width, height, max_width):
+    def layout_based_on_repeat_size(self, width, height, max_width, contigs):
         """change layout to match dimensions of the repeat
         """
+        usable_width = max_width - (self.border_width * 2)
+        if width > usable_width:  # Case with one massively wide MSA
+            # TODO more than one large MSA
+            height = len(contigs)  # number of individuals
+            padding_between_mega_rows = 1
+            n_rows = math.ceil(len(contigs[0].seq) / usable_width)
+            modulos = [usable_width, 1, 1, n_rows]
+            padding = [0, height + padding_between_mega_rows, 0, height + padding_between_mega_rows]
+            for row in contigs:  # one layout for mouse over of each individual
+                self.next_origin[0] = self.border_width
+                self.next_origin[1] += 1
+                self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
+            self.next_origin[1] += n_rows * \
+                                   (height + padding_between_mega_rows)
+        else:  # Typical case with many small MSA
+            # skip to next mega row
+            if self.next_origin[0] + width + 1 >= max_width:
+                self.next_origin[0] = self.border_width
+                self.next_origin[1] += self.current_column_height + self.y_pad
+                self.current_column_height = 1  # reset
 
-        # skip to next mega row
-        if self.next_origin[0] + width + 1 >= max_width:
-            self.next_origin[0] = self.border_width
-            self.next_origin[1] += self.current_column_height + self.y_pad
-            self.current_column_height = 1  # reset
-
-        self.current_column_height = max(height, self.current_column_height)
-        modulos = [width, height, 9999, 9999]
-        padding = [0, 0, 20, 20 * 3]
-        self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
-        self.next_origin[0] += width + self.x_pad  # scoot next_origin by width we just used up
+            self.current_column_height = max(height, self.current_column_height)
+            modulos = [width, height, 9999, 9999]
+            padding = [0, 0, 20, 20 * 3]
+            self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
+            self.next_origin[0] += width + self.x_pad  # scoot next_origin by width we just used up
         self.i_layout = len(self.each_layout) - 1  # select current layout
 
 
@@ -240,26 +268,10 @@ class MultipleAlignmentLayout(TileLayout):
         self.write_title(contig_name, self.levels.base_width, self.title_height_px, font_size,
                          title_lines, title_width, upper_left, False, self.image)
 
-    def legend(self):
-        return "<strong>Legend:</strong>"+\
-                self.legend_line('Alanine (A)', 'A') +\
-                self.legend_line('Cysteine (C)', 'C') +\
-                self.legend_line('Aspartic acid (D)', 'D') +\
-                self.legend_line('Glutamic acid (E)', 'E') +\
-                self.legend_line('Phenylalanine (F)', 'F') +\
-                self.legend_line('Glycine (G)', 'G') +\
-                self.legend_line('Histidine (H)', 'H') +\
-                self.legend_line('Isoleucine (I)', 'I') +\
-                self.legend_line('Lysine (K)', 'K') +\
-                self.legend_line('Leucine (L)', 'L') +\
-                self.legend_line('Methionine (M)', 'M') +\
-                self.legend_line('Asparagine (N)', 'N') +\
-                self.legend_line('Proline (P)', 'P') +\
-                self.legend_line('Glutamine (Q)', 'Q') +\
-                self.legend_line('Arginine (R)', 'R') +\
-                self.legend_line('Serine (S)', 'S') +\
-                self.legend_line('Threonine (T)', 'T') +\
-                self.legend_line('Valine (V)', 'V') +\
-                self.legend_line('Tryptophan (W)', 'W') +\
-                self.legend_line('Tyrosine (Y)', 'Y')+ \
-                self.legend_line('Any (X)', 'X')
+    def spread_large_MSA_source(self):
+        filename = self.fasta_sources[0]
+        actual_contigs = self.all_contents[filename]
+        n_individuals = len(actual_contigs)
+        self.fasta_sources = [filename] * n_individuals
+        for filename in self.fasta_sources:
+            source = self.all_contents[filename]

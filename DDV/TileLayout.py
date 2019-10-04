@@ -27,6 +27,14 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
+def is_protein_sequence(contig):
+    """Checks if there are any peptide characters in the first 100 of the first contig"""
+    peptides = {'D', 'E', 'F', 'H', 'I', 'K', 'L', 'M', 'P', 'Q', 'R', 'S', 'V', 'W', 'X', 'Y'}
+    matches = set(contig.seq[:100]).intersection(peptides)
+    print("Found matches", matches)
+    return len(matches) > 0
+
+
 class TileLayout(object):
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
                  low_contrast=False, base_width=100, border_width=3,
@@ -293,6 +301,7 @@ class TileLayout(object):
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
         self.contigs = filter_by_contigs(self.contigs, extract_contigs)
+        self.protein_palette = is_protein_sequence(self.contigs[0])
         return self.calc_all_padding()
 
     def prepare_image(self, image_length):
@@ -471,7 +480,7 @@ class TileLayout(object):
                      0 = dark purple. 125 = green, 255 = yellow. Developed as 
                      Matplotlib's default color palette.  It is 
                      perceptually uniform and color blind safe.</span>"""
-        else:
+        elif not self.protein_palette:
             line = "<strong>Legend:</strong>" + \
                 self.legend_line('Adenine (A)', 'A') +\
                 self.legend_line('Thymine (T)', 'T') +\
@@ -480,6 +489,29 @@ class TileLayout(object):
                 self.legend_line('Unsequenced', 'N') +\
                 """<span class='color-explanation'>G/C rich regions are red/orange. 
                 A/T rich areas are green/blue. Color blind safe colors.</span>"""
+        else:  # protein_palette
+            line = "<strong>Legend:</strong>"+\
+                self.legend_line('Alanine (A)', 'A') +\
+                self.legend_line('Cysteine (C)', 'C') +\
+                self.legend_line('Aspartic acid (D)', 'D') +\
+                self.legend_line('Glutamic acid (E)', 'E') +\
+                self.legend_line('Phenylalanine (F)', 'F') +\
+                self.legend_line('Glycine (G)', 'G') +\
+                self.legend_line('Histidine (H)', 'H') +\
+                self.legend_line('Isoleucine (I)', 'I') +\
+                self.legend_line('Lysine (K)', 'K') +\
+                self.legend_line('Leucine (L)', 'L') +\
+                self.legend_line('Methionine (M)', 'M') +\
+                self.legend_line('Asparagine (N)', 'N') +\
+                self.legend_line('Proline (P)', 'P') +\
+                self.legend_line('Glutamine (Q)', 'Q') +\
+                self.legend_line('Arginine (R)', 'R') +\
+                self.legend_line('Serine (S)', 'S') +\
+                self.legend_line('Threonine (T)', 'T') +\
+                self.legend_line('Valine (V)', 'V') +\
+                self.legend_line('Tryptophan (W)', 'W') +\
+                self.legend_line('Tyrosine (Y)', 'Y')+ \
+                self.legend_line('Any (X)', 'X')
         return line
 
     def legend_line(self, label, palette_key):
