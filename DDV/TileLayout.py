@@ -8,14 +8,14 @@ from collections import defaultdict
 from datetime import datetime
 
 import sys
-from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
 
 from DDV import gap_char
 from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
-    make_output_directory, filter_by_contigs, copy_to_sources
-from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
+    make_output_directory
+from DDV.Layouts import LayoutLevel, level_layout_factory, parse_custom_layout
+from DataSource import DataSource
 
 small_title_bp = 10000
 
@@ -27,27 +27,14 @@ def hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
 
 
-def is_protein_sequence(contig):
-    """Checks if there are any peptide characters in the first 100 of the first contig"""
-    peptides = {'D', 'E', 'F', 'H', 'I', 'K', 'L', 'M', 'P', 'Q', 'R', 'S', 'V', 'W', 'X', 'Y'}
-    matches = set(contig.seq[:100]).intersection(peptides)
-    print("Found matches", matches)
-    return len(matches) > 0
-
-
 class TileLayout(object):
     def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
                  low_contrast=False, base_width=100, border_width=3,
                  custom_layout=None):
         # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
         # are outside of the nucleotide coordinate grid?
-        self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
         self.use_fat_headers = use_fat_headers  # Can only be changed in code.
-        self.skip_small_titles = False
-        self.using_spectrum = False
-        self.protein_palette = False
-        self.sort_contigs = sort_contigs
         self.low_contrast = low_contrast
         self.title_skip_padding = base_width  # skip one line. USER: Change this
 
@@ -61,8 +48,6 @@ class TileLayout(object):
         self.draw = None
         self.pixels = None
         self.pil_mode = 'RGB'  # no alpha channel means less RAM used
-        self.contigs = []
-        self.contig_memory = []
         self.image_length = 0
 
         modulos, padding = parse_custom_layout(custom_layout)
@@ -72,8 +57,8 @@ class TileLayout(object):
         self.border_width = border_width
         origin = [max(self.border_width, padding[2]),
                   max(self.border_width, padding[2])]
-        self.layout_algorithm = "0"  # rastered tile layout
-        self.each_layout = [level_layout_factory(modulos, padding, origin)]
+        self.each_layout = [DataSource(None, sort_contigs, None,
+                                       level_layout_factory(modulos, padding, origin))]
         self.i_layout = 0
 
         self.tile_label_size = self.levels[3].chunk_size
@@ -120,12 +105,16 @@ class TileLayout(object):
         self.palette['U'] = hex_to_rgb('#FFF3E5')  #FFF3E5 orange
 
     @property
-    def levels(self):
-        return self.each_layout[self.i_layout]
+    def contigs(self):
+        return self.source.contigs
 
-    @levels.setter
-    def levels(self, val):
-        self.each_layout[self.i_layout] = val
+    @property
+    def levels(self):
+        return self.each_layout[self.i_layout].coords
+
+    @property
+    def source(self) -> DataSource:
+        return self.each_layout[self.i_layout]
 
     @property
     def base_width(self):
@@ -169,14 +158,13 @@ class TileLayout(object):
         self.palette['A'] = hex_to_rgb('3FB93F')  # Green
 
     def enable_fat_headers(self):
-        if self.use_titles:
-            print("Using Fat Headers!")
-            self.use_fat_headers = True
-            self.levels = self.levels[:6]
-            self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-            self.levels.append(LayoutLevel(999, levels=self.levels))  # [6] PageColumn
-            self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
-            self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
+        print("Using Fat Headers!")
+        self.use_fat_headers = True
+        self.levels = self.levels[:6]
+        self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
+        self.levels.append(LayoutLevel(999, levels=self.levels))  # [6] PageColumn
+        self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
+        self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -209,8 +197,8 @@ class TileLayout(object):
 
         self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
-        self.output_fasta(output_folder, input_file_path, no_webpage,
-                          extract_contigs, self.sort_contigs)
+        self.source.output_fasta(output_folder, input_file_path, no_webpage,
+                          extract_contigs)
         print("Output Fasta in:", datetime.now() - start_time)
 
 
@@ -242,38 +230,16 @@ class TileLayout(object):
                       flush=True)  # pseudo progress bar
         print('')
 
-
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
-        bare_file = os.path.basename(fasta)
-        if append_fasta_sources:
-            self.fasta_sources.append(bare_file)
-
-        #also make single file
-        if not no_webpage:
-            write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
-            self.remember_contig_spacing()
-            fasta_destination = os.path.join(output_folder, 'sources', bare_file)
-            if extract_contigs or sort_contigs:  # customized_fasta
-                length_sum = sum([len(c.seq) for c in self.contigs])
-                fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
-                write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
-            else:
-                copy_to_sources(output_folder, fasta)
-            print("Sequence saved in:", fasta_destination)
+    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
+        progress = self.source.read_contigs_and_calc_padding(input_file_path, extract_contigs)
+        if self.source.using_spectrum:
+            self.palette = viridis_palette()
+        return self.calc_all_padding()
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
 
-        # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
-        #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
-        if len(self.contigs) > 10000:
-            print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
-            self.skip_small_titles = True
-            self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
-        if self.sort_contigs:
-            print("Scaffolds are being sorted by length.")
-            self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
 
         for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
@@ -291,19 +257,6 @@ class TileLayout(object):
         return total_progress  # + reset + title + tail + length
 
 
-    def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
-        try:
-            self.contigs = read_contigs(input_file_path)
-        except UnicodeDecodeError as e:
-            print(e)
-            print("Important: Non-standard characters detected.  Switching to 256 colormap for bytes")
-            self.using_spectrum = True
-            self.palette = viridis_palette()
-            self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
-        self.contigs = filter_by_contigs(self.contigs, extract_contigs)
-        self.protein_palette = is_protein_sequence(self.contigs[0])
-        return self.calc_all_padding()
-
     def prepare_image(self, image_length):
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
@@ -319,7 +272,7 @@ class TileLayout(object):
             if next_segment_length + min_gap < current_level.chunk_size:
                 # give a full level of blank space just in case the previous
                 title_padding = max(min_gap, self.levels[i - 1].chunk_size)
-                if self.skip_small_titles and next_segment_length < small_title_bp:
+                if self.source.skip_small_titles and next_segment_length < small_title_bp:
                     # no small titles, but larger ones will still display,
                     title_padding = self.title_skip_padding  # normally 100 pixels per line
                     # this affects layout
@@ -473,14 +426,15 @@ class TileLayout(object):
 
     def legend(self):
         """Refactored legend() to be overridden in subclasses"""
-        if self.using_spectrum:
+        # TODO: mix of palettes, output union legend
+        if self.source.using_spectrum:
             # TODO: legend_line('Unsequenced', 'N') +\
             line = "<strong>Legend:</strong>" + \
                      """<span class='color-explanation'>Each pixel is 1 byte with a range of 0 - 255. 
                      0 = dark purple. 125 = green, 255 = yellow. Developed as 
                      Matplotlib's default color palette.  It is 
                      perceptually uniform and color blind safe.</span>"""
-        elif not self.protein_palette:
+        elif not self.source.protein_palette:
             line = "<strong>Legend:</strong>" + \
                 self.legend_line('Adenine (A)', 'A') +\
                 self.legend_line('Thymine (T)', 'T') +\
@@ -529,8 +483,8 @@ class TileLayout(object):
             copytree(html_template, output_folder)  # copies the whole template directory
             print("Copying HTML to", output_folder)
             html_content = {"title": output_file_name.replace('_', ' '),
-                            "fasta_sources": str(self.fasta_sources),
-                            "layout_algorithm": self.layout_algorithm,
+                            "fasta_sources": str([source.fasta_name for source in self.each_layout]),
+                            "layout_algorithm": self.source.layout_algorithm,  # TODO list of algorithms
                             "each_layout": self.all_layouts_json(),
                             "ContigSpacingJSON": self.contig_json(),
                             "originalImageWidth": str(self.image.width if self.image else 1),
@@ -552,27 +506,10 @@ class TileLayout(object):
             traceback.print_exc()
 
 
-    def contig_struct(self):
-        json = []
-        xy_seq_start = 0
-        for index, contig in enumerate(self.contigs):
-            if index > 1000:
-                break  # I don't want to use a slice operator on the for loop because that will copy it
-            xy_seq_start += contig.reset_padding + contig.title_padding
-            xy_seq_end = xy_seq_start + len(contig.seq)
-            json.append({"name": contig.name.replace("'", ""), "xy_seq_start": xy_seq_start, "xy_seq_end": xy_seq_end,
-                         "title_padding": contig.title_padding, "tail_padding": contig.tail_padding,
-                         "xy_title_start": xy_seq_start - contig.title_padding,
-                         "nuc_title_start": contig.nuc_title_start, "nuc_seq_start": contig.nuc_seq_start})
-            xy_seq_start += len(contig.seq) + contig.tail_padding
-        return json
-
     def contig_json(self):
         """This method 100% relies on remember_contig_spacing() being called beforehand,
         typically because output_fasta() was called for a webpage"""
-        json = []
-        for source in self.contig_memory:  # all files that have been processed
-            json.append([x for x in source])  # ',\n'.join(
+        json = [source.contig_struct() for source in self.each_layout]
         if not json:
             print("Warning: no sequence position data was stored for the webpage.", file=sys.stderr)
         contigs_per_file = str(json)
@@ -613,20 +550,8 @@ class TileLayout(object):
     def all_layouts_json(self):
         records = []
         for i, layout in enumerate(self.each_layout):
-            records.append(layout.to_json())
+            records.append(layout.coords.to_json())
         return str(records)
 
-    def remember_contig_spacing(self):
-        self.contig_memory.append(self.contig_struct())
 
-
-def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
-    chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)
-    try:
-        os.makedirs(chunks_dir, exist_ok=True)
-    except BaseException:
-        pass
-    for i, contig in enumerate(contigs):
-        filename = os.path.join(chunks_dir, '%i.fa' % i)
-        write_contigs_to_file(filename, [contig],verbose=False)
 

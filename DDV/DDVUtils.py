@@ -8,7 +8,7 @@ import textwrap
 from collections import defaultdict
 from datetime import datetime
 
-from DNASkittleUtils.Contigs import read_contigs
+from DNASkittleUtils.Contigs import read_contigs, write_contigs_to_file
 from PIL import ImageDraw
 
 
@@ -448,3 +448,14 @@ def viridis_palette():
     palette[254] = (250, 230, 34)
     palette[255] = (253, 231, 36)
     return palette
+
+
+def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
+    chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)
+    try:
+        os.makedirs(chunks_dir, exist_ok=True)
+    except BaseException:
+        pass
+    for i, contig in enumerate(contigs):
+        filename = os.path.join(chunks_dir, '%i.fa' % i)
+        write_contigs_to_file(filename, [contig],verbose=False)

@@ -27,7 +27,7 @@ class ParallelLayout(TileLayout):
         if column_widths is None:  # just copies the TileLayout levels several times
             column_widths = [self.base_width] * n_genomes
 
-        self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
+        #each_layout = one layout per data source also tracks fasta_source names
         # I found that less padding is better for keeping visual patterns coherent over clusters
         # of columns.  The white space has a disproportionate effect if you space it out too much.
         p = 1  # padding_between_layouts
@@ -64,7 +64,8 @@ class ParallelLayout(TileLayout):
 
         try:
             # Do inner work for each file
-            for index, filename in enumerate(fasta_files):
+            for index, source in enumerate(self.each_layout):
+                filename = source.fasta_name
                 self.changes_per_genome()
                 if index != 0:
                     self.read_contigs_and_calc_padding(filename, extract_contigs)
@@ -73,7 +74,7 @@ class ParallelLayout(TileLayout):
                     self.draw_titles()
                 self.genome_processed += 1
                 print("Drew File:", filename, datetime.now() - start_time)
-                self.output_fasta(output_folder, filename, False, extract_contigs, self.sort_contigs)
+                source.output_fasta(output_folder, filename, False, extract_contigs)
         except Exception as e:
             print('Encountered exception while drawing nucleotides:', '\n')
             traceback.print_exc()

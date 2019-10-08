@@ -9,7 +9,7 @@ from DNASkittleUtils.Contigs import read_contigs
 from PIL import Image, ImageDraw
 
 import math
-from DDV.TileLayout import hex_to_rgb, TileLayout, is_protein_sequence
+from DDV.TileLayout import hex_to_rgb, TileLayout
 from natsort import natsorted
 
 from DDV.DDVUtils import make_output_directory
@@ -101,9 +101,8 @@ class MultipleAlignmentLayout(TileLayout):
         print("Initialized Image:", datetime.now() - start_time, "\n")
         #TODO: sort all layouts with corresponding sequence?
 
-        for file_no, single_MSA in enumerate(self.fasta_sources):
+        for file_no, single_MSA in enumerate(self.each_layout):
             self.i_layout = file_no
-            self.contigs = self.all_contents[single_MSA]
             # self.read_contigs_and_calc_padding(single_MSA, None)
             try:  # These try catch statements ensure we get at least some output.  These jobs can take hours
                 self.draw_nucleotides()
@@ -113,7 +112,7 @@ class MultipleAlignmentLayout(TileLayout):
                 print('Encountered exception while drawing nucleotides:', '\n')
                 traceback.print_exc()
             input_path = os.path.join(input_fasta_folder, single_MSA)
-            self.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
+            single_MSA.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
         print("\nDrew Nucleotides:", datetime.now() - start_time)
         self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
@@ -273,11 +272,11 @@ class MultipleAlignmentLayout(TileLayout):
                          title_lines, title_width, upper_left, False, self.image)
 
     def spread_large_MSA_source(self, fasta_path):
+        # TODO: update this with DataSource
         individuals = read_contigs(fasta_path)
         self.contigs = individuals
         self.fasta_sources = [os.path.basename(fasta_path) + str(i) for i in range(len(individuals))]
         self.all_contents = {source: [individuals[i]] for i, source in enumerate(self.fasta_sources)}
-        self.protein_palette = is_protein_sequence(self.contigs[0])
 
         # Zero padding
         for name, container in self.all_contents.items():
