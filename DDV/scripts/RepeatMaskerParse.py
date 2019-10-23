@@ -2,16 +2,29 @@
 from UCSC.  This annotation contains alignment to the repeat consensus.
 
 It is similar to Annotations.py.  But at the moment, they're separate files because their target
-input and output is significantly different."""
+input and output is significantly different.
+
+The purpose of this script is to show
+a variety of MSA pulled from RepeatMasker annotations across the genome.
+The intent was to visualize the diversity and abundance at each site.
+All the reusable functionality of TransposonLayout has been moved to MultipleAlignmentLayout.
+A fairly small script could process the repeatMasker annotation file into a folder of fasta MSA
+that could be visualized with MultipleAlignmentLayout.
+The crucial values are the within repeat coordinates rep_end.  I found experimentally
+that rooting the MSA on the last nucleotide of each line (not the start) gave the most
+coherent MSA."""
 
 # Read annotation file and just mark where things land on the consensus
+import os
+import re
 import sys
+from typing import List
+import unicodedata
 
-from DNASkittleUtils.DDVUtils import rev_comp
-from DNASkittleUtils.Contigs import pluck_contig, just_the_name
-from Span import Span
-from array import array
-
+from DNASkittleUtils.DDVUtils import rev_comp, editable_str
+from DNASkittleUtils.Contigs import pluck_contig, just_the_name, Contig, write_contigs_to_file
+from DDV import gap_char
+from DDV.Span import Span
 
 
 class RepeatAnnotation(object):
@@ -90,71 +103,21 @@ def add_good_annotation(bad_count, columns, entries):
     return bad_count
 
 
-def condense_fragments_to_lines(anno_entries, crowded_count=10):
-    """
-    :param anno_entries: list of RepeatAnnotation objects
-    :param crowded_count:  point at which you should give up trying to cram more into this line
-    :return: list of lists of RepeatAnnotation objects that can fit on one line without overlapping
-    """
-    if crowded_count < 2:
-        return [[entry] for entry in anno_entries]
+def grab_aligned_repeat(consensus_width, contig, fragment):
+    line = blank_line_array(consensus_width, gap_char, newline=False)
+    nucleotides = fragment.genome_span().sample(contig.seq)
+    if fragment.strand == '-':
+        nucleotides = rev_comp(nucleotides)
+    if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
+        nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
+    line = line[:fragment.rep_end - len(nucleotides)] + editable_str(nucleotides) + line[fragment.rep_end:]
+    assert len(line) == consensus_width, "%i, %i" % (len(line), consensus_width, )
 
-    lines = [[]]
-    for entry in anno_entries:  # type = RepeatAnnotation
-        for row, candidate_line in enumerate(lines):
-            if len(candidate_line) < crowded_count and all([not entry.consensus_span().overlaps(x.consensus_span()) for x in candidate_line]):
-                candidate_line.append(entry)
-                break
-            elif row == len(lines) - 1:
-                lines.append([entry])  # add a new line with this entry in it
-                break
-
-    return lines
-
-
-def write_aligned_repeat_consensus(display_lines, out_filename, seq):
-    consensus_width = max(max([e.rep_end for line in display_lines for e in line]),
-                          max([e.rep_start + len(e) for line in display_lines for e in line]))  # two different ways of finding the end
-    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
-        out.write('>' + just_the_name(out_filename) + '\n')
-        for text_line in display_lines:
-            line = blank_line_array(consensus_width, 'A')
-            for fragment in text_line:
-                nucleotides = fragment.genome_span().sample(seq)
-                if fragment.strand == '-':
-                    nucleotides = rev_comp(nucleotides)
-                nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
-                if fragment.rep_end < len(nucleotides):  # sequence I have sampled starts before the beginning of the frame
-                    nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
-                line = line[:fragment.rep_end - len(nucleotides)] + array('u', nucleotides) + line[fragment.rep_end:]
-            assert len(line) == consensus_width + 1, display_lines.index(text_line)  # len(line)
-            out.write(''.join(line))
+    return line
 
 
 def blank_line_array(consensus_width, filler, newline=True):
-    return array('u', (filler * consensus_width) + ('\n' if newline else ''))
-
-
-def write_consensus_sandpile(anno_entries, out_filename, seq):
-    consensus_width = max_consensus_width(anno_entries)
-    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
-        out.write('>' + just_the_name(out_filename) + '\n')
-        depth_graph = [0] * consensus_width
-        image = [blank_line_array(consensus_width, 'A') for _ in range(len(anno_entries))]
-        for fragment in anno_entries:
-            nucleotides = fragment.genome_span().sample(seq)
-            if fragment.strand == '-':
-                nucleotides = rev_comp(nucleotides)
-            nucleotides = nucleotides.replace('A', 'Z')  # TEMP: orange color for Skittle at the moment
-            if fragment.rep_end - len(nucleotides) < 0:  # sequence I have sampled starts before the beginning of the frame
-                nucleotides = nucleotides[len(nucleotides) - fragment.rep_end:]  # chop off the beginning
-            for x_start, c in enumerate(nucleotides):
-                x = x_start + (fragment.rep_end - len(nucleotides))
-                image[depth_graph[x]][x] = c
-                depth_graph[x] += 1
-        greatest_depth = max(depth_graph)
-        for line in image[:greatest_depth]:
-            out.write(''.join(line))
+    return editable_str((filler * consensus_width) + ('\n' if newline else ''))
 
 
 def max_consensus_width(anno_entries):
@@ -163,140 +126,40 @@ def max_consensus_width(anno_entries):
     return consensus_width
 
 
-def unnormalized_histogram_of_breakpoints(anno_entries, out_filename):
-    consensus_width = max_consensus_width(anno_entries)
-    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
-        out.write('>' + just_the_name(out_filename) + '\n')
-        depth_graph = [0 for _ in range(consensus_width)]
-        image = [array('u', ('A' * consensus_width) + '\n') for _ in range(len(anno_entries))]
-        for fragment in anno_entries:
-            x = fragment.rep_start
-            image[depth_graph[x]][x] = 'G'
-            depth_graph[x] += 1
+def valid_filename(value):
+    """ Normalizes string, converts to lowercase, removes non-alpha characters,
+    and converts spaces to hyphens. """
+    value = unicodedata.normalize('NFKD', value)
+    value = re.sub('[^\w\s-]', '', value).strip()
+    value = re.sub('[-\s]+', '-', value)
+    return value
 
-            x = fragment.rep_end
-            image[depth_graph[x]][x] = 'C'
-            depth_graph[x] += 1
+def output_transposon_folder(anno_entries: List[RepeatAnnotation], chr_contigs, out_folder_name):
+    os.makedirs(out_folder_name, exist_ok=True)
+    # Make each chr accessible
+    chr_dict = {c.name: c for c in chr_contigs}
+    #Each repName gets one file
+    rep_names = list({x.rep_name for x in anno_entries})
+    for rep_name in rep_names:
+        annotations = [x for x in anno_entries if x.rep_name == rep_name] #filter
+        annotations.sort(key=lambda x: x.rep_start)
 
-        greatest_depth = max(depth_graph)
-        for line in image[:greatest_depth]:
-            out.write(''.join(line))
-
-
-def histogram_of_breakpoints(anno_entries, out_filename, reference_points=None):
-    consensus_width = max_consensus_width(anno_entries)
-    with open(out_filename + '_%i.fa' % consensus_width, 'w') as out:
-        out.write('>' + just_the_name(out_filename) + '\n')
-        breakpoints = [0 for _ in range(consensus_width)]
-        coverage = [0 for _ in range(consensus_width)]
-        for fragment in anno_entries:
-            for x in range(fragment.rep_start, fragment.rep_end + 1):
-                coverage[x] += 1  # used for normalization
-            x = fragment.rep_start
-            # image[depth(breakpoints, x)][x] = 'G'
-            breakpoints[x] += 1
-
-            x = fragment.rep_end
-            # image[depth(breakpoints, x)][x] = 'C'
-            breakpoints[x] += 1
-
-        coverage_to_break_ratio = sum(coverage) / sum(breakpoints)
-        # expected = coverage[x] / sum(coverage) * sum(breakpoints)
-        expected_breaks = [coverage[x] / coverage_to_break_ratio for x in range(consensus_width)]
-
-        normalized_break_counts = []
-        for x in range(consensus_width):
-            normalized_break_counts.append(breakpoints[x] / max(1, expected_breaks[x]))  # 566 copies is a good cutoff for L1
-        int_break_counts = [min(1000, int(normalized_break_counts[x] * 20.0)) for x in range(consensus_width)]
-        greatest_depth = max(int_break_counts) + 1
-        image = [array('u', ('A' * consensus_width) + '\n') for _ in range(greatest_depth)]
-        for line_number, line in enumerate(image[:greatest_depth]):
-            for x in range(consensus_width):
-                if reference_points is not None and x in reference_points:
-                    image[line_number][x] = 'T'  # can be overwritten by 'G'
-                if int_break_counts[x] >= line_number:
-                    image[line_number][x] = 'G'
-            out.write(''.join(line))
-
-
-def lengths_by_repeat_name(anno_entries):
-    endings = {}
-    for entry in anno_entries:
-        current = endings[entry.rep_name] if entry.rep_name in endings else 0
-        endings[entry.rep_name] = max(current, entry.rep_end)
-    return endings
-
-
-def output_transposon_fasta(ano_entries, out_filename, seq):
-    genome, chromosome, family, mode = just_the_name(out_filename).split('_')
-    # sort first by repName then by start position inside the same repName
-    sorted_entries = [a for a in sorted(ano_entries, key=lambda x: x.rep_name + '{:010d}'.format(x.rep_start))]
-    with open(out_filename + '.fa', 'w') as out:
-        for fragment in sorted_entries:
-            info = "__".join([fragment.rep_name, family, genome, chromosome, str(fragment.geno_start), str(fragment.geno_end), fragment.strand])
-            out.write('>' + info + '\n')
-            nucleotides = fragment.genome_span().sample(seq)
-            if fragment.strand == '-':
-                nucleotides = rev_comp(nucleotides)
-            out.write(nucleotides + '\n')  # we're currently not dividing long lines (not FASTA standard)
-
-
-def output_archetypes_fasta(ano_entries, out_filename, seq):
-    genome, chromosome, family, mode = just_the_name(out_filename).split('_')
-    sorted_entries = [a for a in sorted(ano_entries, key=lambda x: -len(x))]
-    archetypes = {}
-    for entry in sorted_entries:  # only the first of each rep_name will make it into archetypes
-        if entry.rep_name not in archetypes:
-            archetypes[entry.rep_name] = entry
-
-    with open(out_filename + '.fa', 'w') as out:
-        for fragment in archetypes.values():
-            info = "__".join([fragment.rep_name, family, genome, chromosome, str(fragment.geno_start), str(fragment.geno_end), fragment.strand])
-            out.write('>' + info + '\n')
-            nucleotides = fragment.genome_span().sample(seq)
-            if fragment.strand == '-':
-                nucleotides = rev_comp(nucleotides)
-            out.write(nucleotides + '\n')  # we're currently not dividing long lines (not FASTA standard)
-        print("Wrote", out_filename)
-
-
-def layout_repeats(anno_entries, filename, seq, key='condense'):
-    filename = filename + '_' + key
-    if key == 'condense':
-        display_lines = condense_fragments_to_lines(anno_entries, crowded_count=10)
-        write_aligned_repeat_consensus(display_lines, filename, seq)
-    elif key == 'repStart':
-        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: x.rep_start)]
-        write_aligned_repeat_consensus(display_lines, filename, seq)
-    elif key == 'repEnd':
-        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: -x.rep_end)]
-        write_aligned_repeat_consensus(display_lines, filename, seq)
-    elif key == 'rank':
-        display_lines = [[a] for a in sorted(anno_entries, key=lambda x: -len(x))]
-        write_aligned_repeat_consensus(display_lines, filename, seq)
-    elif key == 'sandpile':
-        ranked_entries = [a for a in sorted(anno_entries, key=lambda x: -len(x))]
-        write_consensus_sandpile(ranked_entries, filename, seq)
-    elif key == 'breaks':
-        ending_points = lengths_by_repeat_name(anno_entries)
-        print(ending_points)
-        histogram_of_breakpoints(anno_entries, filename, reference_points=set(ending_points.values()))
-    elif key == 'raw_breaks':
-        unnormalized_histogram_of_breakpoints(anno_entries, filename)
-    elif key == 'fasta':
-        output_transposon_fasta(anno_entries, filename, seq)
-    elif key == 'archetypes':
-        output_archetypes_fasta(anno_entries, filename, seq)
-    else:
-        print("Key not recognized:", key)
-
-
-
-def test_reader():
-    # Test Reader
-    entries = read_repeatmasker_csv(r'data\RepeatMasker_chr20_alignment.csv', 'repFamily', 'CR1')
-    # print(str(entries))
-    assert str(entries) == open('data\L3_test.txt', 'r').read(), "String representation doesn't match expected.  Did you read in data\RRepeatMasker_chr20_alignment.csv?"
+        consensus_width = max_consensus_width(annotations)
+        all_copies_of_this_type = []
+        for rep in annotations:
+            processed_seq = grab_aligned_repeat(consensus_width, chr_dict[rep.geno_name], rep)
+            contig_name = '%s__%s:%i-%i' %(rep.rep_name, rep.geno_name, rep.geno_start, rep.geno_end)
+            c = Contig(contig_name, ''.join(processed_seq))
+            all_copies_of_this_type.append(c)
+        if len(all_copies_of_this_type) > 1:
+            rep_filename = '__'.join(
+                [annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
+            write_contigs_to_file(os.path.join(out_folder_name,
+                                               valid_filename(rep_filename) + '.fa'),
+                                  all_copies_of_this_type,
+                                  verbose=True)
+        else:
+            print("Skipping", rep_name, "because there was only one copy.")
 
 
 def filter_repeats_by_chromosome(repeat_entries, contig_name):
@@ -306,22 +169,35 @@ def filter_repeats_by_chromosome(repeat_entries, contig_name):
 def filter_repeats_by_chromosome_and_family(repeat_entries, contig_name, family):
     return [x for x in repeat_entries if x.geno_name == contig_name and x.rep_family == family]
 
+def filter_simple_repeats(repeat_entries, return_only_simple_repeats=False):
+    before = len(repeat_entries)
+    if return_only_simple_repeats:
+        repeat_entries = [x for x in repeat_entries if x.rep_class == 'Simple_repeat']  # keep only 'simple'
+    else:
+        repeat_entries = [x for x in repeat_entries if x.rep_class != 'Simple_repeat']  # remove 'simple'
+    difference = before - len(repeat_entries)
+    print("Removed", difference, "repeats", "{:.1%}".format(difference / before), "of the data.")
+    return repeat_entries
+
 
 if __name__ == '__main__':
-    # test_reader()
-    annotation_file = r'supplemental\RepeatMasker_all_alignment.csv'  # RepeatMasker_all_alignment.csv'  RepeatMasker_chr20_alignment
-    layout_mode, column, rep_name = sys.argv[1], sys.argv[2], sys.argv[3]  # 'condense', 'repName', 'L1PA3'
-    # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
-    # mode = 'condense'  # 'breaks' raw_breaks
-    rep_entries = read_repeatmasker_csv(annotation_file, column, rep_name, strict=True)
-    target_chr = 'chr1' if len(sys.argv) < 5 else sys.argv[4]
-    if 'breaks' not in layout_mode:
-        sequence = pluck_contig(target_chr, 'data/hg38.fa')
-        rep_entries = filter_repeats_by_chromosome(rep_entries, target_chr)
-    else:
-        sequence = ''
-        target_chr = ''
-    print("Found %i entries under %s" % (len(rep_entries), str(rep_name)))
+    if len(sys.argv) < 5:
+        print("Required arguments: input_repeat_masker_csv input_fasta output_dir chromosome")
+        print('Example: supplemental/RepeatMasker_chr20_alignment.csv "/Genomes/Human/hg38.fa" supplemental/Hg38_chr20_repeats chr20')
+    annotation_file = sys.argv[1]  # "supplemental\RepeatMasker_all_alignment.csv"
+    input_fasta = sys.argv[2]
+    output_dir = sys.argv[3]  # "supplemental\Hg38_chr18_repeats"
+    target_chr = sys.argv[4]  # "chr18"
 
-    layout_repeats(rep_entries, 'data/hg38_' + target_chr + '_' + rep_name.replace('_', ''), sequence, layout_mode)
+    column = 'repName'
+    # column, rep_name = 'repName', 'L1PA3'  # ( repName 'repFamily', 'ERV1')  # 'TcMar-Tigger, TcMar-Mariner  # 'ERVK, ERV1, ERVL, L1, Alu, MIR
+    rep_name = None if len(sys.argv) < 6 else sys.argv[5]  # "L1PA3"
+    rep_entries = read_repeatmasker_csv(annotation_file, column, rep_name, strict=True)
+    sequence = pluck_contig(target_chr, input_fasta)
+    rep_entries = filter_repeats_by_chromosome(rep_entries, target_chr)
+    print("Found %i entries under %s" % (len(rep_entries), str(rep_name) if rep_name else 'All'))
+    rep_entries = filter_simple_repeats(rep_entries, return_only_simple_repeats=False)
+    print("Found %i non-simple entries after filtering" % len(rep_entries))
+
+    output_transposon_folder(rep_entries, [Contig(target_chr, sequence)], output_dir)
     print('Done')

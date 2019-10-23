@@ -18,7 +18,7 @@ from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette,
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
-
+protein_found_message = False
 
 
 
@@ -29,9 +29,12 @@ def hex_to_rgb(h):
 
 def is_protein_sequence(contig):
     """Checks if there are any peptide characters in the first 100 of the first contig"""
+    global protein_found_message
     peptides = {'D', 'E', 'F', 'H', 'I', 'K', 'L', 'M', 'P', 'Q', 'R', 'S', 'V', 'W', 'X', 'Y'}
     matches = set(contig.seq[:100]).intersection(peptides)
-    print("Found matches", matches)
+    if not protein_found_message and matches:
+        print("Found protein characters:", matches)
+        protein_found_message = True
     return len(matches) > 0
 
 
@@ -240,10 +243,10 @@ class TileLayout(object):
             if verbose and (len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0):
                 print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
                       flush=True)  # pseudo progress bar
-        print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
+                     append_fasta_sources=True, create_source_download=True):
         bare_file = os.path.basename(fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
@@ -253,13 +256,14 @@ class TileLayout(object):
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
             fasta_destination = os.path.join(output_folder, 'sources', bare_file)
-            if extract_contigs or sort_contigs:  # customized_fasta
-                length_sum = sum([len(c.seq) for c in self.contigs])
-                fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
-                write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
-            else:
-                copy_to_sources(output_folder, fasta)
-            print("Sequence saved in:", fasta_destination)
+            if create_source_download:
+                if extract_contigs or sort_contigs:  # customized_fasta
+                    length_sum = sum([len(c.seq) for c in self.contigs])
+                    fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+                    write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+                else:
+                    copy_to_sources(output_folder, fasta)
+                print("Sequence saved in:", fasta_destination)
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
