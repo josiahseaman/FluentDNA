@@ -17,7 +17,7 @@ setup(
     install_requires=[
         'Pillow>=3.2.0',
         'six>=1.10.0',
-        'psutil>=4.3.1',
+        'psutil>=5.4.5',
         'blist>=1.3.6',
         'natsort>=5.1.1',
         'numpy>=1.13.3',
@@ -44,6 +44,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
 )
