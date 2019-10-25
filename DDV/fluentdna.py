@@ -287,7 +287,7 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=False):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=True):
     print("Creating Large Comparison Image from Input Fastas...")
     column_widths = None
     if args.column_widths:
