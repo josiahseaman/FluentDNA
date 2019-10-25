@@ -142,7 +142,7 @@ def output_transposon_folder(anno_entries: List[RepeatAnnotation], chr_contigs, 
     rep_names = list({x.rep_name for x in anno_entries})
     for rep_name in rep_names:
         annotations = [x for x in anno_entries if x.rep_name == rep_name] #filter
-        annotations.sort(key=lambda x: x.rep_start)
+        annotations.sort(key=lambda x: -len(x)  )
 
         consensus_width = max_consensus_width(annotations)
         all_copies_of_this_type = []
@@ -151,7 +151,7 @@ def output_transposon_folder(anno_entries: List[RepeatAnnotation], chr_contigs, 
             contig_name = '%s__%s:%i-%i' %(rep.rep_name, rep.geno_name, rep.geno_start, rep.geno_end)
             c = Contig(contig_name, ''.join(processed_seq))
             all_copies_of_this_type.append(c)
-        if len(all_copies_of_this_type) > 1:
+        if len(all_copies_of_this_type) >= 10:
             rep_filename = '__'.join(
                 [annotations[0].rep_name, annotations[0].rep_family, annotations[0].rep_class])
             write_contigs_to_file(os.path.join(out_folder_name,
@@ -159,7 +159,7 @@ def output_transposon_folder(anno_entries: List[RepeatAnnotation], chr_contigs, 
                                   all_copies_of_this_type,
                                   verbose=True)
         else:
-            print("Skipping", rep_name, "because there was only one copy.")
+            print("Skipping", rep_name, "because there was only", len(all_copies_of_this_type)  ,"copies.")
 
 
 def filter_repeats_by_chromosome(repeat_entries, contig_name):

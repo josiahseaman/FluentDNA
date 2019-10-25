@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
+import shutil
 import traceback
 from datetime import datetime
 
@@ -118,6 +119,13 @@ class MultipleAlignmentLayout(TileLayout):
         print("\nDrew Nucleotides:", datetime.now() - start_time)
         self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
+        target_folder = os.path.join(output_folder, 'sources', os.path.basename(input_fasta_folder))
+        if not os.path.exists(target_folder):
+            print("Copying entire sources directory:", input_fasta_folder)
+            shutil.copytree(input_fasta_folder,
+                            target_folder,
+                            ignore=lambda src, names: [n for n in names if '.fa' not in n],
+                            symlinks=True, )
 
 
     def draw_nucleotides(self, verbose=False):
@@ -224,7 +232,7 @@ class MultipleAlignmentLayout(TileLayout):
         """change layout to match dimensions of the repeat
         """
         total_width = width + self.x_pad
-        max_rows = 5000
+        max_rows = 1000
         if height > max_rows :
             columns = math.ceil(height / max_rows)
             total_width = (width + self.x_pad) * columns
