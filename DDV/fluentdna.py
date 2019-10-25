@@ -391,6 +391,7 @@ def main():
                         type=str,
                         help="List contigs you'd like visualized from the file separated by spaces. "
                              "This can be used to pluck out your contig of interest from a large file. "
+                             "This allows you to set the order chromosomes will be displayed. "
                              "REQUIRED for Chain File alignments.",
                         dest="contigs")
     parser.add_argument("-cc", "--chromosomes", nargs='+', type=str,
