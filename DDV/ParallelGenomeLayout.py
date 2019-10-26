@@ -30,7 +30,7 @@ class ParallelLayout(TileLayout):
         self.each_layout = []  # one layout per data source assumed same order as self.fasta_sources
         # I found that less padding is better for keeping visual patterns coherent over clusters
         # of columns.  The white space has a disproportionate effect if you space it out too much.
-        p = 1  # padding_between_layouts
+        p = 1 if not self.use_border_boxes else 6  # padding_between_layouts
         cluster_width = sum(column_widths) + p * n_genomes  # total thickness of data and padding
         cluster_width += p * 2  # double up on padding between super columns
         column_clusters_per_mega_row = 10600 // cluster_width  # 10600
@@ -115,7 +115,7 @@ class ParallelLayout(TileLayout):
         column_size = self.levels[2].chunk_size
         margin = 6
         color = hex_to_rgb('#c9c9c9')
-        for column_progress in range(0, self.image_length, column_size):
+        for column_progress in range(0, len(self.contigs[0].seq) + column_size, column_size):
             left, top = self.each_layout[0].position_on_screen(column_progress)
             left, top = max(0, left - margin), max(0, top - margin - self.header_height)
             # column_progress only works when first and last columns have the same width

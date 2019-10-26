@@ -104,6 +104,7 @@ def run_server(output_dir=None):
 
     SERVER_HOME, base = base_directories('')
     print("Setting up HTTP Server based from", SERVER_HOME)
+    os.makedirs(SERVER_HOME, exist_ok=True)
     os.chdir(SERVER_HOME)
 
     ADDRESS = "localhost"
@@ -135,7 +136,7 @@ def launch_browser(url, output_dir):
 def done(args, output_dir=None):
     """Ensure that server always starts when requested.
     Otherwise system exit."""
-    if args.run_server:
+    if not args.no_server and args.run_server:
         run_server(output_dir)
     else:
         beep()
@@ -361,7 +362,7 @@ def main():
                                      add_help=True)
     parser.add_argument("-r", "--runserver",
                         action='store_true',
-                        help="Browse your previous results.",
+                        help="Browse your previous results. This is on by default and can be disabled with --no_server",
                         dest="run_server")
     parser.add_argument("-f", "--fasta",
                         type=str,
@@ -433,6 +434,11 @@ def main():
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
                         "You can use --image option later to resume the process to get a deepzoom stack.",
                         dest="no_webpage")
+    parser.add_argument("-ns", "--no_server",
+                        action='store_true',
+                        help="Prevents the server from starting after a successful render.  "
+                             "Use this with batch commands or HPC jobs.",
+                        dest="no_server")
     parser.add_argument("-q", "--trial_run",
                         action='store_true',
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
