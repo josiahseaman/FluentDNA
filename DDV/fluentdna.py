@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-FluentDNA DDV 2.0 is a new version of DDV written in Python that allows you to generate a single image
+FluentDNA FluentDNA 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
@@ -27,8 +27,8 @@ else:
     try:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     except:  # just in case __file__ isn't defined in some contexts
-        import DDV
-        BASE_DIR = os.path.dirname(DDV.__file__)
+        import FluentDNA
+        BASE_DIR = os.path.dirname(FluentDNA.__file__)
 print('Running in:', BASE_DIR)
 
 sys.path.append(BASE_DIR)
@@ -41,22 +41,22 @@ import multiprocessing
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
-from DDV import VERSION
+from FluentDNA import VERSION
 
 import argparse
 import gc
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.DDVUtils import create_deepzoom_stack, make_output_directory, base_directories, \
+from FluentDNA.FluentDNAUtils import create_deepzoom_stack, make_output_directory, base_directories, \
     hold_console_for_windows, beep, copy_to_sources, archive_execution_command
-from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.AnnotatedTrackLayout import  AnnotatedTrackLayout
-from DDV.Ideogram import Ideogram
-from DDV.HighlightedAnnotation import HighlightedAnnotation
-from DDV.ChainParser import ChainParser
-from DDV.UniqueOnlyChainParser import UniqueOnlyChainParser
-from DDV.AnnotatedAlignment import AnnotatedAlignment
-from DDV.TileLayout import TileLayout
-from DDV.MultipleAlignmentLayout import MultipleAlignmentLayout
+from FluentDNA.ParallelGenomeLayout import ParallelLayout
+from FluentDNA.AnnotatedTrackLayout import  AnnotatedTrackLayout
+from FluentDNA.Ideogram import Ideogram
+from FluentDNA.HighlightedAnnotation import HighlightedAnnotation
+from FluentDNA.ChainParser import ChainParser
+from FluentDNA.UniqueOnlyChainParser import UniqueOnlyChainParser
+from FluentDNA.AnnotatedAlignment import AnnotatedAlignment
+from FluentDNA.TileLayout import TileLayout
+from FluentDNA.MultipleAlignmentLayout import MultipleAlignmentLayout
 from DNASkittleUtils.Contigs import write_contigs_to_file, read_contigs
 
 if sys.platform == 'win32':
@@ -114,12 +114,12 @@ def run_server(output_dir=None):
 
     success = launch_browser(url, output_dir)
     try: # Try to determine if this is running in a terminal
-        import DDV
+        import FluentDNA
         handler = server.SimpleHTTPRequestHandler
         httpd = TCPServer((ADDRESS, PORT), handler)
         print("Open a browser at " + url)
         print("If you are using this computer remotely, use CTRL+C to close the browser and "
-              "find your results in " + os.path.join(os.path.dirname(DDV.__file__),
+              "find your results in " + os.path.join(os.path.dirname(FluentDNA.__file__),
                                                  'results'))
         if success:
             httpd.serve_forever()
@@ -534,7 +534,7 @@ def main():
     args = parser.parse_args()
     # Respond to an updater query
     if args.update_name:
-        print("DDV")
+        print("FluentDNA")
         sys.exit(0)
     elif args.version:
         print(VERSION)
@@ -564,15 +564,15 @@ def main():
         parser.error("No layout will be performed if an existing image is passed in! "
                      "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
-        import DDV
+        import FluentDNA
         parser.error('Please start a server with --runserver or define a file to process.  Ex: ' +
                      os.path.basename(sys.argv[0]) +
-                     ' --fasta="' + os.path.join(os.path.dirname(DDV.__file__),
+                     ' --fasta="' + os.path.join(os.path.dirname(FluentDNA.__file__),
                                                  'example_data','hg38_chr19_sample.fa')+'"')
 
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "
-                     "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
+                     "and asked FluentDNA to only generate an image with no DeepZoom stack or webpage.")
 
     if args.extra_fastas and not args.layout:
         args.layout = "parallel"

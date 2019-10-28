@@ -5,7 +5,7 @@ AlignedSpans use a pair of Span objects to track the coordinate frames of the
 original and gapped sequence as gaps are added."""
 from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
-from DDV import gap_char
+from FluentDNA import gap_char
 
 class Span(object):
     """ Span can have sections in the middle removed, creating two or less new Spans.

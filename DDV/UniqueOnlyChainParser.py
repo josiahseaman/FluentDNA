@@ -3,10 +3,10 @@ from __future__ import print_function, division, absolute_import, \
 from bisect import bisect_left
 import os
 from DNASkittleUtils.Contigs import write_complete_fasta
-from DDV import gap_char
-from DDV.ChainParser import ChainParser, Batch
-from DDV.Span import Span
-from DDV.ChainFiles import fetch_all_chains
+from FluentDNA import gap_char
+from FluentDNA.ChainParser import ChainParser, Batch
+from FluentDNA.Span import Span
+from FluentDNA.ChainFiles import fetch_all_chains
 
 
 class UniqueOnlyChainParser(ChainParser):

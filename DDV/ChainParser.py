@@ -19,12 +19,12 @@ except ImportError:
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig, write_complete_fasta
 from DNASkittleUtils.DDVUtils import first_word, ReverseComplement, BlankIterator, editable_str
-from DDV.DefaultOrderedDict import DefaultOrderedDict
-from DDV.ChainFiles import chain_file_to_list, match
-from DDV.DDVUtils import make_output_directory, keydefaultdict, read_contigs_to_dict, copy_to_sources
-from DDV.Span import AlignedSpans, Span, alignment_chopping_index
-from DDV import gap_char
-from DDV.TileLayout import hex_to_rgb
+from FluentDNA.DefaultOrderedDict import DefaultOrderedDict
+from FluentDNA.ChainFiles import chain_file_to_list, match
+from FluentDNA.FluentDNAUtils import make_output_directory, keydefaultdict, read_contigs_to_dict, copy_to_sources
+from FluentDNA.Span import AlignedSpans, Span, alignment_chopping_index
+from FluentDNA import gap_char
+from FluentDNA.TileLayout import hex_to_rgb
 
 Batch = namedtuple('Batch', ['chr', 'fastas', 'output_folder'])
 

@@ -16,13 +16,13 @@ from itertools import chain
 
 from DNASkittleUtils.Contigs import read_contigs
 
-from DDV.DDVUtils import beep
-from DDV.HighlightedAnnotation import HighlightedAnnotation
+from FluentDNA.FluentDNAUtils import beep
+from FluentDNA.HighlightedAnnotation import HighlightedAnnotation
 import os
 import numpy as np
 from functools import reduce
 
-from DDV.Layouts import LayoutFrame, LayoutLevel
+from FluentDNA.Layouts import LayoutFrame, LayoutLevel
 
 
 class IdeogramCoordinateFrame(LayoutFrame):

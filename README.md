@@ -14,8 +14,8 @@ they align with the sequence features.
 You can start using FluentDNA:
  1. Downloading and unzipping the [Latest Release](https://github.com/josiahseaman/FluentDNA/releases) (Mac and Windows only).
  2. Open a terminal (command line) in the same folder you unzipped FluentDNA.
- 3. Run the command `./fluentdna --fasta="DDV/example_data/Human selenoproteins.fa" --runserver`
- 4. Your result files will be placed in the FluentDNA directory `DDV/results/`.  Once your private server has started, 
+ 3. Run the command `./fluentdna --fasta="FluentDNA/example_data/Human selenoproteins.fa" --runserver`
+ 4. Your result files will be placed in the FluentDNA directory `FluentDNA/results/`.  Once your private server has started, 
  all your results are viewable at [http://localhost:8000](http://127.0.0.1:8000).  
  
 To use FluentDNA as a python module (required for **Linux**), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
@@ -43,20 +43,20 @@ over network or internet unless your administrator opens the port.
 
 Generating a basic visualization of a FASTA file downloaded from NCBI or another source is accomplished with the following commands:
 
-**Command:** `./fluentdna --fasta="DDV/example_data/hg38_chr19_sample.fa" --outname="Test Simple"`
+**Command:** `./fluentdna --fasta="FluentDNA/example_data/hg38_chr19_sample.fa" --outname="Test Simple"`
 
 This generates an image pyramid with the standard legend (insert image of legend) and nucleotide number display.
 
 **Input Data Example:**
 
-* FA File: [DDV/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/hg38_chr19_sample.fa)
+* FA File: [FluentDNA/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/hg38_chr19_sample.fa)
 
 **Result:** [Hg38 chr19 sample](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/)
 ![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/sources/Test%20Simple.png)
 
 It is also possible to generate an image file only that can be accessed with an image viewer using `--no_webpage`.
 
-**Command:** `./fluentdna --fasta="DDV/example_data/hg38_chr19_sample.fa" --outname="Test Simple" --no_webpage`
+**Command:** `./fluentdna --fasta="FluentDNA/example_data/hg38_chr19_sample.fa" --outname="Test Simple" --no_webpage`
 
 
 ***
@@ -74,9 +74,9 @@ GCCCTAT
 The following command generates a multi-part FASTA file visualization:
 
 **Input Data Example:**
-* FA File: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/Human%20selenoproteins.fa
+* FA File: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Human%20selenoproteins.fa
 
-**Command:** `./fluentdna --fasta="DDV/example_data/Human selenoproteins.fa"`
+**Command:** `./fluentdna --fasta="FluentDNA/example_data/Human selenoproteins.fa"`
 **Result:** [Human Selenoproteins](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/)
 
 ![](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/Human%20selenoproteins.png)
@@ -85,7 +85,7 @@ This generates a multi-scale image of the multi-part FASTA file.  Note that if y
 
 Using this simple command, FluentDNA can visualize an entire draft genome at once.
 **Result:** [Ash Tree Genome (_Fraxinus excelsior_)](https://dnaskittle.com/ddvresults/dnadata/Ash%20Tree%20Genome%20-%20BATG-0_5/)
-![Fraxinus excelsior genome](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/British%20Ash%20Tree%20Genome.png)
+![Fraxinus excelsior genome](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/British%20Ash%20Tree%20Genome.png)
 
 Additional options - see also:
 - `--outname`
@@ -96,17 +96,17 @@ Additional options - see also:
 
 ***
 ### Annotated Genomes
-By specifying `--ref_annotation=` you can include a gene annotation to be rendered alongside your sequence.  This is currently setup to show gene introns and exons.  But the features rendered and colors used can be changed in `DDV/Annotations.py`
+By specifying `--ref_annotation=` you can include a gene annotation to be rendered alongside your sequence.  This is currently setup to show gene introns and exons.  But the features rendered and colors used can be changed in `FluentDNA/Annotations.py`
 
-**Command:** `./fluentdna --fasta="DDV/example_data/gnetum_sample.fa" --ref_annotation="DDV/example_data/Gnetum_sample_genes.gff"`
+**Command:** `./fluentdna --fasta="FluentDNA/example_data/gnetum_sample.fa" --ref_annotation="FluentDNA/example_data/Gnetum_sample_genes.gff"`
 
 **Input Data Example:**
-* GFF File: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/Gnetum_sample_genes.gff
-* FA file: https://github.com/josiahseaman/FluentDNA/blob/python-master/DDV/example_data/gnetum_sample.fa
+* GFF File: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Gnetum_sample_genes.gff
+* FA file: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/gnetum_sample.fa
 
 
 **Result:** [Gnetum montanum Annotation](https://dnaskittle.com/ddvresults/dnadata/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS/)
-![Gnetum montanum Annotation](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS.png)
+![Gnetum montanum Annotation](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS.png)
 
 You can download the full _Gnetum montanum_ files from [Data Dryad](https://datadryad.org//resource/doi:10.5061/dryad.0vm37).
 
@@ -117,7 +117,7 @@ You can download the full _Gnetum montanum_ files from [Data Dryad](https://data
 To visualize a multiple sequence alignment you need to use the `--layout=alignment` option to tell FluentDNA to treat each entry in a multipart fasta file as being one row of an alignment.  To show many MSAs at once, just point `--fasta=` to a folder instead of a file.
 
 **Input Data Example:**
-* Folder with FA files: https://github.com/josiahseaman/FluentDNA/tree/python-master/DDV/example_data/alignments
+* Folder with FA files: https://github.com/josiahseaman/FluentDNA/tree/python-master/FluentDNA/example_data/alignments
 
 **Important Note!** Make sure there are no other files in your folder besides sequence files.  If FluentDNA decides on an unreasonably long "max width" it is because it picked up a non-sequence file in the folder.
 
@@ -129,12 +129,12 @@ ACTCA--ACGATC------GGGT
 ACTCAAAACGATCTCTCTAGGGT
 ```
 
-**Command:** `./fluentdna --layout=alignment --fasta="DDV/example_data\alignments" --outname="Example 7 Gene Families from Fraxinus"`
+**Command:** `./fluentdna --layout=alignment --fasta="FluentDNA/example_data\alignments" --outname="Example 7 Gene Families from Fraxinus"`
 
 This generates a multi-scale image of the multiple alignment.  The multiple alignment results are sorted by gene name.  For a smoother layout use `--sort_contigs` which will sort them by row count (copy number).
 
 **Result:** [Example 7 Gene Families from Fraxinus](https://dnaskittle.com/ddvresults/dnadata/Example%207%20Gene%20Families%20from%20Fraxinus/)
-![](https://raw.githubusercontent.com/josiahseaman/FluentDNA/python-master/DDV/example_data/Example%207%20Gene%20Families%20from%20Fraxinus.png)
+![](https://raw.githubusercontent.com/josiahseaman/FluentDNA/python-master/FluentDNA/example_data/Example%207%20Gene%20Families%20from%20Fraxinus.png)
 
 This layout allows users to check thousands of MSAs.  Here we used FluentDNA to quality check the merging software for 2,961 putative gene families: [Fraxinus Homologous Gene Groups](https://dnaskittle.com/ddvresults/dnadata/Fraxinus%20Homologous%20Gene%20Groups/)
 
@@ -159,7 +159,7 @@ This generates a multi-scale image of the alignment.  There are 4 columns in thi
 * Column 4. Genome B (gapped entire DNA of genome B)
 
 **Result:** [Human vs Chimpanzee_chr19 (natural colors)](https://dnaskittle.com/ddvresults/dnadata/Parallel_hg38_and_panTro5_chr19/)
-![Rows of sequence side by side Human and chimp.  Gaps where they have unique sequence.](https://github.com/josiahseaman/FluentDNA/raw/python-master/DDV/example_data/Human%20vs%20Chimpanzee_chr19.png)
+![Rows of sequence side by side Human and chimp.  Gaps where they have unique sequence.](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/Human%20vs%20Chimpanzee_chr19.png)
 
 Figure 1 in the paper can be seen at Nucleotide Position 548,505 which corresponds to HG38 chr19:458,731.  The difference in coordinates is due to the gaps inserted for sake of alignment.
 
@@ -168,7 +168,7 @@ Figure 1 in the paper can be seen at Nucleotide Position 548,505 which correspon
 ***
 
 ## History
-This project is a fork of the C# DDV developed at Concordia University.
+This project is a fork of the C# FluentDNA developed at Concordia University.
 https://github.com/photomedia/DDV/
 
 DDV Licence:

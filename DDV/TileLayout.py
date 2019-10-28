@@ -12,10 +12,10 @@ from DNASkittleUtils.Contigs import read_contigs, Contig, write_contigs_to_file
 from DNASkittleUtils.DDVUtils import copytree
 from PIL import Image, ImageDraw, ImageFont
 
-from DDV import gap_char
-from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette, \
+from FluentDNA import gap_char
+from FluentDNA.FluentDNAUtils import multi_line_height, pretty_contig_name, viridis_palette, \
     make_output_directory, filter_by_contigs, copy_to_sources
-from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
+from FluentDNA.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
 protein_found_message = False
@@ -143,7 +143,7 @@ class TileLayout(object):
         self.palette['C'] = hex_to_rgb('FF9F00')  # Yellow
         self.palette['T'] = hex_to_rgb('0B56BE')  # Blue originally '0F4FA8'
         self.palette['A'] = hex_to_rgb('00C566')  # Green originally ' 00B25C'
-        # Original DDV Colors
+        # Original FluentDNA Colors
         # self.palette['A'] = (255, 0, 0)
         # self.palette['G'] = (0, 255, 0)
         # self.palette['T'] = (250, 240, 114)
@@ -425,14 +425,14 @@ class TileLayout(object):
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
-            from DDV.DDVUtils import execution_dir
+            from FluentDNA.FluentDNAUtils import execution_dir
             base_dir = execution_dir()
             try:
                 with open(os.path.join(base_dir, 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
                     font = ImageFont.truetype(font_file, font_size)
             except IOError:
                 try:
-                    with open(os.path.join(base_dir, 'DDV', 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
+                    with open(os.path.join(base_dir, 'FluentDNA', 'html_template', 'img', "ariblk.ttf"), 'rb') as font_file:
                         font = ImageFont.truetype(font_file, font_size)
                 except IOError:
                     print("Unable to load ariblk.ttf size:%i" % font_size)
@@ -527,8 +527,8 @@ class TileLayout(object):
             print(html_path, ' already exists.  Skipping HTML.')
             return
         try:
-            import DDV
-            module_path = os.path.dirname(DDV.__file__)
+            import FluentDNA
+            module_path = os.path.dirname(FluentDNA.__file__)
             html_template = os.path.join(module_path, 'html_template')
             copytree(html_template, output_folder)  # copies the whole template directory
             print("Copying HTML to", output_folder)

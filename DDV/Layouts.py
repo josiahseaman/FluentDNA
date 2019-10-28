@@ -1,6 +1,6 @@
 import sys
 from PIL import Image, ImageDraw
-from DDV.DDVUtils import multi_line_height
+from FluentDNA.FluentDNAUtils import multi_line_height
 
 
 class LayoutLevel(object):

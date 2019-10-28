@@ -3,9 +3,9 @@ from DNASkittleUtils.Contigs import read_contigs
 from itertools import chain
 from os.path import join, basename
 
-from DDV.Annotations import create_fasta_from_annotation, find_universal_prefix, parseGFF
-from DDV.ParallelGenomeLayout import ParallelLayout
-from DDV.DDVUtils import filter_by_contigs, copy_to_sources
+from FluentDNA.Annotations import create_fasta_from_annotation, find_universal_prefix, parseGFF
+from FluentDNA.ParallelGenomeLayout import ParallelLayout
+from FluentDNA.FluentDNAUtils import filter_by_contigs, copy_to_sources
 
 
 class AnnotatedTrackLayout(ParallelLayout):

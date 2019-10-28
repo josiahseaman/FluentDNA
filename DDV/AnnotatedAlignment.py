@@ -12,11 +12,11 @@ context of their respective sequences.
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from DDV.ChainParser import ChainParser, scan_past_header, Batch
+from FluentDNA.ChainParser import ChainParser, scan_past_header, Batch
 from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import first_word, ReverseComplement
 
-from DDV.Annotations import create_fasta_from_annotation, GFF
+from FluentDNA.Annotations import create_fasta_from_annotation, GFF
 
 
 class AnnotatedAlignment(ChainParser):
@@ -167,5 +167,5 @@ if __name__ == '__main__':
     aligner.parse_chain(['chr20'])
 
     #### ==== Command Line Configuration === ####
-    # fluentdna.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=DDV\\data\Hg38_genes.gtf
-    # --query_annotation=DDV\data\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_
+    # fluentdna.py --chainfile=hg38ToPanTro4.over.chain --fasta=hg38.fa --extrafastas panTro4.fa --ref_annotation=FluentDNA\\data\Hg38_genes.gtf
+    # --query_annotation=FluentDNA\data\PanTro_refseq2.1.4_genes.gtf --outname=hg38_panTro4_annotated_

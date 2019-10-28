@@ -12,13 +12,13 @@ Currently, this is targeted at repeats on chr19 of Human and Chimp.
 import os
 from DNASkittleUtils.DDVUtils import editable_str
 
-from DDV.ChainParser import ChainParser
+from FluentDNA.ChainParser import ChainParser
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
+from FluentDNA.RepeatAnnotations import max_consensus_width, read_repeatmasker_csv, \
     filter_repeats_by_chromosome_and_family
-from DDV.Span import alignment_chopping_index, AlignedSpans, Span
-from DDV.TransposonLayout import TransposonLayout
-from DDV.DDVUtils import make_output_directory
+from FluentDNA.Span import alignment_chopping_index, AlignedSpans, Span
+from FluentDNA.TransposonLayout import TransposonLayout
+from FluentDNA.FluentDNAUtils import make_output_directory
 
 
 def create_aligned_annotation_fragments(alignment, repeat_entries):

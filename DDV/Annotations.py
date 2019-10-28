@@ -8,7 +8,7 @@ import gzip
 from DNASkittleUtils.Contigs import Contig, read_contigs, write_contigs_to_file
 
 from DNASkittleUtils.DDVUtils import editable_str
-from DDV import gap_char
+from FluentDNA import gap_char
 
 try:
     from urllib.parse import unquote
@@ -363,12 +363,12 @@ def find_universal_prefix(annotation_list):
 
 
 if __name__ == '__main__':
-    # annotation = r'DDV\data\Pan_Troglodytes_refseq2.1.4.gtf'
+    # annotation = r'FluentDNA\data\Pan_Troglodytes_refseq2.1.4.gtf'
     # target_chromosome = 'chr20'
     # create_fasta_from_annotation(annotation, target_chromosome, 'Chimp_test_' + target_chromosome + '.fa')
 
-    # annotation = r'DDV\data\Pan_Troglodytes_refseq2.1.4.gtf'
-    # annotation = r'DDV\data\Homo_Sapiens_GRCH38_trimmed.gtf'
+    # annotation = r'FluentDNA\data\Pan_Troglodytes_refseq2.1.4.gtf'
+    # annotation = r'FluentDNA\data\Homo_Sapiens_GRCH38_trimmed.gtf'
     # purge_annotation(annotation)
     path = r"E:\Genomes\Human\Human Unique Annotation merged.fa"
     squished = squish_fasta(read_contigs(path), 20, 100)

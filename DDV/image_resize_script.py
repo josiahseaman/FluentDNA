@@ -29,7 +29,7 @@ def save_resized(in_path, out_path, scale_factor):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Example downsizing:  python DDV\image_resize_script.py /genomes/bigImage.png 1/6")
+        print("Example downsizing:  python FluentDNA\image_resize_script.py /genomes/bigImage.png 1/6")
         sys.exit(1)
     # scale_factor = 1/2
     path = sys.argv[1]
@@ -39,14 +39,14 @@ if __name__ == "__main__":
 
 
     """
-    path = r"D:\josiah\Projects\DDV old\www-data\dnadata\Fraxinus pennsylvanica June 2017 sorted\Fraxinus pennsylvanica June 2017 sorted.png"
-    path = r"D:\josiah\Projects\DDV\DDV\www-data\dnadata\Test Simple\Test Simple.png"
+    path = r"D:\josiah\Projects\FluentDNA old\www-data\dnadata\Fraxinus pennsylvanica June 2017 sorted\Fraxinus pennsylvanica June 2017 sorted.png"
+    path = r"D:\josiah\Projects\FluentDNA\FluentDNA\www-data\dnadata\Test Simple\Test Simple.png"
     path = r"D:\Genomes\Ash BATG-0.5-CLCbioSSPACE\Ash Tree BATG-0.5.png"
     path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Poster\Gene Families.png"
     path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Poster\example block.png"
     path = r"D:\josiah\Documents\Research\Thesis - Genome Symmetry\Bioinformatics Application Note\Figure 1 - manual colors.png"
     scale_factor = 4  # 1/2
-    base = r'D:\josiah\Projects\DDV\DDV\www-data\dnadata\Oak\Oak - Quercus robur - chromosome '
+    base = r'D:\josiah\Projects\FluentDNA\FluentDNA\www-data\dnadata\Oak\Oak - Quercus robur - chromosome '
     fb = r'\Oak - Quercus robur - chromosome '
     save_resized(base + '01' + fb + '01.png', "Chr01 - resized.png", scale_factor)
     save_resized(base + '02' + fb + '02.png', "Chr02 - resized.png", scale_factor)

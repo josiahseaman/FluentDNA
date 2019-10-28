@@ -3,10 +3,10 @@ import traceback
 import sys
 from PIL import Image, ImageFont
 
-from DDV.Annotations import GFFAnnotation, find_universal_prefix, GFF3Record, parseGFF
-from DDV.Span import Span
-from DDV.TileLayout import TileLayout
-from DDV.DDVUtils import linspace, copy_to_sources
+from FluentDNA.Annotations import GFFAnnotation, find_universal_prefix, GFF3Record, parseGFF
+from FluentDNA.Span import Span
+from FluentDNA.TileLayout import TileLayout
+from FluentDNA.FluentDNAUtils import linspace, copy_to_sources
 
 
 def blend_pixel(markup_canvas, pt, c, overwrite=False):

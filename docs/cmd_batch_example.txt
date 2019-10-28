@@ -1,5 +1,5 @@
-cd D:\josiah\Projects\DDV\install_test\Lib\site-packages\DDV
-call D:\josiah\Projects\DDV\install_test\Scripts\activate.bat
+cd D:\josiah\Projects\FluentDNA\install_test\Lib\site-packages\FluentDNA
+call D:\josiah\Projects\FluentDNA\install_test\Scripts\activate.bat
 pip install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip --upgrade
 python fluentdna.py --fasta="D:\Genomes\Oak\PRJEB19898\Qrob_PM1N_chromosomes.fa" --radix="([3,3,3,3,3,17], [5,3,3,3,3,3 ,53],1,1)" --ref_annotation="D:\Genomes\Oak\PRJEB19898\Qrob_PM1N_genes_20161004.gff" --contigs Qrob_Chr01 --outname="Oak - Quercus robur - chromosome 01" 
 python fluentdna.py --fasta="D:\Genomes\Oak\PRJEB19898\Qrob_PM1N_chromosomes.fa" --radix="([3,3,3,3,3,17], [5,3,3,3,3,3 ,53],1,1)" --ref_annotation="D:\Genomes\Oak\PRJEB19898\Qrob_PM1N_genes_20161004.gff" --contigs Qrob_Chr02 --outname="Oak - Quercus robur - chromosome 02" 

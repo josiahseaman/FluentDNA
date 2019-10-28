@@ -73,8 +73,8 @@ def read_contigs_to_dict(input_file_path, extract_contigs=None):
 
 
 def create_deepzoom_stack(input_image, output_dzi):
-    import DDV.deepzoom
-    creator = DDV.deepzoom.ImageCreator(tile_size=256,
+    import FluentDNA.deepzoom
+    creator = FluentDNA.deepzoom.ImageCreator(tile_size=256,
                                     tile_overlap=1,
                                     tile_format="png",
                                     resize_filter="antialias")# cubic bilinear bicubic nearest antialias

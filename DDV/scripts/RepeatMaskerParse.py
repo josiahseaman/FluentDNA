@@ -23,8 +23,8 @@ import unicodedata
 
 from DNASkittleUtils.DDVUtils import rev_comp, editable_str
 from DNASkittleUtils.Contigs import pluck_contig, just_the_name, Contig, write_contigs_to_file
-from DDV import gap_char
-from DDV.Span import Span
+from FluentDNA import gap_char
+from FluentDNA.Span import Span
 
 
 class RepeatAnnotation(object):

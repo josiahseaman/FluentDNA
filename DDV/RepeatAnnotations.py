@@ -14,8 +14,8 @@ from DNASkittleUtils.CommandLineUtils import just_the_name
 from DNASkittleUtils.Contigs import pluck_contig
 from DNASkittleUtils.DDVUtils import rev_comp
 
-from DDV.Span import Span
-from DDV import gap_char
+from FluentDNA.Span import Span
+from FluentDNA import gap_char
 
 
 def int_log(num):

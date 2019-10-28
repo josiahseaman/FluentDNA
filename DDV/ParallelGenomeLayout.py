@@ -8,8 +8,8 @@ from datetime import datetime
 from PIL import ImageFont, Image
 
 from DNASkittleUtils.CommandLineUtils import just_the_name
-from DDV.TileLayout import TileLayout, hex_to_rgb
-from DDV.Layouts import level_layout_factory
+from FluentDNA.TileLayout import TileLayout, hex_to_rgb
+from FluentDNA.Layouts import level_layout_factory
 
 
 class ParallelLayout(TileLayout):
@@ -102,11 +102,11 @@ class ParallelLayout(TileLayout):
         To help keep track of it correctly, ParallelGenomeLayout demarcates bundles of columns that go
         together.  Mouse over gives further information on each file."""
         from DNASkittleUtils.DDVUtils import pp
-        from DDV.DDVUtils import execution_dir
+        from FluentDNA.FluentDNAUtils import execution_dir
         base_dir = execution_dir()
         # Caution: These corners are currently hard coded to the color and dimension of one image
         try:
-            corner = Image.open(os.path.join(base_dir,'DDV','html_template','img','border_box_corner.png'))
+            corner = Image.open(os.path.join(base_dir,'FluentDNA','html_template','img','border_box_corner.png'))
         except FileNotFoundError:
             corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)

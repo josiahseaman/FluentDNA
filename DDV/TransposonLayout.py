@@ -20,10 +20,10 @@ from datetime import datetime
 
 from DNASkittleUtils.Contigs import Contig, read_contigs
 from DNASkittleUtils.DDVUtils import rev_comp
-from DDV.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
-from DDV.TileLayout import TileLayout
-from DDV import gap_char
-from DDV.DDVUtils import copy_to_sources
+from FluentDNA.RepeatAnnotations import read_repeatmasker_csv, max_consensus_width, blank_line_array
+from FluentDNA.TileLayout import TileLayout
+from FluentDNA import gap_char
+from FluentDNA.FluentDNAUtils import copy_to_sources
 
 
 class TransposonLayout(TileLayout):

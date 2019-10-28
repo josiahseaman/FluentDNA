@@ -10,11 +10,11 @@ from DNASkittleUtils.Contigs import read_contigs
 from PIL import Image, ImageDraw
 
 import math
-from DDV.TileLayout import hex_to_rgb, TileLayout, is_protein_sequence
+from FluentDNA.TileLayout import hex_to_rgb, TileLayout, is_protein_sequence
 from natsort import natsorted
 
-from DDV.DDVUtils import make_output_directory
-from DDV.Layouts import level_layout_factory
+from FluentDNA.FluentDNAUtils import make_output_directory
+from FluentDNA.Layouts import level_layout_factory
 
 
 def fastas_in_folder(input_fasta_folder):

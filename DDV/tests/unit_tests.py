@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from DDV.AnnotatedTrackLayout import AnnotatedTrackLayout
+from FluentDNA.AnnotatedTrackLayout import AnnotatedTrackLayout
 
 class AnnotationTrackTest(unittest.TestCase):
     """The majority of testing is done in end_to_end_tests.py because visualization have

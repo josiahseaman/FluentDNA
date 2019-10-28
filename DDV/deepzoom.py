@@ -1,4 +1,4 @@
-#  This copy of deep zoom has been modified for DDV to fix a bug in .create() for png files.
+#  This copy of deep zoom has been modified for FluentDNA to fix a bug in .create() for png files.
 #
 #
 #  Deep Zoom Tools
