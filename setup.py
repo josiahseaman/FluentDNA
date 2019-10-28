@@ -15,8 +15,6 @@ setup(
                           'html_template/img/*', 'example_data/alignments/*',]},
     scripts=['DDV/fluentdna.py'],
     install_requires=[
-        'pip>=18.0',
-        'setuptools>=41.5',
         'Pillow>=3.2.0',
         'six>=1.10.0',
         'psutil>=5.4.5',
