@@ -104,6 +104,7 @@ def run_server(output_dir=None):
 
     SERVER_HOME, base = base_directories('')
     print("Setting up HTTP Server based from", SERVER_HOME)
+    os.makedirs(SERVER_HOME, exist_ok=True)
     os.chdir(SERVER_HOME)
 
     ADDRESS = "localhost"
@@ -111,12 +112,17 @@ def run_server(output_dir=None):
 
     url = "http://%s:%s" % (ADDRESS, str(PORT))
 
-    launch_browser(url, output_dir)
-    try:
+    success = launch_browser(url, output_dir)
+    try: # Try to determine if this is running in a terminal
+        import DDV
         handler = server.SimpleHTTPRequestHandler
         httpd = TCPServer((ADDRESS, PORT), handler)
         print("Open a browser at " + url)
-        httpd.serve_forever()
+        print("If you are using this computer remotely, use CTRL+C to close the browser and "
+              "find your results in " + os.path.join(os.path.dirname(DDV.__file__),
+                                                 'results'))
+        if success:
+            httpd.serve_forever()
     except OSError:
         print("A server is already running on this port.")
         print("You can access your results through the browser at %s" % url)
@@ -128,14 +134,15 @@ def launch_browser(url, output_dir):
         import webbrowser
         full_url = url if not output_dir else url + '/' + os.path.basename(output_dir)
         webbrowser.open_new_tab(full_url)  # prefers chrome but will use system browser
+        return True
     except BaseException:
-        pass  # fail silently
+        return False  # fail silently
 
 
 def done(args, output_dir=None):
     """Ensure that server always starts when requested.
     Otherwise system exit."""
-    if args.run_server:
+    if not args.no_server and args.run_server:
         run_server(output_dir)
     else:
         beep()
@@ -287,7 +294,7 @@ def ddv(args):
         raise NotImplementedError("What you are trying to do is not currently implemented!")
 
 
-def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=False):
+def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=True):
     print("Creating Large Comparison Image from Input Fastas...")
     column_widths = None
     if args.column_widths:
@@ -361,7 +368,7 @@ def main():
                                      add_help=True)
     parser.add_argument("-r", "--runserver",
                         action='store_true',
-                        help="Browse your previous results.",
+                        help="Browse your previous results. This is on by default and can be disabled with --no_server",
                         dest="run_server")
     parser.add_argument("-f", "--fasta",
                         type=str,
@@ -391,6 +398,7 @@ def main():
                         type=str,
                         help="List contigs you'd like visualized from the file separated by spaces. "
                              "This can be used to pluck out your contig of interest from a large file. "
+                             "This allows you to set the order chromosomes will be displayed. "
                              "REQUIRED for Chain File alignments.",
                         dest="contigs")
     parser.add_argument("-cc", "--chromosomes", nargs='+', type=str,
@@ -432,6 +440,11 @@ def main():
                         help="Use if you only want an image.  No webpage or zoomstack will be calculated.  "
                         "You can use --image option later to resume the process to get a deepzoom stack.",
                         dest="no_webpage")
+    parser.add_argument("-ns", "--no_server",
+                        action='store_true',
+                        help="Prevents the server from starting after a successful render.  "
+                             "Use this with batch commands or HPC jobs.",
+                        dest="no_server")
     parser.add_argument("-q", "--trial_run",
                         action='store_true',
                         help="Only show the first 1 Mbp.  This is a fast run for testing.",
@@ -551,8 +564,12 @@ def main():
         parser.error("No layout will be performed if an existing image is passed in! "
                      "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
-        parser.error('Please define a file to process.  Ex: ' + os.path.basename(sys.argv[0]) +
-                     ' --fasta="example_data/phiX.fa"')
+        import DDV
+        parser.error('Please start a server with --runserver or define a file to process.  Ex: ' +
+                     os.path.basename(sys.argv[0]) +
+                     ' --fasta="' + os.path.join(os.path.dirname(DDV.__file__),
+                                                 'example_data','hg38_chr19_sample.fa')+'"')
+
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")

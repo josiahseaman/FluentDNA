@@ -45,9 +45,18 @@ def pretty_contig_name(contig_name, title_width, title_lines):
 
 def filter_by_contigs(unfiltered, extract_contigs):
     if extract_contigs is not None:  # winnow down to only extracted contigs
-        filtered_contigs = [c for c in unfiltered if c.name.split()[0] in set(extract_contigs)]
-        if filtered_contigs:
-            return filtered_contigs
+        entry_found = False
+        contig_dict = {name: None for name in extract_contigs}
+        for c in unfiltered:
+            if c.name.split()[0] in set(extract_contigs):
+                contig_dict[c.name.split()[0]] = c
+                entry_found = True
+        ordered_contigs = [contig_dict[c] for c in extract_contigs if contig_dict[c] is not None]
+        if entry_found:
+            if len(ordered_contigs) != len(extract_contigs):
+                found = {c.name.split()[0] for c in ordered_contigs}
+                print("Some entries had no match:", {n for n in extract_contigs if n not in found})
+            return ordered_contigs
         else:
             print("Warning: No matching contigs were found, so the whole file is being used:",
                   extract_contigs, file=sys.stderr)

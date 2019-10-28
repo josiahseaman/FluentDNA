@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import, \
     with_statement, generators, nested_scopes
 
 import os
+import shutil
 import traceback
 from datetime import datetime
 
@@ -113,10 +114,18 @@ class MultipleAlignmentLayout(TileLayout):
                 print('Encountered exception while drawing nucleotides:', '\n')
                 traceback.print_exc()
             input_path = os.path.join(input_fasta_folder, single_MSA)
-            self.output_fasta(output_folder, input_path, False, None, False, append_fasta_sources=False)
+            self.output_fasta(output_folder, input_path, False, None, False,
+                              append_fasta_sources=False, create_source_download=False)
         print("\nDrew Nucleotides:", datetime.now() - start_time)
         self.output_image(output_folder, output_file_name, False)
         print("Output Image in:", datetime.now() - start_time)
+        target_folder = os.path.join(output_folder, 'sources', os.path.basename(input_fasta_folder))
+        if not os.path.exists(target_folder):
+            print("Copying entire sources directory:", input_fasta_folder)
+            shutil.copytree(input_fasta_folder,
+                            target_folder,
+                            ignore=lambda src, names: [n for n in names if '.fa' not in n],
+                            symlinks=True, )
 
 
     def draw_nucleotides(self, verbose=False):
@@ -222,20 +231,26 @@ class MultipleAlignmentLayout(TileLayout):
     def layout_based_on_repeat_size(self, width, height, max_width, contigs):
         """change layout to match dimensions of the repeat
         """
+        total_width = width + self.x_pad
+        max_rows = 1000
+        if height > max_rows :
+            columns = math.ceil(height / max_rows)
+            total_width = (width + self.x_pad) * columns
+            height = min(max_rows, height)
         if self.single_file:
             self.layout_phased_file(width, height, max_width)
         else:  # Typical case with many small MSA
             # skip to next mega row
-            if self.next_origin[0] + width + 1 >= max_width:
+            if self.next_origin[0] + total_width - self.x_pad + 1 >= max_width:
                 self.next_origin[0] = self.border_width
                 self.next_origin[1] += self.current_column_height + self.y_pad
                 self.current_column_height = 1  # reset
 
             self.current_column_height = max(height, self.current_column_height)
             modulos = [width, height, 9999, 9999]
-            padding = [0, 0, 20, 20 * 3]
+            padding = [0, 0, self.x_pad, self.x_pad * 3]
             self.each_layout.append(level_layout_factory(modulos, padding, self.next_origin))
-            self.next_origin[0] += width + self.x_pad  # scoot next_origin by width we just used up
+            self.next_origin[0] += total_width  # scoot next_origin by width we just used up
         self.i_layout = len(self.each_layout) - 1  # select current layout
 
 

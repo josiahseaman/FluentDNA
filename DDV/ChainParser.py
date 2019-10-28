@@ -3,6 +3,7 @@ from __future__ import print_function, division, absolute_import, \
 
 import os
 import sys
+import traceback
 from collections import namedtuple
 
 try:
@@ -594,7 +595,13 @@ class ChainParser(object):
 
         batches = []
         for chromosome in chromosomes:
-            batches.append(self._parse_chromosome_in_chain(chromosome))
+            try:
+                result = self._parse_chromosome_in_chain(chromosome)
+                batches.append(result)
+            except BaseException as e:
+                print("Encountered exception while parsing chromosome alignment: ")
+                traceback.print_exc()
+                print("Continuing to next chromosome.")
         return batches
         # workers = multiprocessing.Pool(6)  # number of simultaneous processes. Watch your RAM usage
         # workers.map(self._parse_chromosome_in_chain, chromosomes)

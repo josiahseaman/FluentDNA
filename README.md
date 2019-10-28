@@ -18,7 +18,11 @@ You can start using FluentDNA:
  4. Your result files will be placed in the FluentDNA directory `DDV/results/`.  Once your private server has started, 
  all your results are viewable at [http://localhost:8000](http://127.0.0.1:8000).  
  
-To use FluentDNA as a python module (required for Linux), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).  
+To use FluentDNA as a python module (required for **Linux**), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
+```
+pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
+pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
+```  
 **Locating Results:** You will need to be using the same computer the server is running on.  The server will not be visible 
 over network or internet unless your administrator opens the port.  
 

@@ -14,6 +14,11 @@ From a command line in your python virtual environment:
 pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
 pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
 ```
+If you get an error about html_template/ or example_data/ you need to **update pip and setuptools**.  Then rerun the FluentDNA install.
+```
+pip install --upgrade pip
+pip install --upgrade setuptools
+```
 
 **Running**
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH, it's a good idea to add this to PATH.
