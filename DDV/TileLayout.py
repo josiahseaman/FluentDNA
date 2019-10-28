@@ -18,13 +18,24 @@ from DDV.DDVUtils import multi_line_height, pretty_contig_name, viridis_palette,
 from DDV.Layouts import LayoutFrame, LayoutLevel, level_layout_factory, parse_custom_layout
 
 small_title_bp = 10000
-
+protein_found_message = False
 
 
 
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+
+
+def is_protein_sequence(contig):
+    """Checks if there are any peptide characters in the first 100 of the first contig"""
+    global protein_found_message
+    peptides = {'D', 'E', 'F', 'H', 'I', 'K', 'L', 'M', 'P', 'Q', 'R', 'S', 'V', 'W', 'X', 'Y'}
+    matches = set(contig.seq[:100]).intersection(peptides)
+    if not protein_found_message and matches:
+        print("Found protein characters:", matches)
+        protein_found_message = True
+    return len(matches) > 0
 
 
 class TileLayout(object):
@@ -232,10 +243,10 @@ class TileLayout(object):
             if verbose and (len(self.contigs) < 100 or contig_index % (len(self.contigs) // 100) == 0):
                 print(str(total_progress / self.image_length * 100)[:4], '% done:', contig.name,
                       flush=True)  # pseudo progress bar
-        print('')
 
 
-    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs, append_fasta_sources=True):
+    def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
+                     append_fasta_sources=True, create_source_download=True):
         bare_file = os.path.basename(fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
@@ -245,13 +256,14 @@ class TileLayout(object):
             write_contigs_to_chunks_dir(output_folder, bare_file, self.contigs)
             self.remember_contig_spacing()
             fasta_destination = os.path.join(output_folder, 'sources', bare_file)
-            if extract_contigs or sort_contigs:  # customized_fasta
-                length_sum = sum([len(c.seq) for c in self.contigs])
-                fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
-                write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
-            else:
-                copy_to_sources(output_folder, fasta)
-            print("Sequence saved in:", fasta_destination)
+            if create_source_download:
+                if extract_contigs or sort_contigs:  # customized_fasta
+                    length_sum = sum([len(c.seq) for c in self.contigs])
+                    fasta_destination = '%s__%ibp.fa' % (os.path.splitext(fasta_destination)[0], length_sum)
+                    write_contigs_to_file(fasta_destination, self.contigs)  # shortened fasta
+                else:
+                    copy_to_sources(output_folder, fasta)
+                print("Sequence saved in:", fasta_destination)
 
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
@@ -293,6 +305,7 @@ class TileLayout(object):
             self.palette = viridis_palette()
             self.contigs = [Contig(input_file_path, open(input_file_path, 'rb').read())]
         self.contigs = filter_by_contigs(self.contigs, extract_contigs)
+        self.protein_palette = is_protein_sequence(self.contigs[0])
         return self.calc_all_padding()
 
     def prepare_image(self, image_length):
@@ -471,7 +484,7 @@ class TileLayout(object):
                      0 = dark purple. 125 = green, 255 = yellow. Developed as 
                      Matplotlib's default color palette.  It is 
                      perceptually uniform and color blind safe.</span>"""
-        else:
+        elif not self.protein_palette:
             line = "<strong>Legend:</strong>" + \
                 self.legend_line('Adenine (A)', 'A') +\
                 self.legend_line('Thymine (T)', 'T') +\
@@ -480,6 +493,29 @@ class TileLayout(object):
                 self.legend_line('Unsequenced', 'N') +\
                 """<span class='color-explanation'>G/C rich regions are red/orange. 
                 A/T rich areas are green/blue. Color blind safe colors.</span>"""
+        else:  # protein_palette
+            line = "<strong>Legend:</strong>"+\
+                self.legend_line('Alanine (A)', 'A') +\
+                self.legend_line('Cysteine (C)', 'C') +\
+                self.legend_line('Aspartic acid (D)', 'D') +\
+                self.legend_line('Glutamic acid (E)', 'E') +\
+                self.legend_line('Phenylalanine (F)', 'F') +\
+                self.legend_line('Glycine (G)', 'G') +\
+                self.legend_line('Histidine (H)', 'H') +\
+                self.legend_line('Isoleucine (I)', 'I') +\
+                self.legend_line('Lysine (K)', 'K') +\
+                self.legend_line('Leucine (L)', 'L') +\
+                self.legend_line('Methionine (M)', 'M') +\
+                self.legend_line('Asparagine (N)', 'N') +\
+                self.legend_line('Proline (P)', 'P') +\
+                self.legend_line('Glutamine (Q)', 'Q') +\
+                self.legend_line('Arginine (R)', 'R') +\
+                self.legend_line('Serine (S)', 'S') +\
+                self.legend_line('Threonine (T)', 'T') +\
+                self.legend_line('Valine (V)', 'V') +\
+                self.legend_line('Tryptophan (W)', 'W') +\
+                self.legend_line('Tyrosine (Y)', 'Y')+ \
+                self.legend_line('Any (X)', 'X')
         return line
 
     def legend_line(self, label, palette_key):

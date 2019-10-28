@@ -143,7 +143,7 @@ function peano_mouse_position(nucNumX, nucNumY, layout_levels, source_index) {
         var next_axis = axis_flipped[(part + 1) %2];
         axis_flipped[(part + 1) %2] = this_level_flipped? !next_axis : next_axis; // XOR
 
-        if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
+        if (i != 1 && xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
             return "";//check for invalid coordinate (margins)
         }
     }
@@ -165,7 +165,7 @@ function tiled_layout_mouse_position(nucNumX, nucNumY, layout_levels, source_ind
         //subtract the credited coordinates to shift to relative coordinates in that level
         xy_remaining[part] -= number_of_full_increments * level.thickness;
 
-        if (xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
+        if (i != 1 && xy_remaining[part] >= level.thickness - level.padding && xy_remaining[part] < level.thickness) {
             return "";//check for invalid coordinate (margins)
         }
     }
@@ -239,6 +239,7 @@ function showNucleotideNumber(event, viewer) {
             if(layout_algorithm == 1){
                 columnWidthInNucleotides = 100;  // override the tiny display (probably 3)
             }
+            columnWidthInNucleotides = Math.max(10, Math.min(1000, columnWidthInNucleotides));
             Nucleotide = position_info.index_inside_contig;
             lineNumber = Math.floor(Nucleotide / columnWidthInNucleotides);
             var remainder = Nucleotide % columnWidthInNucleotides + columnWidthInNucleotides;
