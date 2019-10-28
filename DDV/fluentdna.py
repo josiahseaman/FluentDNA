@@ -112,12 +112,17 @@ def run_server(output_dir=None):
 
     url = "http://%s:%s" % (ADDRESS, str(PORT))
 
-    launch_browser(url, output_dir)
-    try:
+    success = launch_browser(url, output_dir)
+    try: # Try to determine if this is running in a terminal
+        import DDV
         handler = server.SimpleHTTPRequestHandler
         httpd = TCPServer((ADDRESS, PORT), handler)
         print("Open a browser at " + url)
-        httpd.serve_forever()
+        print("If you are using this computer remotely, use CTRL+C to close the browser and "
+              "find your results in " + os.path.join(os.path.dirname(DDV.__file__),
+                                                 'results'))
+        if success:
+            httpd.serve_forever()
     except OSError:
         print("A server is already running on this port.")
         print("You can access your results through the browser at %s" % url)
@@ -129,8 +134,9 @@ def launch_browser(url, output_dir):
         import webbrowser
         full_url = url if not output_dir else url + '/' + os.path.basename(output_dir)
         webbrowser.open_new_tab(full_url)  # prefers chrome but will use system browser
+        return True
     except BaseException:
-        pass  # fail silently
+        return False  # fail silently
 
 
 def done(args, output_dir=None):
