@@ -558,8 +558,12 @@ def main():
         parser.error("No layout will be performed if an existing image is passed in! "
                      "Please only define an existing 'image' and the desired 'outfile'.")
     if not args.image and not args.fasta and not args.run_server:
-        parser.error('Please define a file to process.  Ex: ' + os.path.basename(sys.argv[0]) +
-                     ' --fasta="example_data/phiX.fa"')
+        import DDV
+        parser.error('Please start a server with --runserver or define a file to process.  Ex: ' +
+                     os.path.basename(sys.argv[0]) +
+                     ' --fasta="' + os.path.join(os.path.dirname(DDV.__file__),
+                                                 'example_data','hg38_chr19_sample.fa')+'"')
+
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "
                      "and asked DDV to only generate an image with no DeepZoom stack or webpage.")
