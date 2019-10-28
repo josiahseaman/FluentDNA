@@ -115,7 +115,9 @@ class ParallelLayout(TileLayout):
         column_size = self.levels[2].chunk_size
         margin = 6
         color = hex_to_rgb('#c9c9c9')
-        for column_progress in range(0, len(self.contigs[0].seq) + column_size, column_size):
+        main_contig = self.contigs[0]
+        for column_progress in range(main_contig.title_padding,
+                                     len(main_contig.seq) + main_contig.title_padding + column_size, column_size):
             left, top = self.each_layout[0].position_on_screen(column_progress)
             left, top = max(0, left - margin), max(0, top - margin - self.header_height)
             # column_progress only works when first and last columns have the same width
@@ -130,9 +132,9 @@ class ParallelLayout(TileLayout):
             #TODO: could be optimized by caching the text image
             for i, layout in enumerate(self.each_layout):
                 left, ignore = layout.position_on_screen(column_progress)
-                text = pp(column_progress) #+ ' ' + just_the_name(fasta_files[i]) # cluttered
-                self.write_title(text, self.base_width, self.header_height, 11, 1, 30,
-                                 (left, top + 3),
+                text = pp(column_progress - main_contig.title_padding) #+ ' ' + just_the_name(fasta_files[i]) # cluttered
+                self.write_title(text, self.base_width, self.header_height + 2, 11, 1, 30,
+                                 (left, top + 0),
                                  False, self.image, color=hex_to_rgb('#606060'))
         self.genome_processed = 0
 
