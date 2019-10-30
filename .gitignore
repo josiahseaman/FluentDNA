@@ -7,12 +7,12 @@ env/
 env365/
 install_test/
 release/
-DDV/results/
+FluentDNA/results/
 release.bat
 scraps/
 env_fresh/
-DDV/data/
-DDV/www-data/
+FluentDNA/data/
+FluentDNA/www-data/
 
 
 # Created by .ignore support plugin (hsz.mobi)
