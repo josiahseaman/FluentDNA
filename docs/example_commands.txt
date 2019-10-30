@@ -25,7 +25,7 @@ python3 DRIVE:\\python34\Lib\site-packages\FluentDNA\fluentdna.py "data/phiX.fa"
 
 
 # Mac Examples:
-# These are commands tested by "will" (notice the path) and found to work.  They include the full path to the site-package to avoid
+# These are commands tested by Will (notice the path) and found to work.  They include the full path to the site-package to avoid
 # an ambiguous lookup or "No module FluentDNA" errors.  Edit these paths to match your computer.
 # Note that ptyhon 2.7 is the system default, but FluentDNA is programmed to run in Python3.
 
@@ -33,5 +33,5 @@ python3 DRIVE:\\python34\Lib\site-packages\FluentDNA\fluentdna.py "data/phiX.fa"
 pip3 install --process-dependency-links git+https://github.com/josiahseaman/FluentDNA.git@pip
 python3 /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/FluentDNA/fluentdna.py --fasta=/Users/will/Desktop/test.fasta
 
-# Using a virtual environment in /Users/will/ddv/
-python3 /Users/will/ddv/lib/python3.6/site-packages/FluentDNA/fluentdna.py --fasta=/Users/will/Desktop/test.fasta
+# Using a virtual environment in /Users/will/virtualenv/
+python3 /Users/will/virtualenv/lib/python3.6/site-packages/FluentDNA/fluentdna.py --fasta=/Users/will/Desktop/test.fasta

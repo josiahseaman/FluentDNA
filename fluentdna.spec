@@ -1,8 +1,9 @@
 # -*- mode: python -*-
 from PyInstaller.compat import is_darwin
+import os, sys
 
 block_cipher = None
-pathextras=['D:\\josiah\\Projects\\FluentDNA']
+pathextras=[os.path.dirname(sys.argv[0])]
 mainexepath=['FluentDNA\\fluentdna.py']
 excludelibs=[]
 if is_darwin: pathextras=[]
