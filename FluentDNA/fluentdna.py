@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-FluentDNA FluentDNA 2.0 is a new version of DDV written in Python that allows you to generate a single image
+FluentDNA 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
@@ -122,7 +122,10 @@ def run_server(output_dir=None):
               "find your results in " + os.path.join(os.path.dirname(FluentDNA.__file__),
                                                  'results'))
         if success:
-            httpd.serve_forever()
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                print("FluentDNA Server shutdown.")
     except OSError:
         print("A server is already running on this port.")
         print("You can access your results through the browser at %s" % url)

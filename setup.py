@@ -2,13 +2,17 @@ from FluentDNA import VERSION
 from setuptools import setup, find_packages
 
 utils_ver = '1.0.11'
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 setup(
     name='FluentDNA',
     version=VERSION,
     description='Visualization tool for bare fasta files.  Supports whole genome alignment and multiple sequence alignment.',
     author='Josiah Seaman, Bryan Hurst',
-    author_email='josiah.seaman@gmail.com',
-    license='BSD',
+    author_email='josiah@newline.us',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(exclude=('build', 'obj', 'results')),
     include_package_data=True,
     package_data={'FluentDNA': ['html_template/*', 'example_data/*',
@@ -33,9 +37,9 @@ setup(
     download_url='https://github.com/josiahseaman/FluentDNA',  # TODO: post a tarball
     keywords=['bioinformatics', 'dna', 'fasta', 'chain', 'alignment', 'species diversity'],
     classifiers=[
-        'Development Status :: 4 - Beta',  # 5 - Production/Stable
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD',
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
@@ -45,6 +49,6 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
 )
