@@ -1,4 +1,4 @@
-This will guide you through installing FluentDNA as a python module called "DDV".  This is the ideal
+This will guide you through installing FluentDNA as a python module called "FluentDNA".  This is the ideal
 option for developers who want to integrate or tweak FluentDNA.  Non-technical users should use
 a release from the [Releases Page](https://github.com/josiahseaman/FluentDNA/releases).
 
@@ -24,13 +24,13 @@ pip install --upgrade setuptools
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH, it's a good idea to add this to PATH.
 The `example_data` directory will end up in your site packages, so you'll need to reference the full path.
 
-`python /path/to/site-packages/DDV/fluentdna.py --fasta="/path/to/site-packages/DDV/example_data/hg38_chr19_sample.fa"`
+`python /path/to/site-packages/FluentDNA/fluentdna.py --fasta="/path/to/site-packages/FluentDNA/example_data/hg38_chr19_sample.fa"`
 **Note:** Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:
 `python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`
 
 To use the interactive browser, especially for large files, start a server.
 
-`python /path/to/site-packages/DDV/fluentdna.py --runserver`
+`python /path/to/site-packages/FluentDNA/fluentdna.py --runserver`
 If running on your local machine, this will open your browser at URL: `http://localhost:8000/`
 If you are running FluentDNA through ssh to another computer you will need to talk to your administrator about opening a HTTP port.  The PORT is defined at the top of fluentdna.py under run_server().
 
@@ -129,7 +129,7 @@ This documentation may be out of date after the pip refactor and switch to PyIns
 	    cd ..
 	    rm -r pip-1.5.6
 
-  - Using the new python, install all the requirements `/path/to/projects/ddv_python/bin/pip install -r /path/to/DDV/Requirements.txt`
+  - Using the new python, install all the requirements `/path/to/projects/ddv_python/bin/pip install -r /path/to/FluentDNA/Requirements.txt`
   - `/path/to/projects/ddv_python/bin/pip install hg+https://bitbucket.org/BryanHurst/cx_freeze`
     - If the above install fails, then there is a problem with your python shared libraries, I have a clone of the cx_freeze repo with a temp fix
       - CD to a directory where you want to download it, then `hg clone hg+https://bitbucket.org/BryanHurst/cx_freeze; cd cx_freeze; /path/to/projects/adsm_python/bin/python setup.py install`

@@ -1,9 +1,9 @@
-from DDV import VERSION
+from FluentDNA import VERSION
 from setuptools import setup, find_packages
 
 utils_ver = '1.0.11'
 setup(
-    name='DDV',
+    name='FluentDNA',
     version=VERSION,
     description='Visualization tool for bare fasta files.  Supports whole genome alignment and multiple sequence alignment.',
     author='Josiah Seaman, Bryan Hurst',
@@ -11,9 +11,9 @@ setup(
     license='BSD',
     packages=find_packages(exclude=('build', 'obj', 'results')),
     include_package_data=True,
-    package_data={'DDV': ['html_template/*', 'example_data/*',
+    package_data={'FluentDNA': ['html_template/*', 'example_data/*',
                           'html_template/img/*', 'example_data/alignments/*',]},
-    scripts=['DDV/fluentdna.py'],
+    scripts=['FluentDNA/fluentdna.py'],
     install_requires=[
         'Pillow>=3.2.0',
         'six>=1.10.0',

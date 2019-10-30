@@ -1,23 +1,24 @@
 # -*- mode: python -*-
 from PyInstaller.compat import is_darwin
+import os, sys
 
 block_cipher = None
-pathextras=['D:\\josiah\\Projects\\DDV']
-mainexepath=['DDV\\fluentdna.py']
+pathextras=[os.path.dirname(sys.argv[0])]
+mainexepath=['FluentDNA\\fluentdna.py']
 excludelibs=[]
 if is_darwin: pathextras=[]
 if is_darwin: excludelibs=['FixTk', 'tcl', 'tk', '_tkinter', 'tkinter', 'Tkinter']
-if is_darwin: mainexepath=['DDV/fluentdna.py']
+if is_darwin: mainexepath=['FluentDNA/fluentdna.py']
 
 a = Analysis(mainexepath,
    pathex=pathextras,
    binaries=[],
-   datas=[('DDV/example_data', 'DDV/example_data'),
-   ('DDV/html_template','DDV/html_template'),
+   datas=[('FluentDNA/example_data', 'FluentDNA/example_data'),
+   ('FluentDNA/html_template','FluentDNA/html_template'),
    ('docs','docs')],
    hiddenimports=['xml', 'pyexpat'],
    hookspath=[],
-   runtime_hooks=['.\\DDV\\use_lib.py'],
+   runtime_hooks=['.\\FluentDNA\\use_lib.py'],
    excludes=excludelibs,
    win_no_prefer_redirects=False,
    win_private_assemblies=False,
