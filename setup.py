@@ -1,7 +1,7 @@
 from FluentDNA import VERSION
 from setuptools import setup, find_packages
 
-utils_ver = '1.0.11'
+utils_ver = '1.0.13'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -20,9 +20,8 @@ setup(
     scripts=['FluentDNA/fluentdna.py'],
     install_requires=[
         'Pillow>=3.2.0',
-        'six>=1.10.0',
         'psutil>=5.4.5',
-        'blist>=1.3.6',
+        # 'blist>=1.3.6',
         'natsort>=5.1.1',
         'numpy>=1.13.3',
         'DNASkittleUtils>=' + utils_ver,
@@ -42,8 +41,6 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

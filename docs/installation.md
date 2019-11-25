@@ -11,8 +11,8 @@ You will need:
 **Installation**
 From a command line in your python virtual environment:  
 ```
-pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
-pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
+pip install --upgrade DNASkittleUtils
+pip install --upgrade FluentDNA
 ```
 If you get an error about html_template/ or example_data/ you need to **update pip and setuptools**.  Then rerun the FluentDNA install.
 ```
