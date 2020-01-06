@@ -16,7 +16,7 @@ class ParallelLayout(TileLayout):
     def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None,
                  border_boxes=False):
         # This layout is best used on one chromosome at a time.
-        super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
+        super(ParallelLayout, self).__init__(sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
         self.use_border_boxes = border_boxes
         self.header_height = 12 if border_boxes else 0
@@ -48,9 +48,6 @@ class ParallelLayout(TileLayout):
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
-
-    def enable_fat_headers(self):
-        pass  # just don't
 
     def process_file(self, output_folder, output_file_name, fasta_files,
                      no_webpage=False, extract_contigs=None):
@@ -163,7 +160,7 @@ class ParallelLayout(TileLayout):
         reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress,
                                                                                       next_segment_length)
         # no larger than 1 full column or text will overlap
-        if title_padding >= self.tile_label_size:
+        if title_padding >= self.megarow_label_size:
             title_padding = self.levels[2].chunk_size
         # Remove first title
         # if total_progress == 0:
