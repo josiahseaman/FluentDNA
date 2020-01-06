@@ -42,14 +42,16 @@ Check out the file https://github.com/josiahseaman/FluentDNA/blob/python-master/
 ## Support Contact
 If you run into any problems or would like to use FluentDNA in research, contact me at **josiah@newline.us**.  I'm happy to support my own software and always interested in new collaborations.
 
-## FluentDNA 2.0 Features
+## FluentDNA Features
 
-FluentDNA 2.0 is a complete rewrite in Python of DDV.  FluentDNA 2.0 has a much expanded feature set for handling
+FluentDNA is a complete rewrite in Python of DDV.  FluentDNA has a much expanded feature set for handling
 large, multipart files.  It can put an entire genome on a single image, marked with contig names.
-FluentDNA 2.0 has features for exploring genome alignments, annotations, and transposon alignments.
+FluentDNA has features for exploring genome alignments, annotations, and transposon alignments.
 It was developed by Newline Technical Innovations and can be found at:
 https://github.com/josiahseaman/FluentDNA/tree/python-master
 
+## Python Versions
+FluentDNA was primarily developed in Python 3.4.  After resolving [Issue #93](https://github.com/josiahseaman/FluentDNA/issues/93) we've been able to install in 3.7 and 3.8.  `blist` is not currently available for 3.7+ which means that genome alignment is not recommended.   Conda numpy does not support anything Python older than 3.5.0.
 
 # Compile Instructions for Developers:
 PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
@@ -84,7 +86,6 @@ PyInstaller (3.3.1)
 pypiwin32 (223)
 pywin32 (223)
 setuptools (39.0.1)
-six (1.10.0)
 
 
 ### Mac with PyInstaller

@@ -546,6 +546,7 @@ def main():
     # Errors
 
     #Layout Defaults
+    args.layout = args.layout.lower()
     if not args.layout:
         if args.extra_fastas:  # separate because unique can use a chain file without extra_fastas
             args.layout = 'parallel'
@@ -559,7 +560,7 @@ def main():
                 args.layout = "annotated"
             else:
                 args.layout = 'tiled'
-    if args.image and not args.layout:
+    if args.image:
         args.layout = "NONE"
 
 
