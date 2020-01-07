@@ -83,6 +83,7 @@ class ParallelLayout(TileLayout):
         # self.generate_html(output_folder, output_file_name) # done in fluentdna.py
         self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
+        return start_time
 
     def changes_per_genome(self):
         self.i_layout = self.genome_processed

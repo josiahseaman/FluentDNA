@@ -204,7 +204,7 @@ class Ideogram(HighlightedAnnotation):
             extract_contigs = [contigs[0].name.split()[0]]
             print("Extracting ", extract_contigs)
 
-        super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
+        return super(Ideogram, self).process_file(input_file_path, output_folder, output_file_name,
                                            no_webpage=no_webpage, extract_contigs=extract_contigs)
 
     # def activate_high_contrast_colors(self):

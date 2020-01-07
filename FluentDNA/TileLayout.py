@@ -202,6 +202,7 @@ class TileLayout(object):
         self.output_fasta(output_folder, input_file_path, no_webpage,
                           extract_contigs, self.sort_contigs)
         print("Output Fasta in:", datetime.now() - start_time)
+        return start_time
 
 
     def draw_extras(self):

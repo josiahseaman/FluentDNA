@@ -40,6 +40,8 @@ class HighlightedAnnotation(TileLayout):
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
+        from datetime import datetime
+        start_time = datetime.now()
         if self.annotation is not None:
             with open(input_file_path, 'r') as fasta:
                 assert fasta.readline().startswith('>'), "Fasta file must start with a header '>name'"
@@ -49,6 +51,7 @@ class HighlightedAnnotation(TileLayout):
         copy_to_sources(output_folder, self.gff_filename)
         copy_to_sources(output_folder, self.query_filename)
         copy_to_sources(output_folder, self.repeat_filename)
+        return start_time
 
     def draw_extras(self):
         """Drawing Annotations labels and shadow outlines"""
