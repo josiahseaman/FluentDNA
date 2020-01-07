@@ -66,7 +66,8 @@ class TileLayout(object):
         self.image_length = 0
 
         modulos, padding = parse_custom_layout(custom_layout)
-        if not modulos:
+        self.using_custom_layout = bool(modulos)
+        if not self.using_custom_layout:
             chromosome_max_height_nRows = 6
             modulos = [base_width, base_width * 10, 100, chromosome_max_height_nRows, 999]
             padding = [0,               0,           3,               9,             777, ]
@@ -330,7 +331,8 @@ class TileLayout(object):
                 # fill out the remainder so we can start at the beginning
                 reset_padding = reset_level.chunk_size - total_progress % reset_level.chunk_size
                 megarow_chunk = self.levels[3].chunk_size
-                if space_remaining > 1 \
+                if (not self.using_custom_layout) \
+                        and space_remaining > 1 \
                         and reset_padding == 1 \
                         and next_segment_length > megarow_chunk * 2:
                     reset_padding += megarow_chunk
@@ -613,6 +615,8 @@ class TileLayout(object):
     def find_layout_height_by_chromosomes(self):
         """Set the number of mega-rows and the height of the layout.
         Returns a new layout based on the current fasta file."""
+        if self.using_custom_layout:
+            return self.levels
         lengths = [len(c.seq) for c in self.contigs]
         sum_length, biggest_chromosome = sum(lengths), max(lengths)
         nMegaRows = math.ceil(biggest_chromosome / self.megarow_label_size)
