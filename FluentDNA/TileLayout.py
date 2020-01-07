@@ -519,7 +519,12 @@ class TileLayout(object):
             import FluentDNA
             module_path = os.path.dirname(FluentDNA.__file__)
             html_template = os.path.join(module_path, 'html_template')
-            copytree(html_template, output_folder)  # copies the whole template directory
+            try:
+                copytree(html_template, output_folder)  # copies the whole template directory
+            except (NotADirectoryError, FileNotFoundError):
+                module_path = os.path.dirname(module_path)  # check up one directory
+                html_template = os.path.join(module_path, 'html_template')
+                copytree(html_template, output_folder)  # copies the whole template directory
             print("Copying HTML to", output_folder)
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
