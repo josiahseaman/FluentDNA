@@ -516,8 +516,8 @@ class TileLayout(object):
             print(html_path, ' already exists.  Skipping HTML.')
             return
         try:
-            import FluentDNA
-            module_path = os.path.dirname(FluentDNA.__file__)
+            from FluentDNA.FluentDNAUtils import execution_dir
+            module_path = execution_dir()
             html_template = os.path.join(module_path, 'html_template')
             try:
                 copytree(html_template, output_folder)  # copies the whole template directory

@@ -105,8 +105,12 @@ class ParallelLayout(TileLayout):
         # Caution: These corners are currently hard coded to the color and dimension of one image
         try:
             corner = Image.open(os.path.join(base_dir,'FluentDNA','html_template','img','border_box_corner.png'))
-        except FileNotFoundError:
-            corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
+        except (FileNotFoundError, NotADirectoryError):
+            try:
+                corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
+            except (FileNotFoundError, NotADirectoryError):
+                corner = Image.open(os.path.join(os.path.dirname(base_dir),
+                                                 'html_template', 'img', 'border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
