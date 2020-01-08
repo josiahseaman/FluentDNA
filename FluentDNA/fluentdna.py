@@ -574,8 +574,7 @@ def main():
         import FluentDNA
         parser.error('Please start a server with --runserver or define a file to process.  Ex: ' +
                      os.path.basename(sys.argv[0]) +
-                     ' --fasta="' + os.path.join(os.path.dirname(FluentDNA.__file__),
-                                                 'example_data','hg38_chr19_sample.fa')+'"')
+                     ' --fasta="' + os.path.join(BASE_DIR, 'example_data','hg38_chr19_sample.fa')+'"')
 
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "

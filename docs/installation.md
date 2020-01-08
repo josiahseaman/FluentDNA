@@ -54,12 +54,14 @@ https://github.com/josiahseaman/FluentDNA/tree/python-master
 FluentDNA was primarily developed in Python 3.4.  After resolving [Issue #93](https://github.com/josiahseaman/FluentDNA/issues/93) we've been able to install in 3.7 and 3.8.  `blist` is not currently available for 3.7+ which means that genome alignment is not recommended.   Conda numpy does not support anything Python older than 3.5.0.
 
 # Compile Instructions for Developers:
-PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can build checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
+PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
 ```
 pip install pyinstaller==3.3.1
 PyInstaller fluentdna.spec --clean --noconfirm
 ```
 to generate a binary.  In practice, this will require some experimentation with version numbers to get everything installed.
+* Make sure you use a fresh virtual environment as everything in your python will be included in the executable.
+* Do not build from an Anaconda environment or you will get a 600MB build instead of a 30MB build.
 
 ### Windows with PyInstaller
 * Requires Python 3.6.5, earlier versions are not compatible with pywin32
@@ -70,22 +72,23 @@ to generate a binary.  In practice, this will require some experimentation with 
 * D:\python365\Scripts\easy_install.exe "D:\josiah\Documents\Downloads\blist-1.3.6-cp36-cp36m-win_amd64.whl"
 * `pip install pyinstaller==3.3.1`
 * `PyInstaller fluentdna.spec`
-Troubleshooting: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.
-`D:\python365\Scripts\pip.exe list`
-altgraph (0.15)
-blist (1.3.6)
-DNASkittleUtils (1.0.10)
-future (0.16.0)
-macholib (1.9)
-natsort (5.1.1)
-pefile (2017.11.5)
-Pillow (5.1.0)
-pip (9.0.3)
-psutil (5.4.5)
-PyInstaller (3.3.1)
-pypiwin32 (223)
-pywin32 (223)
-setuptools (39.0.1)
+
+**Troubleshooting**: I repeated pip installs first with the existing Requirements.txt (designed for cx_freeze) then tried the most recent version if that didn't work.  In general the most recent version of a module worked.  
+`D:\python365\Scripts\pip.exe list`  
+altgraph (0.15)  
+blist (1.3.6)  
+DNASkittleUtils (1.0.13)  
+future (0.16.0)  
+macholib (1.9)  
+natsort (5.1.1)  
+pefile (2017.11.5)  
+Pillow (5.1.0)  
+pip (9.0.3)  
+psutil (5.4.5)  
+PyInstaller (3.3.1)  
+pypiwin32 (223)  
+pywin32 (223)  
+setuptools (39.0.1)  
 
 
 ### Mac with PyInstaller
@@ -96,7 +99,9 @@ cd <your FluentDNA directory>
 /Python365/Scripts/pip install -r Requirements.txt
 PyInstaller fluentdna.spec
 ```
-You may need to troubleshoot the contents of fluentdna.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)
+You may need to troubleshoot the contents of fluentdna.spec using [this documentation](https://pyinstaller.readthedocs.io/en/v3.3.1/spec-files.html#spec-file-options-for-a-mac-os-x-bundle)  
+The most common thing I have to troubleshoot is the path to *html_template*.  Make sure to test font and *border_box_corner.png* paths using:  
+`./fluentdna --fasta=example_data/whole_genome_alignment/chr21_hg38_gapped.fa --extrafastas example_data/whole_genome_alignment/chr21_hg38_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_gapped.fa --outname="Test Parallel Layout"`
 
 ### Linux using cx_freeze:
 This documentation may be out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
