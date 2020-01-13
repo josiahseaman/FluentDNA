@@ -20,8 +20,8 @@ You can start using FluentDNA:
  
 To use FluentDNA as a python module (required for **Linux**), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
 ```
-pip install --upgrade git+https://github.com/josiahseaman/DNASkittleUtils
-pip install --upgrade git+https://github.com/josiahseaman/FluentDNA.git@pip
+pip install --upgrade DNASkittleUtils
+pip install --upgrade FluentDNA
 ```  
 **Locating Results:** You will need to be using the same computer the server is running on.  The server will not be visible 
 over network or internet unless your administrator opens the port.  

@@ -39,14 +39,11 @@ def is_protein_sequence(contig):
 
 
 class TileLayout(object):
-    def __init__(self, use_fat_headers=False, use_titles=True, sort_contigs=False,
+    def __init__(self, use_titles=True, sort_contigs=False,
                  low_contrast=False, base_width=100, border_width=3,
                  custom_layout=None):
-        # use_fat_headers: For large chromosomes in multipart files, do you change the layout to allow for titles that
-        # are outside of the nucleotide coordinate grid?
         self.fasta_sources = []  # to be added in output_fasta for each file
         self.use_titles = use_titles
-        self.use_fat_headers = use_fat_headers  # Can only be changed in code.
         self.skip_small_titles = False
         self.using_spectrum = False
         self.protein_palette = False
@@ -69,9 +66,11 @@ class TileLayout(object):
         self.image_length = 0
 
         modulos, padding = parse_custom_layout(custom_layout)
-        if not modulos:
-            modulos = [base_width, base_width * 10, 100, 10, 3, 4, 999]
-            padding = [0, 0, 6, 6 * 3, 6 * (3 ** 2), 6 * (3 ** 3), 6 * (3 ** 4)]
+        self.using_custom_layout = bool(modulos)
+        if not self.using_custom_layout:
+            chromosome_max_height_nRows = 6
+            modulos = [base_width, base_width * 10, 100, chromosome_max_height_nRows, 999]
+            padding = [0,               0,           3,               9,             777, ]
         self.border_width = border_width
         origin = [max(self.border_width, padding[2]),
                   max(self.border_width, padding[2])]
@@ -79,9 +78,7 @@ class TileLayout(object):
         self.each_layout = [level_layout_factory(modulos, padding, origin)]
         self.i_layout = 0
 
-        self.tile_label_size = self.levels[3].chunk_size
-        if self.use_fat_headers:
-            self.enable_fat_headers()
+        self.megarow_label_size = self.levels[3].chunk_size
 
         #Natural, color blind safe Colors
         self.palette = defaultdict(lambda: (255, 0, 0))  # default red will stand out
@@ -171,15 +168,6 @@ class TileLayout(object):
         self.palette['T'] = hex_to_rgb('2D6C85')  # Blue
         self.palette['A'] = hex_to_rgb('3FB93F')  # Green
 
-    def enable_fat_headers(self):
-        if self.use_titles:
-            print("Using Fat Headers!")
-            self.use_fat_headers = True
-            self.levels = self.levels[:6]
-            self.levels[5].padding += self.levels[3].thickness  # one full row for a chromosome title
-            self.levels.append(LayoutLevel(999, levels=self.levels))  # [6] PageColumn
-            self.levels.origin[1] += self.levels[5].padding  # padding comes before, not after
-            self.tile_label_size = 0  # Fat_headers are not part of the coordinate space
 
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
@@ -215,6 +203,7 @@ class TileLayout(object):
         self.output_fasta(output_folder, input_file_path, no_webpage,
                           extract_contigs, self.sort_contigs)
         print("Output Fasta in:", datetime.now() - start_time)
+        return start_time
 
 
     def draw_extras(self):
@@ -268,16 +257,17 @@ class TileLayout(object):
     def calc_all_padding(self):
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
-
-        # if len(self.levels) >= 5 and len(self.contigs[0].seq) > self.levels[4].chunk_size and multipart_file:
-        #     self.enable_fat_headers()  # first contig is huge and there's more contigs coming
+        biggest_chromosome = None
         if len(self.contigs) > 10000:
             print("Over 10,000 scaffolds detected!  Titles for entries less than 10,000bp will not be drawn.")
             self.skip_small_titles = True
             self.sort_contigs = True  # Important! Skipping isn't valid unless they're sorted
         if self.sort_contigs:
+            # Best to bring the largest contigs to the forefront
             print("Scaffolds are being sorted by length.")
-            self.contigs.sort(key=lambda fragment: -len(fragment.seq))  # Best to bring the largest contigs to the forefront
+            self.contigs.sort(key=lambda fragment: -len(fragment.seq))
+        # Replaces the current layout with an update based on file contents
+        self.each_layout[self.i_layout] = self.find_layout_height_by_chromosomes()
 
         for contig in self.contigs:  # Type: class DNASkittleUtils.Contigs.Contig
             length = len(contig.seq)
@@ -330,7 +320,7 @@ class TileLayout(object):
                 if not self.use_titles:
                     title_padding = 0  # don't leave space for a title, but still use tail and reset padding
                 if title_padding > self.levels[3].chunk_size:  # Special case for full tile, don't need to go that big
-                    title_padding = self.tile_label_size
+                    title_padding = self.megarow_label_size
                 if next_segment_length + title_padding > current_level.chunk_size:
                     continue  # adding the title pushed the above comparison over the edge, step up one level
                 space_remaining = current_level.chunk_size - total_progress % current_level.chunk_size
@@ -340,6 +330,12 @@ class TileLayout(object):
                     reset_level = self.levels[i - 1]
                 # fill out the remainder so we can start at the beginning
                 reset_padding = reset_level.chunk_size - total_progress % reset_level.chunk_size
+                megarow_chunk = self.levels[3].chunk_size
+                if (not self.using_custom_layout) \
+                        and space_remaining > 1 \
+                        and reset_padding == 1 \
+                        and next_segment_length > megarow_chunk * 2:
+                    reset_padding += megarow_chunk
                 if total_progress == 0:  # nothing to reset from
                     reset_padding = 0
                 total_padding = total_progress + title_padding + reset_padding + next_segment_length
@@ -387,20 +383,13 @@ class TileLayout(object):
             font_size = 38
             title_width = 50  # TODO: find width programatically
         if contig.title_padding >= self.levels[3].chunk_size:
+            contig.title_padding = self.megarow_label_size
             font_size = 380  # full row labels for chromosomes
             title_width = 50  # approximate width
-        if contig.title_padding == self.tile_label_size:  # Biggest Title
+        if contig.title_padding == self.megarow_label_size:  # Biggest Title
             if len(contig.name) < 24:
                 font_size = 380 * 2  # doesn't really need to be 10x larger than the rows
                 title_width = 50 // 2
-            if self.use_fat_headers:
-                # TODO add reset_padding from next contig, just in case there's unused space on this level
-                tiles_spanned = int(math.ceil((len(contig.seq) + contig.tail_padding) / self.levels[4].chunk_size))
-                title_width *= tiles_spanned  # Twice the size, but you have 3 tile columns to fill, also limited by 'width'
-                title_lines = 1
-                upper_left[1] -= self.levels[3].thickness  # above the start of the coordinate grid
-                height = self.levels[3].thickness
-                width = self.levels[4].thickness * tiles_spanned  # spans 3 full Tiles, or one full Page width
 
         contig_name = contig.name
         self.write_title(contig_name, width, height, font_size, title_lines, title_width, upper_left,
@@ -527,10 +516,15 @@ class TileLayout(object):
             print(html_path, ' already exists.  Skipping HTML.')
             return
         try:
-            import FluentDNA
-            module_path = os.path.dirname(FluentDNA.__file__)
+            from FluentDNA.FluentDNAUtils import execution_dir
+            module_path = execution_dir()
             html_template = os.path.join(module_path, 'html_template')
-            copytree(html_template, output_folder)  # copies the whole template directory
+            try:
+                copytree(html_template, output_folder)  # copies the whole template directory
+            except (NotADirectoryError, FileNotFoundError):
+                module_path = os.path.dirname(module_path)  # check up one directory
+                html_template = os.path.join(module_path, 'html_template')
+                copytree(html_template, output_folder)  # copies the whole template directory
             print("Copying HTML to", output_folder)
             html_content = {"title": output_file_name.replace('_', ' '),
                             "fasta_sources": str(self.fasta_sources),
@@ -623,6 +617,29 @@ class TileLayout(object):
     def remember_contig_spacing(self):
         self.contig_memory.append(self.contig_struct())
 
+    def find_layout_height_by_chromosomes(self):
+        """Set the number of mega-rows and the height of the layout.
+        Returns a new layout based on the current fasta file."""
+        if self.using_custom_layout:
+            return self.levels
+        lengths = [len(c.seq) for c in self.contigs]
+        sum_length, biggest_chromosome = sum(lengths), max(lengths)
+        nMegaRows = math.ceil(biggest_chromosome / self.megarow_label_size)
+
+        mRow_pixel_height = self.levels[1].modulo # approx. how tall is one mega row?
+        aspect_ratio = sum_length / ((nMegaRows * mRow_pixel_height)**2)
+        if aspect_ratio > 6:
+            pixel_draft_genome_height = math.sqrt(sum_length)
+            nMegaRows = math.ceil(pixel_draft_genome_height / mRow_pixel_height)
+            print("Info: Draft genome detected, changing layout to be roughly square")
+        nMegaRows += 1 # for title row
+        modulos = [l.modulo for l in self.levels]
+        modulos[3] = nMegaRows  # modify this one variable and rebuild.
+        # Everything else remains the same
+        print("Info: Setting layout to %i mega rows" % nMegaRows)
+        return level_layout_factory(modulos,
+                                    [l.padding for l in self.levels],
+                                    self.levels.origin)
 
 def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
     chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-FluentDNA FluentDNA 2.0 is a new version of DDV written in Python that allows you to generate a single image
+FluentDNA 2.0 is a new version of DDV written in Python that allows you to generate a single image
 for an entire genome.  It was necessary to switch platforms and languages because of intrinsic
 limitations in the size of image that could be handled by: C#, DirectX, Win2D, GDI+, WIC, SharpDX,
 or Direct2D. We tried a lot of options.
@@ -25,10 +25,10 @@ if getattr(sys, 'frozen', False):
     os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin', 'env')
 else:
     try:
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    except:  # just in case __file__ isn't defined in some contexts
-        import FluentDNA
+        import FluentDNA  # check where the module is
         BASE_DIR = os.path.dirname(FluentDNA.__file__)
+    except:  # caution __file__ isn't defined in some contexts
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # could be in /Scripts/ directory = bad
 print('Running in:', BASE_DIR)
 
 sys.path.append(BASE_DIR)
@@ -45,6 +45,7 @@ from FluentDNA import VERSION
 
 import argparse
 import gc
+from datetime import datetime
 from DNASkittleUtils.CommandLineUtils import just_the_name
 from FluentDNA.FluentDNAUtils import create_deepzoom_stack, make_output_directory, base_directories, \
     hold_console_for_windows, beep, copy_to_sources, archive_execution_command
@@ -122,7 +123,10 @@ def run_server(output_dir=None):
               "find your results in " + os.path.join(os.path.dirname(FluentDNA.__file__),
                                                  'results'))
         if success:
-            httpd.serve_forever()
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                print("FluentDNA Server shutdown.")
     except OSError:
         print("A server is already running on this port.")
         print("You can access your results through the browser at %s" % url)
@@ -178,10 +182,10 @@ def ddv(args):
     # ==========TODO: separate views that support batches of contigs============= #
     elif args.layout == 'alignment':
         layout = MultipleAlignmentLayout(sort_contigs=args.sort_contigs)
-        layout.process_all_alignments(args.fasta,
+        start_time = layout.process_all_alignments(args.fasta,
                                       args.output_dir,
                                       args.output_name)
-        finish_webpage(args, layout, args.output_name)
+        finish_webpage(args, layout, args.output_name, start_time)
         print("Done with Alignments")
         done(args, args.output_dir)
 
@@ -218,17 +222,17 @@ def ddv(args):
             done(args)
     elif args.layout == "annotation_track":
         layout = AnnotatedTrackLayout(args.fasta, args.ref_annotation, args.annotation_width)
-        layout.render_genome(args.output_dir, args.output_name, args.contigs)
-        finish_webpage(args, layout, args.output_name)
+        start_time = layout.render_genome(args.output_dir, args.output_name, args.contigs)
+        finish_webpage(args, layout, args.output_name, start_time)
         done(args, args.output_dir)
     elif args.layout == "annotated":
         layout = HighlightedAnnotation(args.ref_annotation, args.query_annotation, args.repeat_annotation,
                                        use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                                        low_contrast=args.low_contrast, base_width=args.base_width,
                                        custom_layout=args.custom_layout, use_labels=args.use_labels)
-        layout.process_file(args.fasta, args.output_dir, args.output_name,
+        start_time = layout.process_file(args.fasta, args.output_dir, args.output_name,
                             args.no_webpage, args.contigs)
-        finish_webpage(args, layout, args.output_name)
+        finish_webpage(args, layout, args.output_name, start_time)
         done(args, args.output_dir)
 
     elif args.layout == "unique":
@@ -305,9 +309,9 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
             print("Column widths should be a python expression of a list of integers ex: [30,80]", file=sys.stderr)
     layout = ParallelLayout(n_genomes=n_genomes, low_contrast=args.low_contrast, base_width=args.base_width,
                             column_widths=column_widths, border_boxes=border_boxes)
-    layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
+    start_time = layout.process_file(output_dir, output_name, fastas, args.no_webpage, args.contigs)
     args.output_dir = output_dir
-    finish_webpage(args, layout, output_name)
+    finish_webpage(args, layout, output_name, start_time)
 
 
 def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
@@ -316,9 +320,9 @@ def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
                             low_contrast=args.low_contrast, base_width=args.base_width,
                             custom_layout=args.custom_layout)
-    layout.process_file(fasta, args.output_dir, output_name, args.no_webpage, args.contigs)
+    start_time = layout.process_file(fasta, args.output_dir, output_name, args.no_webpage, args.contigs)
 
-    finish_webpage(args, layout, output_name)
+    finish_webpage(args, layout, output_name, start_time)
 
 
 def combine_files(batches, args, output_name):
@@ -330,7 +334,7 @@ def combine_files(batches, args, output_name):
     copy_to_sources(args.output_dir, args.chain_file)
 
 
-def finish_webpage(args, layout, output_name):
+def finish_webpage(args, layout, output_name, start_time=datetime.now()):
     final_location = layout.final_output_location
     print("Done creating Large Image at ", final_location)
     if not args.no_webpage:
@@ -342,10 +346,11 @@ def finish_webpage(args, layout, output_name):
         print("Creating Deep Zoom Structure from Generated Image...")
         create_deepzoom_stack(os.path.join(args.output_dir, final_location),
                               os.path.join(args.output_dir, 'GeneratedImages', "dzc_output.xml"))
-        print("Done creating Deep Zoom Structure.")
+        print("Done creating Deep Zoom Structure")
     else:
         del layout
         gc.collect()  # it's important to free the large amount of RAM this uses
+    print("Total processing time: ", datetime.now() - start_time )
 
 
 def main():
@@ -543,6 +548,8 @@ def main():
     # Errors
 
     #Layout Defaults
+    if args.layout:
+        args.layout = args.layout.lower()
     if not args.layout:
         if args.extra_fastas:  # separate because unique can use a chain file without extra_fastas
             args.layout = 'parallel'
@@ -556,7 +563,7 @@ def main():
                 args.layout = "annotated"
             else:
                 args.layout = 'tiled'
-    if args.image and not args.layout:
+    if args.image:
         args.layout = "NONE"
 
 
@@ -567,8 +574,7 @@ def main():
         import FluentDNA
         parser.error('Please start a server with --runserver or define a file to process.  Ex: ' +
                      os.path.basename(sys.argv[0]) +
-                     ' --fasta="' + os.path.join(os.path.dirname(FluentDNA.__file__),
-                                                 'example_data','hg38_chr19_sample.fa')+'"')
+                     ' --fasta="' + os.path.join(BASE_DIR, 'example_data','hg38_chr19_sample.fa')+'"')
 
     if args.image and args.no_webpage:
         parser.error("This parameter combination doesn't make sense.  You've provided a precalculated image "

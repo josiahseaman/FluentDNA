@@ -82,7 +82,7 @@ def create_deepzoom_stack(input_image, output_dzi):
 
 
 def make_output_directory(base_path, no_webpage=False):
-    from os import errno
+    import errno
     try:
         os.makedirs(os.path.join(base_path, '' if no_webpage else 'sources'))
         print("Creating Chromosome Output Directory...", os.path.basename(base_path))

@@ -126,6 +126,7 @@ class MultipleAlignmentLayout(TileLayout):
                             target_folder,
                             ignore=lambda src, names: [n for n in names if '.fa' not in n],
                             symlinks=True, )
+        return start_time
 
 
     def draw_nucleotides(self, verbose=False):

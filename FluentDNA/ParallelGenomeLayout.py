@@ -16,7 +16,7 @@ class ParallelLayout(TileLayout):
     def __init__(self, n_genomes, low_contrast=False, base_width=100, column_widths=None,
                  border_boxes=False):
         # This layout is best used on one chromosome at a time.
-        super(ParallelLayout, self).__init__(use_fat_headers=False, sort_contigs=False,
+        super(ParallelLayout, self).__init__(sort_contigs=False,
                                              low_contrast=low_contrast, base_width=base_width)
         self.use_border_boxes = border_boxes
         self.header_height = 12 if border_boxes else 0
@@ -37,10 +37,10 @@ class ParallelLayout(TileLayout):
 
         for nth_genome in range(n_genomes):
             all_columns_height = base_width * 10
-            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 12, 3, 4, 999]
+            standard_modulos = [column_widths[nth_genome], all_columns_height, column_clusters_per_mega_row, 109, 999]
             standard_step_pad = cluster_width - standard_modulos[0] + p
             mega_row_padding = p * 3 + self.header_height + 10
-            standard_padding = [0, 0, standard_step_pad, mega_row_padding, p*(3**2), p*(3**3), p*(3**4)]
+            standard_padding = [0, 0, standard_step_pad, mega_row_padding, 777]
             # steps inside a column bundle, not exactly the same as bundles steps
             thicknesses = [other_layout[0].modulo + p for other_layout in self.each_layout]
             origin = (sum(thicknesses) + p, p + self.header_height)
@@ -48,9 +48,7 @@ class ParallelLayout(TileLayout):
 
         self.n_genomes = n_genomes
         self.genome_processed = 0
-
-    def enable_fat_headers(self):
-        pass  # just don't
+        self.megarow_label_size = self.levels[3].chunk_size
 
     def process_file(self, output_folder, output_file_name, fasta_files,
                      no_webpage=False, extract_contigs=None):
@@ -86,6 +84,7 @@ class ParallelLayout(TileLayout):
         # self.generate_html(output_folder, output_file_name) # done in fluentdna.py
         self.output_image(output_folder, output_file_name, no_webpage)
         print("Output Image in:", datetime.now() - start_time)
+        return start_time
 
     def changes_per_genome(self):
         self.i_layout = self.genome_processed
@@ -107,8 +106,12 @@ class ParallelLayout(TileLayout):
         # Caution: These corners are currently hard coded to the color and dimension of one image
         try:
             corner = Image.open(os.path.join(base_dir,'FluentDNA','html_template','img','border_box_corner.png'))
-        except FileNotFoundError:
-            corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
+        except (FileNotFoundError, NotADirectoryError):
+            try:
+                corner = Image.open(os.path.join(base_dir, 'html_template', 'img', 'border_box_corner.png'))
+            except (FileNotFoundError, NotADirectoryError):
+                corner = Image.open(os.path.join(os.path.dirname(base_dir),
+                                                 'html_template', 'img', 'border_box_corner.png'))
         corner_rb = corner.copy().rotate(270, expand=True)
         corner_lb = corner.copy().rotate(180, expand=True)
         corner_lt = corner.copy().rotate(90, expand=True)
@@ -116,7 +119,7 @@ class ParallelLayout(TileLayout):
         margin = 6
         color = hex_to_rgb('#c9c9c9')
         main_contig = self.contigs[0]
-        for column_progress in range(main_contig.title_padding,
+        for column_progress in range(main_contig.title_padding + main_contig.reset_padding,
                                      len(main_contig.seq) + main_contig.title_padding + column_size, column_size):
             left, top = self.each_layout[0].position_on_screen(column_progress)
             left, top = max(0, left - margin), max(0, top - margin - self.header_height)
@@ -163,7 +166,7 @@ class ParallelLayout(TileLayout):
         reset_padding, title_padding, tail = super(ParallelLayout, self).calc_padding(total_progress,
                                                                                       next_segment_length)
         # no larger than 1 full column or text will overlap
-        if title_padding >= self.tile_label_size:
+        if title_padding >= self.levels[2].chunk_size:
             title_padding = self.levels[2].chunk_size
         # Remove first title
         # if total_progress == 0:

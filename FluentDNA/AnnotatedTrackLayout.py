@@ -32,12 +32,13 @@ class AnnotatedTrackLayout(ParallelLayout):
                                      annotation_width=self.annotation_width,
                                      base_width=self.each_layout[self.genome_phase].base_width)
         #check contig filtering
-        super(AnnotatedTrackLayout, self).process_file(output_folder,
+        start_time = super(AnnotatedTrackLayout, self).process_file(output_folder,
                output_file_name=output_file_name,
                fasta_files=[self.annotation_fasta, self.fasta_file],
                no_webpage=False, extract_contigs=extract_contigs)
         # save original GFF for reproducibility
         copy_to_sources(output_folder, self.gff_filename)
+        return start_time
 
     def changes_per_genome(self):
         super(AnnotatedTrackLayout, self).changes_per_genome()

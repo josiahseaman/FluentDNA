@@ -3,22 +3,22 @@ from PyInstaller.compat import is_darwin
 import os, sys
 
 block_cipher = None
-pathextras=[os.path.dirname(sys.argv[0])]
-mainexepath=['FluentDNA\\fluentdna.py']
-excludelibs=[]
-if is_darwin: pathextras=[]
-if is_darwin: excludelibs=['FixTk', 'tcl', 'tk', '_tkinter', 'tkinter', 'Tkinter']
-if is_darwin: mainexepath=['FluentDNA/fluentdna.py']
+pathextras = os.path.dirname(sys.argv[0])
+mainexepath = [os.path.join('FluentDNA','fluentdna.py')]
+excludelibs = []
+if is_darwin:
+    excludelibs = ['FixTk', 'tcl', 'tk', '_tkinter', 'tkinter', 'Tkinter']
+    pathextras = os.path.dirname(pathextras)
 
 a = Analysis(mainexepath,
-   pathex=pathextras,
+   pathex=[pathextras],
    binaries=[],
-   datas=[('FluentDNA/example_data', 'FluentDNA/example_data'),
-   ('FluentDNA/html_template','FluentDNA/html_template'),
+   datas=[('FluentDNA/example_data', 'example_data'),
+   ('FluentDNA/html_template','html_template'),
    ('docs','docs')],
    hiddenimports=['xml', 'pyexpat'],
    hookspath=[],
-   runtime_hooks=['.\\FluentDNA\\use_lib.py'],
+   runtime_hooks=['FluentDNA/use_lib.py'],
    excludes=excludelibs,
    win_no_prefer_redirects=False,
    win_private_assemblies=False,
