@@ -51,7 +51,8 @@ It was developed by Newline Technical Innovations and can be found at:
 https://github.com/josiahseaman/FluentDNA/tree/python-master
 
 ## Python Versions
-FluentDNA was primarily developed in Python 3.4.  After resolving [Issue #93](https://github.com/josiahseaman/FluentDNA/issues/93) we've been able to install in 3.7 and 3.8.  `blist` is not currently available for 3.7+ which means that genome alignment is not recommended.   Conda numpy does not support anything Python older than 3.5.0.
+FluentDNA was primarily developed in Python 3.4.  After resolving [Issue #93](https://github.com/josiahseaman/FluentDNA/issues/93) we've been able to install in 3.7 and 3.8.  `blist` is not currently available for 3.7+ which means that genome alignment is not recommended.  I use wheel files to get around this problem available at [gohlke](https://www.lfd.uci.edu/~gohlke/pythonlibs/#blist).  Conda numpy does not support any Python older than 3.5.0.
+
 
 # Compile Instructions for Developers:
 PyInstaller is our platform for generating binary files for each release.  This is currently working in Windows and will be used to generate Mac DMG as well.  In theory, one can checkout the FluentDNA source code, install the dependencies into a new python environment, and then run
@@ -103,8 +104,24 @@ You may need to troubleshoot the contents of fluentdna.spec using [this document
 The most common thing I have to troubleshoot is the path to *html_template*.  Make sure to test font and *border_box_corner.png* paths using:  
 `./fluentdna --fasta=example_data/whole_genome_alignment/chr21_hg38_gapped.fa --extrafastas example_data/whole_genome_alignment/chr21_hg38_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_unique.fa example_data/whole_genome_alignment/panTro5_to_hg38_chr21_gapped.fa --outname="Test Parallel Layout"`
 
+
+## Updating PyPI pip index using Twine
+These instructions are mainly for future Josiah, since no one has a perfect memory.
+* Tutorial here: https://packaging.python.org/tutorials/packaging-projects/#description
+* Download Python 3.7, create virtual environment ./env/, activate it.  
+```
+python -m pip install --user --upgrade setuptools wheel  
+python setup.py sdist bdist_wheel  
+python -m pip install --user --upgrade twine
+python -m pip install --upgrade --index-url https://test.pypi.org/simple/ fluentdna 
+# important this will not install dependencies that are not on test.PyPI
+```
+* Verify program is working correctly, resource paths are all correct.
+* Upload the official version to `twine upload dist/*` 
+* You have to manually type your unique password; no pasting, you masochist.
+
 ### Linux using cx_freeze:
-This documentation may be out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
+This method is out of date after the pip refactor and switch to PyInstaller platform.  Consider following the Mac example and use [PyInstaller for Linux](https://pyinstaller.readthedocs.io/en/v3.3.1/requirements.html#linux) instead.
 
   - Requires ldd and objdump installed (probably already on your system)
   - Install Mercurial `sudo apt-get install mercurial`

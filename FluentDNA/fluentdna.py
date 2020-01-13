@@ -25,10 +25,10 @@ if getattr(sys, 'frozen', False):
     os.environ["PATH"] += os.pathsep + os.path.join(BASE_DIR, 'bin', 'env')
 else:
     try:
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    except:  # just in case __file__ isn't defined in some contexts
-        import FluentDNA
+        import FluentDNA  # check where the module is
         BASE_DIR = os.path.dirname(FluentDNA.__file__)
+    except:  # caution __file__ isn't defined in some contexts
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # could be in /Scripts/ directory = bad
 print('Running in:', BASE_DIR)
 
 sys.path.append(BASE_DIR)
