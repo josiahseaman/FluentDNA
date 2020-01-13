@@ -259,6 +259,9 @@ class Ideogram(HighlightedAnnotation):
             self.levels.y_radices[-1] += 1
         return width, height
 
+    def find_layout_height_by_chromosomes(self):
+        """Override to do nothing."""
+        return self.each_layout[self.i_layout]
 
     def draw_extras_for_chromosome(self, scaff_name, coordinate_frame):
         super(Ideogram, self).draw_extras_for_chromosome(scaff_name, coordinate_frame)
