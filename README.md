@@ -4,9 +4,8 @@ This application creates visualizations of FASTA formatted DNA nucleotide data.
 FluentDNA generates a DeepZoomImage visualizations similar to Google Maps for FASTA files.
 
 From 2Mbp of Genomic Sequence, FluentDNA generates this image.  Changes in nucleotide bias make
-individual genome elements visible even without an annotation.  Add your annotation files to see how
-they align with the sequence features.
-![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/sources/Test%20Simple.png)
+individual genome elements visible even without an annotation.  Add your annotation files to see how they align with the sequence features.  
+![Example FluentDNA output of Human Chr19 2MBp](https://fluentdna.com/archive/Test%20Simple/sources/Test%20Simple.png)
 
 ***
 ## FluentDNA Quick Start
@@ -18,13 +17,12 @@ You can start using FluentDNA:
  4. Your result files will be placed in the FluentDNA directory `FluentDNA/results/`.  Once your private server has started, 
  all your results are viewable at [http://localhost:8000](http://127.0.0.1:8000).  
  
-To use FluentDNA as a python module (required for **Linux**), follow the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md).
+FluentDNA can be installed as a python module (required for **Linux**).
+See the [pip install instructions](https://github.com/josiahseaman/FluentDNA/blob/python-master/docs/installation.md) for more details. 
 ```
-pip install --upgrade DNASkittleUtils
 pip install --upgrade FluentDNA
-```  
-**Locating Results:** You will need to be using the same computer the server is running on.  The server will not be visible 
-over network or internet unless your administrator opens the port.  
+```    
+**Locating Results:** You will need to be using the same computer the server is running on.  The server will not be visible over network or internet unless your administrator opens the port.  
 
 ***
 
@@ -47,12 +45,10 @@ Generating a basic visualization of a FASTA file downloaded from NCBI or another
 
 This generates an image pyramid with the standard legend (insert image of legend) and nucleotide number display.
 
-**Input Data Example:**
+**Input Data Example:**  [FluentDNA/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/hg38_chr19_sample.fa)  
 
-* FA File: [FluentDNA/example_data/hg38_chr19_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/hg38_chr19_sample.fa)
-
-**Result:** [Hg38 chr19 sample](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/)
-![Example FluentDNA output of Human Chr19 2MBp](https://dnaskittle.com/ddvresults/dnadata/Test%20Simple/sources/Test%20Simple.png)
+**Result:** [Hg38 chr19 sample](https://fluentdna.com/archive/Test%20Simple/sources/Test%20Simple.png)
+![Example FluentDNA output of Human Chr19 2MBp](https://fluentdna.com/archive/Test%20Simple/sources/Test%20Simple.png)
 
 It is also possible to generate an image file only that can be accessed with an image viewer using `--no_webpage`.
 
@@ -74,17 +70,17 @@ GCCCTAT
 The following command generates a multi-part FASTA file visualization:
 
 **Input Data Example:**
-* FA File: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Human%20selenoproteins.fa
+[Human Selenoproteins.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Human%20selenoproteins.fa)
 
-**Command:** `./fluentdna --fasta="FluentDNA/example_data/Human selenoproteins.fa"`
-**Result:** [Human Selenoproteins](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/)
+**Command:** `./fluentdna --fasta="FluentDNA/example_data/Human selenoproteins.fa"`  
+**Result:** [Human Selenoproteins](https://FluentDNA.com/archive/Human%20selenoproteins/)
 
-![](https://dnaskittle.com/ddvresults/dnadata/Human%20selenoproteins/Human%20selenoproteins.png)
+![](https://FluentDNA.com/archive/Human%20selenoproteins/Human%20selenoproteins.png)
 
 This generates a multi-scale image of the multi-part FASTA file.  Note that if you don't specify `--outname=` it will default to the name of the FASTA file.
 
 Using this simple command, FluentDNA can visualize an entire draft genome at once.
-**Result:** [Ash Tree Genome (_Fraxinus excelsior_)](https://dnaskittle.com/ddvresults/dnadata/Ash%20Tree%20Genome%20-%20BATG-0_5/)
+**Result:** [Ash Tree Genome (_Fraxinus excelsior_)](https://FluentDNA.com/archive/Ash%20Tree%20Genome%20-%20BATG-0_5/)
 ![Fraxinus excelsior genome](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/British%20Ash%20Tree%20Genome.png)
 
 Additional options - see also:
@@ -101,11 +97,10 @@ By specifying `--ref_annotation=` you can include a gene annotation to be render
 **Command:** `./fluentdna --fasta="FluentDNA/example_data/gnetum_sample.fa" --ref_annotation="FluentDNA/example_data/Gnetum_sample_genes.gff"`
 
 **Input Data Example:**
-* GFF File: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Gnetum_sample_genes.gff
-* FA file: https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/gnetum_sample.fa
+* [Gnetum_sample_genes.gff](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/Gnetum_sample_genes.gff)
+* [Gnetum_sample.fa](https://github.com/josiahseaman/FluentDNA/blob/python-master/FluentDNA/example_data/gnetum_sample.fa)
 
-
-**Result:** [Gnetum montanum Annotation](https://dnaskittle.com/ddvresults/dnadata/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS/)
+**Result:** [Gnetum montanum Annotation](https://FluentDNA.com/archive/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS/)
 ![Gnetum montanum Annotation](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/Gnetum%20montanum%20Annotation%20-%20blue%20gene%20-%20yellow%20exon%20-%20green%20CDS.png)
 
 You can download the full _Gnetum montanum_ files from [Data Dryad](https://datadryad.org//resource/doi:10.5061/dryad.0vm37).
@@ -117,7 +112,7 @@ You can download the full _Gnetum montanum_ files from [Data Dryad](https://data
 To visualize a multiple sequence alignment you need to use the `--layout=alignment` option to tell FluentDNA to treat each entry in a multipart fasta file as being one row of an alignment.  To show many MSAs at once, just point `--fasta=` to a folder instead of a file.
 
 **Input Data Example:**
-* Folder with FA files: https://github.com/josiahseaman/FluentDNA/tree/python-master/FluentDNA/example_data/alignments
+* [Folder with FA files](https://github.com/josiahseaman/FluentDNA/tree/python-master/FluentDNA/example_data/alignments)
 
 **Important Note!** Make sure there are no other files in your folder besides sequence files.  If FluentDNA decides on an unreasonably long "max width" it is because it picked up a non-sequence file in the folder.
 
@@ -133,10 +128,10 @@ ACTCAAAACGATCTCTCTAGGGT
 
 This generates a multi-scale image of the multiple alignment.  The multiple alignment results are sorted by gene name.  For a smoother layout use `--sort_contigs` which will sort them by row count (copy number).
 
-**Result:** [Example 7 Gene Families from Fraxinus](https://dnaskittle.com/ddvresults/dnadata/Example%207%20Gene%20Families%20from%20Fraxinus/)
+**Result:** [Example 7 Gene Families from Fraxinus](https://FluentDNA.com/archive/Example%207%20Gene%20Families%20from%20Fraxinus/)
 ![](https://raw.githubusercontent.com/josiahseaman/FluentDNA/python-master/FluentDNA/example_data/Example%207%20Gene%20Families%20from%20Fraxinus.png)
 
-This layout allows users to check thousands of MSAs.  Here we used FluentDNA to quality check the merging software for 2,961 putative gene families: [Fraxinus Homologous Gene Groups](https://dnaskittle.com/ddvresults/dnadata/Fraxinus%20Homologous%20Gene%20Groups/)
+This layout allows users to check thousands of MSAs.  Here we used FluentDNA to quality check the merging software for 2,961 putative gene families: [Fraxinus Homologous Gene Groups](https://FluentDNA.com/archive/Fraxinus%20Homologous%20Gene%20Groups/)
 
 ***
 
@@ -158,7 +153,7 @@ This generates a multi-scale image of the alignment.  There are 4 columns in thi
 * Column 3. Genome B (unique DNA of B)
 * Column 4. Genome B (gapped entire DNA of genome B)
 
-**Result:** [Human vs Chimpanzee_chr19 (natural colors)](https://dnaskittle.com/ddvresults/dnadata/Parallel_hg38_and_panTro5_chr19/)
+**Result:** [Human vs Chimpanzee_chr19 (natural colors)](https://FluentDNA.com/archive/Parallel_hg38_and_panTro5_chr19/)
 ![Rows of sequence side by side Human and chimp.  Gaps where they have unique sequence.](https://github.com/josiahseaman/FluentDNA/raw/python-master/FluentDNA/example_data/Human%20vs%20Chimpanzee_chr19.png)
 
 Figure 1 in the paper can be seen at Nucleotide Position 548,505 which corresponds to HG38 chr19:458,731.  The difference in coordinates is due to the gaps inserted for sake of alignment.

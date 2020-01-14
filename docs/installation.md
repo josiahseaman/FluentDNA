@@ -1,17 +1,16 @@
 This will guide you through installing FluentDNA as a python module called "FluentDNA".  This is the ideal
 option for developers who want to integrate or tweak FluentDNA.  Non-technical users should use
-a release from the [Releases Page](https://github.com/josiahseaman/FluentDNA/releases).
+a release from the [Releases Page](https://github.com/josiahseaman/FluentDNA/releases).  
 
 ## Quick Start
 You will need:
-1. Familiarity with the command line: [Windows Tutorial](https://github.com/pettarin/python-on-windows) [Mac Tutorial](http://docs.python-guide.org/en/latest/starting/install3/osx/#install3-osx)
+1. Familiarity with the command line: [Windows Tutorial](https://github.com/pettarin/python-on-windows), [Mac Tutorial](http://docs.python-guide.org/en/latest/starting/install3/osx/#install3-osx)
 1. Python (Windows must by Python 3.6 or newer): [Download Link](https://www.python.org/downloads/release/python-365/)
 2. Git: [Download Link](https://git-scm.com/downloads)
 
 **Installation**
 From a command line in your python virtual environment:  
 ```
-pip install --upgrade DNASkittleUtils
 pip install --upgrade FluentDNA
 ```
 If you get an error about html_template/ or example_data/ you need to **update pip and setuptools**.  Then rerun the FluentDNA install.
@@ -22,9 +21,10 @@ pip install --upgrade setuptools
 
 **Running**
 fluentdna.py will be placed in the scripts folder and accessible through PYTHONPATH, it's a good idea to add this to PATH.
-The `example_data` directory will end up in your site packages, so you'll need to reference the full path.
+You should be able to use `fluentdna.py` as an executable from anywhere, depending on your setup. Running `fluentdna.py` with no arguments will point you to your *example_data/* and *results/* paths in your site packages, so you'll need to reference the full path.
 
-`python /path/to/site-packages/FluentDNA/fluentdna.py --fasta="/path/to/site-packages/FluentDNA/example_data/hg38_chr19_sample.fa"`
+`fluentdna.py --fasta="/path/to/site-packages/FluentDNA/example_data/hg38_chr19_sample.fa"`
+
 **Note:** Windows ignores the #!/bin/usr/python line, you'll need to use python and the full path to the script:
 `python C:\yourvenv\Scripts\fluentdna.py --fasta="C:\path\to\yourfasta.fa"`
 

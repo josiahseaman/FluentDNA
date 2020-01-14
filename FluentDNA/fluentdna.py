@@ -255,7 +255,10 @@ def ddv(args):
         done(args)
 
     elif args.layout == 'ideogram':
-        assert args.radix, "You must provide a --radix argument for Ideograms."
+        if not args.radix:
+            print("You must provide a --radix argument for Ideograms.")
+            print("For example --radix='([5,5,5,5,11], [5,5,5,5,5 ,53], 1, 1)'")
+            sys.exit(1)
         radix_settings = eval(args.radix)
         if hasattr(radix_settings, '__len__') and len(radix_settings) == 4 and \
             type(radix_settings[0]) == type(radix_settings[1]) == type([]) and \
