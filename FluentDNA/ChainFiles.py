@@ -87,5 +87,6 @@ def match(target, current):
     """Returns true if current satisfies the target requirements"""
     if target is None:
         return True
-    scrubbed = current.upper().replace(';', '').replace('=', '')
-    return target.upper() == current.upper() or target.upper() == scrubbed
+    first_part = target.split()[0].upper()
+    scrubbed = current.split()[0].replace(';', '').replace('=', '').upper()
+    return target.upper() == current.upper() or first_part == scrubbed
