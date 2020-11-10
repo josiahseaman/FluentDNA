@@ -88,5 +88,6 @@ def match(target, current):
     if target is None:
         return True
     first_part = target.split()[0].upper()
-    scrubbed = current.split()[0].replace(';', '').replace('=', '').upper()
-    return target.upper() == current.upper() or first_part == scrubbed
+    scrubbed = current.split()[0].upper()
+    return target.upper() == current.upper() or first_part == scrubbed or \
+           first_part == scrubbed.replace(';', '').replace('=', '')
