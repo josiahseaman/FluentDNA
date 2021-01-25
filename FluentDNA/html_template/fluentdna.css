@@ -77,8 +77,8 @@ ul.selectChromosome li.selected {
     border: 1px solid #303030;
     vertical-align: text-top;
     margin-top: 10px;
-    margin-right: 10px;
-    margin-left: 10px;
+    margin-right: 5px;
+    margin-left: 5px;
     float: left;
 }
 
