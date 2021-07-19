@@ -39,6 +39,10 @@ def is_protein_sequence(contig):
 
 
 class TileLayout(object):
+    """TileLayout is the first and base class for all other Layouts in FluentDNA. It lays out nucleotides in
+    parallel rectangular columns that mirror columns of text. By default, one column is 100 nucleotides wide
+    and 1,000 lines tall. Columns are stacked out into progressively larger rectangular arrangements or super
+    rows and super columns of 100 columns and 10 mega rows."""
     def __init__(self, use_titles=True, sort_contigs=False,
                  low_contrast=False, base_width=100, border_width=3,
                  custom_layout=None):
@@ -121,6 +125,15 @@ class TileLayout(object):
 
     @property
     def levels(self):
+        """In the simple TileLayout sense self.levels will contain a single LayoutFrame for one genome.
+        See LayoutFrame docs for details.
+        This LayoutFrame primarily contains a list of LayoutLevels defined by chunk_size, and padding.
+        These are the user input numbers from command line arguments to change the TileLayout and aspect ratios using
+        --custom_layout="([10,100,100,10,3,999], [0,0,0,3,18,108])"
+
+        self.each_layout[self.i_layout] is an abstraction to allow child classes to use multiple LayoutFrames.
+        For example, multiple genomes in ParallelLayout. Multiple chromosomes in Ideogram, etc.
+        """
         return self.each_layout[self.i_layout]
 
     @levels.setter
@@ -168,9 +181,16 @@ class TileLayout(object):
         self.palette['T'] = hex_to_rgb('2D6C85')  # Blue
         self.palette['A'] = hex_to_rgb('3FB93F')  # Green
 
-
     def process_file(self, input_file_path, output_folder, output_file_name,
                      no_webpage=False, extract_contigs=None):
+        """process_file is the main work horse method of all Layouts. This method or its delegates
+        must be overridden to change core functionality of the class. This is primarily a list of the
+        key steps necessary to go from an input fasta to an output results directory.
+        Delegate container methods are specifically named and may be empty so that they can be
+        overridden in child classes, such as: draw_titles, draw_extras.
+        The try/except structure is important for testing so that partial results can be delivered during
+        computer intensive jobs which can take hours.
+        """
         make_output_directory(output_folder, no_webpage)
         start_time = datetime.now()
         self.final_output_location = output_folder
@@ -211,6 +231,8 @@ class TileLayout(object):
         pass
 
     def draw_nucleotides(self, verbose=True):
+        """Top level function loop for placing color pixels onto the self.canvas based on the nucleotide
+        content of the fasta. Frequently overridden by child classes."""
         total_progress = 0
         # Layout contigs one at a time
         for contig_index, contig in enumerate(self.contigs):
@@ -236,6 +258,8 @@ class TileLayout(object):
 
     def output_fasta(self, output_folder, fasta, no_webpage, extract_contigs, sort_contigs,
                      append_fasta_sources=True, create_source_download=True):
+        """Places a processed fasta in the output directory. This fasta has filtering applied to it meaning
+        that it will exactly match the content displayed in draw_nucleotides rather than the input fasta."""
         bare_file = os.path.basename(fasta)
         if append_fasta_sources:
             self.fasta_sources.append(bare_file)
@@ -255,6 +279,12 @@ class TileLayout(object):
                 print("Sequence saved in:", fasta_destination)
 
     def calc_all_padding(self):
+        """This was a tricky method to write. Calc_all_padding tries to look ahead at how much room is left at each
+        LayoutLevel and how much content still needs to be placed in the contig. If there's a fractional mismatch,
+        it upgrades the order of magnitude of padding to the next LayoutLevel. By analogy, this is the same operation
+        as ensuring there are no single text lines at the bottom of a page and instead placing the page break at
+        the start of a new paragraph on line earlier. Padding gets attached to the contigs and cumulative x_y positions
+        are included. This means there's a difference between a padded list of contigs and a bare list of contigs."""
         total_progress = 0  # pointer in image
         seq_start = 0  # pointer in text
         biggest_chromosome = None
@@ -286,6 +316,7 @@ class TileLayout(object):
 
 
     def read_contigs_and_calc_padding(self, input_file_path, extract_contigs=None):
+        """Reads and filters contigs before calculating their padding."""
         try:
             self.contigs = read_contigs(input_file_path)
         except UnicodeDecodeError as e:
@@ -299,6 +330,12 @@ class TileLayout(object):
         return self.calc_all_padding()
 
     def prepare_image(self, image_length):
+        """Approximates the needed width and height of the canvas given the amount of nucleotides in the fasta.
+        Reserves and allocates a (likely very large) amount of RAM for the image.
+        TODO: It's possible a future version of FluentDNA could allocate one chromosome, contig, or tile of RAM
+        at a time, output a full deepzoom stack to the HDD and then proceed to the next section. This would
+        require much less RAM and may even perform faster. However it would require tracking resources for allocated
+        and unallocated image tiles."""
         width, height = self.max_dimensions(image_length)
         print("Image dimensions are", width, "x", height, "pixels")
         self.image = Image.new(self.pil_mode, (width, height), hex_to_rgb('#FFFFFF'))#ui_grey)
@@ -307,6 +344,7 @@ class TileLayout(object):
 
 
     def calc_padding(self, total_progress, next_segment_length):
+        """See doc in calc_all_padding"""
         min_gap = (20 + 6) * self.base_width  # 20px font height, + 6px vertical padding  * 100 nt per line
 
         for i, current_level in enumerate(self.levels):
@@ -358,6 +396,7 @@ class TileLayout(object):
 
 
     def draw_titles(self):
+        """Calls draw_title() repeatedly"""
         total_progress = 0
         for contig in self.contigs:
             total_progress += contig.reset_padding  # is to move the cursor to the right line for a large title
@@ -367,6 +406,12 @@ class TileLayout(object):
 
 
     def draw_title(self, total_progress, contig):
+        """Draws one label of a contig, scaffold, or chromosome onto the image canvas to be read by the user.
+        Fonts are precalculated and match the LayoutLevel size. Text becomes rasterized into the image itself and
+        is no longer retrievable after this point (would be nice if stored for mouse). Draw_title() is very
+        time intensive function because it involves creating a new image canvas, placing it onto the existing large
+        canvas and transferring the pixels. For fragmented assemblies, half or more of the render time is just text."""
+
         upper_left = self.position_on_screen(total_progress)
         bottom_right = self.position_on_screen(total_progress + contig.title_padding - 2)
         width, height = bottom_right[0] - upper_left[0], bottom_right[1] - upper_left[1]
@@ -398,6 +443,8 @@ class TileLayout(object):
 
     def write_title(self, text, width, height, font_size, title_lines, title_width, upper_left,
                     vertical_label, canvas, color=(0, 0, 0, 255)):
+        """Generic text renderer used everywhere in FluentDNA, thus all the options. Rasterizes text onto canvas.
+        self is only used for the self.get_font method."""
         upper_left = list(upper_left)  # to make it mutable
         font = self.get_font(font_size)
         multi_line_title = pretty_contig_name(text, title_width, title_lines)
@@ -411,6 +458,10 @@ class TileLayout(object):
         canvas.paste(txt, (upper_left[0], upper_left[1]), txt)
 
     def get_font(self, font_size):
+        """Finding the correct TTF file is an important cross-platform compatibility issue. You're probably looking
+        at this function because some platform broke where they store fonts. Check capitalization and weird file
+        name shortenings.
+        I found storing fonts with precalculated sizes greatly sped up rendering."""
         if font_size in self.fonts:
             font = self.fonts[font_size]
         else:
@@ -430,6 +481,8 @@ class TileLayout(object):
         return font
 
     def output_image(self, output_folder, output_file_name, no_webpage):
+        """Saves the image to HDD inside the output_folder/sources/output_file_name.png
+        Memory is freed. Final memory is feed in finish_webpage()"""
         try:
             del self.pixels
             del self.draw
@@ -440,7 +493,7 @@ class TileLayout(object):
         self.final_output_location = os.path.join(output_folder, output_file_name + ".png")
         print("-- Writing:", self.final_output_location, "--")
         self.image.save(self.final_output_location, 'PNG')
-        # del self.image
+        # del self.image  # This step saved for finsih_webpage
 
 
     def max_dimensions(self, image_length):
@@ -511,6 +564,7 @@ class TileLayout(object):
         return "<div class='legend-rgb'><span style='background:rgb"+str(self.palette[palette_key])+"'></span>"+label+"</div>"
 
     def generate_html(self, output_folder, output_file_name, overwrite_files=True):
+        """Populate HTML with crucial data, coordinates, spacing, used for mouse over information"""
         html_path = os.path.join(output_folder, 'index.html')
         if not overwrite_files and os.path.exists(html_path):
             print(html_path, ' already exists.  Skipping HTML.')
@@ -551,6 +605,7 @@ class TileLayout(object):
 
 
     def contig_struct(self):
+        """Each contig has an entry which is used to keep track of its cumulative position on the screen layout."""
         json = []
         xy_seq_start = 0
         for index, contig in enumerate(self.contigs):
@@ -642,6 +697,12 @@ class TileLayout(object):
                                     self.levels.origin)
 
 def write_contigs_to_chunks_dir(project_dir, fasta_name, contigs):
+    """In order to display the exact sequence under the mouse we need to send the sequence file to the client
+    machine over the web. Rather than sending them chr1 (240MB). We chunk the file into 1MB chunks and store
+    them in project_dir/chunks/fasta_name/.  This method creates all the individual chunk.fa files from
+    one large list of contigs. Contigs smaller than chunk_size will not be split.
+    Only the first X contigs are available for mouse over sequence for performance reasons in contig_struct()
+    HTML size."""
     chunks_dir = os.path.join(project_dir, 'chunks', fasta_name)
     try:
         os.makedirs(chunks_dir, exist_ok=True)

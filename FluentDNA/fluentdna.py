@@ -41,6 +41,7 @@ import multiprocessing
 multiprocessing.freeze_support()
 
 # ----------BEGIN MAIN PROGRAM----------
+"""All imports from inside the FluentDNA module must start here. Frozen modules aren't available before this line."""
 from FluentDNA import VERSION
 
 import argparse
@@ -71,6 +72,7 @@ else:
 
 
 def query_yes_no(question, default='yes'):
+    """Simple interactive module used in command line prompts"""
     valid = {'yes': True, 'y': True, "no": False, 'n': False}
 
     if default is None:
@@ -96,6 +98,9 @@ def query_yes_no(question, default='yes'):
 
 
 def run_server(output_dir=None):
+    """Starts a FluentDNA server for running results. This is the default behavior.
+    Method now checks for a server already running on this port and will gracefully
+    exit if there is a conflicting instance."""
     try:
         from http import server
         from socketserver import TCPServer
@@ -133,7 +138,7 @@ def run_server(output_dir=None):
 
 
 def launch_browser(url, output_dir):
-    """Launch webpage using output_dir"""
+    """Launch system browser at webpage using output_dir"""
     try:
         import webbrowser
         full_url = url if not output_dir else url + '/' + os.path.basename(output_dir)
@@ -155,7 +160,15 @@ def done(args, output_dir=None):
         sys.exit(0)
 
 
-def ddv(args):
+def dispatch_job(args):
+    """The main switch statement that matches a series of command line arguments with the proper
+    FluentDNA modules to handle those arguments. This can be chosen explicitly with the --layout= argument
+    but is more often chosen implicitly with layout specific arguments like --radix or --annotation which
+    can only be read and handled by certain modules. This giant if/else structure decides which Layout
+    class to route the dispatched job to.
+
+    All Layouts will return an output directory which will be used by the run_server() method for results.
+    """
     SERVER_HOME, base_path = base_directories(args.output_name)
 
     if not args.layout and args.run_server:
@@ -302,6 +315,11 @@ def ddv(args):
 
 
 def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fastas, border_boxes=True):
+    """Helper function since multiple layout were all using a derivation of parallel layouts:
+    Parallel: Simply showing two ungapped fastas side by side. Presumably they have similar coordinates?
+    ChainFiles: Using a chain file to align one assembly to another and show both aligned side by side
+    AnnotatedAlignment: Same as above but also with an annotation or two similarly gapped and rearranged
+    """
     print("Creating Large Comparison Image from Input Fastas...")
     column_widths = None
     if args.column_widths:
@@ -318,6 +336,10 @@ def create_parallel_viz_from_fastas(args, n_genomes, output_dir, output_name, fa
 
 
 def create_tile_layout_viz_from_fasta(args, fasta, output_name, layout=None):
+    """This is the Typical FluentDNA use case. This creates an image and deepzoom stack using TileLayout
+    given a fasta file. layout arg here can be used to override the default layout with weird settings.
+    All inputs will result in a webpage being generated from the results."""
+
     print("Creating Large Image from Input Fasta...")
     if layout is None:
         layout = TileLayout(use_titles=args.use_titles, sort_contigs=args.sort_contigs,
@@ -338,6 +360,11 @@ def combine_files(batches, args, output_name):
 
 
 def finish_webpage(args, layout, output_name, start_time=datetime.now()):
+    """Creates HTML (containing all the mouse over coordinate information) and deepzoom stack for the
+    results webpage to be presented to the end user. For input, accepts a single giant image plus coordinates
+    as a Layout object. layout.final_output_location is crucial for assigning the output directory.
+    arg output_name is cosmetic and user visible. Steps have been taken to use as little memory as possible
+    as this step tends to be a bottleneck on resources."""
     final_location = layout.final_output_location
     print("Done creating Large Image at ", final_location)
     if not args.no_webpage:
@@ -357,6 +384,10 @@ def finish_webpage(args, layout, output_name, start_time=datetime.now()):
 
 
 def main():
+    """Entry point for FluentDNA command line program and a complete help list of all arguments.
+    After some preprocessing, this method ends at dispatch_job(args).
+    """
+
     if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):  # there's only one input and it does have a flag
         print("--Starting in Quick Mode--")
         print("This will convert the one FASTA file directly to an image and place it in the same "
@@ -637,7 +668,7 @@ def main():
         make_output_directory(args.output_dir)
         args.run_server = True
 
-    ddv(args)
+    dispatch_job(args)
 
 
 if __name__ == "__main__":
